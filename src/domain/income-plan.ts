@@ -111,3 +111,62 @@ export function incomeForMonth(
   if (override !== undefined) return { incomeCents: override, isOverride: true };
   return { incomeCents: plan.incomeCents, isOverride: false };
 }
+
+/** A plan that applies from `effectiveMonth` ('YYYY-MM') until the next version. */
+export type PlanVersion = IncomePlan & { effectiveMonth: string };
+
+/** The plan that applied in `month`: the latest version whose effective month is not after it. */
+export function planForMonth(versions: readonly PlanVersion[], month: string): IncomePlan | null {
+  let match: PlanVersion | null = null;
+  for (const version of versions) {
+    if (version.effectiveMonth <= month && (!match || version.effectiveMonth > match.effectiveMonth)) {
+      match = version;
+    }
+  }
+  if (!match) return null;
+  const { effectiveMonth: _effectiveMonth, ...plan } = match;
+  return plan;
+}
+
+/** First month with a plan, or null when there is none. */
+export function firstPlanMonth(versions: readonly PlanVersion[]): string | null {
+  return versions.reduce<string | null>(
+    (first, version) => (first === null || version.effectiveMonth < first ? version.effectiveMonth : first),
+    null,
+  );
+}
+
+export function isPastMonth(month: string, currentMonth: string): boolean {
+  return month < currentMonth;
+}
+
+export function isValidMonthKey(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+export function yearOf(month: string): number {
+  return Number(month.slice(0, 4));
+}
+
+/** The twelve month keys of a year, January first. */
+export function monthsOfYear(year: number): string[] {
+  return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+}
+
+/** Local date for the first day of a month key, for display. */
+export function monthStart(month: string): Date {
+  return new Date(yearOf(month), Number(month.slice(5, 7)) - 1, 1);
+}
+
+const monthFormatter = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** 'November 2026' */
+export function formatMonth(month: string): string {
+  return monthFormatter.format(monthStart(month));
+}
+
+/** 'Nov' */
+export function formatShortMonth(month: string): string {
+  return SHORT_MONTHS[Number(month.slice(5, 7)) - 1];
+}

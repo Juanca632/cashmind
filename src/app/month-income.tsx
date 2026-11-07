@@ -10,16 +10,24 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { removeMonthOverride, setMonthOverride } from '@/data/income-plan-repo';
-import { formatEuros, monthKey, parseEurosToCents, targetsFor, type IncomePlan } from '@/domain/income-plan';
+import {
+  formatEuros,
+  monthKey,
+  parseEurosToCents,
+  planForMonth,
+  targetsFor,
+  type IncomePlan,
+} from '@/domain/income-plan';
 import { useIncomePlan } from '@/hooks/use-income-plan';
 
 export default function MonthIncomeScreen() {
   const state = useIncomePlan();
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
-  if (!state.plan) return <Redirect href="/plan" />;
-
   const month = monthKey(new Date());
-  return <MonthIncomeForm plan={state.plan} month={month} overrideCents={state.overrides[month]} />;
+  const plan = planForMonth(state.versions, month);
+  if (!plan) return <Redirect href="/plan" />;
+
+  return <MonthIncomeForm plan={plan} month={month} overrideCents={state.overrides[month]} />;
 }
 
 function MonthIncomeForm({

@@ -9,11 +9,14 @@ import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { savePlan } from '@/data/income-plan-repo';
+import { savePlanFromMonth } from '@/data/income-plan-repo';
 import {
   formatPercentOf,
   maxSavingsPct,
+  formatMonth,
+  monthKey,
   parseEurosToCents,
+  planForMonth,
   targetsFor,
   validatePlan,
   type IncomePlan,
@@ -23,14 +26,15 @@ import { useIncomePlan } from '@/hooks/use-income-plan';
 export default function PlanScreen() {
   const state = useIncomePlan();
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
-  return <PlanForm initialPlan={state.plan} />;
+  const currentMonth = monthKey(new Date());
+  return <PlanForm initialPlan={planForMonth(state.versions, currentMonth)} currentMonth={currentMonth} />;
 }
 
 function centsToInput(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',');
 }
 
-function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
+function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | null; currentMonth: string }) {
   const db = useSQLiteContext();
   const [incomeText, setIncomeText] = useState(initialPlan ? centsToInput(initialPlan.incomeCents) : '');
   const [fixedText, setFixedText] = useState(initialPlan ? centsToInput(initialPlan.fixedCents) : '');
@@ -51,7 +55,7 @@ function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
   async function onSave() {
     setSaving(true);
     try {
-      await savePlan(db, plan);
+      await savePlanFromMonth(db, plan, currentMonth);
       router.back();
     } finally {
       setSaving(false);
@@ -62,6 +66,9 @@ function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <ThemedText type="small" themeColor="textSecondary">
+            Changes apply from {formatMonth(currentMonth)} onwards. Past months keep their plan.
+          </ThemedText>
           <TextField
             label="Monthly income"
             suffix="€"

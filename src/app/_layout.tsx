@@ -13,6 +13,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ title: 'cashmind' }} />
           <Stack.Screen name="plan" options={{ title: 'Monthly plan' }} />
           <Stack.Screen name="month-income" options={{ title: "This month's income" }} />
+          <Stack.Screen name="month-picker" options={{ title: 'Pick a month' }} />
         </Stack>
       </ThemeProvider>
     </SQLiteProvider>

@@ -1,13 +1,23 @@
 import {
+  firstPlanMonth,
   formatEuros,
+  formatMonth,
+  formatShortMonth,
   formatPercentOf,
   incomeForMonth,
+  isPastMonth,
+  isValidMonthKey,
   maxSavingsPct,
   monthKey,
+  monthsOfYear,
+  monthStart,
   parseEurosToCents,
+  planForMonth,
   targetsFor,
   validatePlan,
+  yearOf,
   type IncomePlan,
+  type PlanVersion,
 } from '../income-plan';
 
 /** 2000 € income, 1000 € fixed (50 %), savings 30 % → leisure 20 %. */
@@ -133,5 +143,61 @@ describe('monthKey', () => {
   it('pads the month', () => {
     expect(monthKey(new Date(2026, 0, 15))).toBe('2026-01');
     expect(monthKey(new Date(2026, 10, 7))).toBe('2026-11');
+  });
+});
+
+describe('plan history', () => {
+  const july: PlanVersion = { effectiveMonth: '2026-07', incomeCents: 200000, fixedCents: 100000, savingsPct: 30 };
+  const december: PlanVersion = { effectiveMonth: '2026-12', incomeCents: 240000, fixedCents: 100000, savingsPct: 30 };
+  const versions = [december, july];
+
+  it('changing the plan in December keeps July to November on the old plan', () => {
+    expect(planForMonth(versions, '2026-07')?.incomeCents).toBe(200000);
+    expect(planForMonth(versions, '2026-11')?.incomeCents).toBe(200000);
+    expect(planForMonth(versions, '2026-12')?.incomeCents).toBe(240000);
+    expect(planForMonth(versions, '2027-03')?.incomeCents).toBe(240000);
+  });
+
+  it('has no plan before the first version', () => {
+    expect(planForMonth(versions, '2026-03')).toBeNull();
+    expect(planForMonth([], '2026-11')).toBeNull();
+    expect(firstPlanMonth(versions)).toBe('2026-07');
+    expect(firstPlanMonth([])).toBeNull();
+  });
+
+  it('returns a plain plan without the effective month', () => {
+    expect(planForMonth(versions, '2026-08')).toEqual({ incomeCents: 200000, fixedCents: 100000, savingsPct: 30 });
+  });
+});
+
+describe('month helpers', () => {
+  it('detects past months', () => {
+    expect(isPastMonth('2026-09', '2026-11')).toBe(true);
+    expect(isPastMonth('2025-12', '2026-01')).toBe(true);
+    expect(isPastMonth('2026-11', '2026-11')).toBe(false);
+    expect(isPastMonth('2026-12', '2026-11')).toBe(false);
+  });
+
+  it('validates month keys', () => {
+    expect(isValidMonthKey('2026-09')).toBe(true);
+    expect(isValidMonthKey('2026-13')).toBe(false);
+    expect(isValidMonthKey('2026-9')).toBe(false);
+    expect(isValidMonthKey(undefined)).toBe(false);
+    expect(isValidMonthKey(['2026-09'])).toBe(false);
+  });
+
+  it('lists the months of a year and maps back to dates', () => {
+    expect(monthsOfYear(2026)).toHaveLength(12);
+    expect(monthsOfYear(2026)[0]).toBe('2026-01');
+    expect(monthsOfYear(2026)[11]).toBe('2026-12');
+    expect(yearOf('2026-09')).toBe(2026);
+    expect(monthKey(monthStart('2026-09'))).toBe('2026-09');
+  });
+});
+
+describe('month formatting', () => {
+  it('formats month keys for display', () => {
+    expect(formatMonth('2026-09')).toBe('September 2026');
+    expect(formatShortMonth('2026-09')).toBe('Sep');
   });
 });

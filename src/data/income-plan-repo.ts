@@ -1,29 +1,36 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { IncomePlan, MonthOverrides } from '@/domain/income-plan';
+import type { IncomePlan, MonthOverrides, PlanVersion } from '@/domain/income-plan';
 
-type PlanRow = {
+type PlanVersionRow = {
+  effective_month: string;
   income_cents: number;
   fixed_cents: number;
   savings_pct: number;
 };
 
-export async function getPlan(db: SQLiteDatabase): Promise<IncomePlan | null> {
-  const row = await db.getFirstAsync<PlanRow>(
-    'SELECT income_cents, fixed_cents, savings_pct FROM plan WHERE id = 1',
+export async function getPlanVersions(db: SQLiteDatabase): Promise<PlanVersion[]> {
+  const rows = await db.getAllAsync<PlanVersionRow>(
+    'SELECT effective_month, income_cents, fixed_cents, savings_pct FROM plan_version ORDER BY effective_month',
   );
-  if (!row) return null;
-  return { incomeCents: row.income_cents, fixedCents: row.fixed_cents, savingsPct: row.savings_pct };
+  return rows.map((row) => ({
+    effectiveMonth: row.effective_month,
+    incomeCents: row.income_cents,
+    fixedCents: row.fixed_cents,
+    savingsPct: row.savings_pct,
+  }));
 }
 
-export async function savePlan(db: SQLiteDatabase, plan: IncomePlan): Promise<void> {
+/** Saves the plan as the version that applies from `month` onwards, replacing that month's version if any. */
+export async function savePlanFromMonth(db: SQLiteDatabase, plan: IncomePlan, month: string): Promise<void> {
   await db.runAsync(
-    `INSERT INTO plan (id, income_cents, fixed_cents, savings_pct)
-     VALUES (1, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
+    `INSERT INTO plan_version (effective_month, income_cents, fixed_cents, savings_pct)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(effective_month) DO UPDATE SET
        income_cents = excluded.income_cents,
        fixed_cents = excluded.fixed_cents,
        savings_pct = excluded.savings_pct`,
+    month,
     plan.incomeCents,
     plan.fixedCents,
     plan.savingsPct,
