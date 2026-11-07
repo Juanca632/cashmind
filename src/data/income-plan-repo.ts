@@ -4,36 +4,29 @@ import type { IncomePlan, MonthOverrides } from '@/domain/income-plan';
 
 type PlanRow = {
   income_cents: number;
-  fixed_pct: number;
-  leisure_pct: number;
+  fixed_cents: number;
   savings_pct: number;
 };
 
 export async function getPlan(db: SQLiteDatabase): Promise<IncomePlan | null> {
   const row = await db.getFirstAsync<PlanRow>(
-    'SELECT income_cents, fixed_pct, leisure_pct, savings_pct FROM plan WHERE id = 1',
+    'SELECT income_cents, fixed_cents, savings_pct FROM plan WHERE id = 1',
   );
   if (!row) return null;
-  return {
-    incomeCents: row.income_cents,
-    percentages: { fixed: row.fixed_pct, leisure: row.leisure_pct, savings: row.savings_pct },
-  };
+  return { incomeCents: row.income_cents, fixedCents: row.fixed_cents, savingsPct: row.savings_pct };
 }
 
 export async function savePlan(db: SQLiteDatabase, plan: IncomePlan): Promise<void> {
-  const { fixed, leisure, savings } = plan.percentages;
   await db.runAsync(
-    `INSERT INTO plan (id, income_cents, fixed_pct, leisure_pct, savings_pct)
-     VALUES (1, ?, ?, ?, ?)
+    `INSERT INTO plan (id, income_cents, fixed_cents, savings_pct)
+     VALUES (1, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        income_cents = excluded.income_cents,
-       fixed_pct = excluded.fixed_pct,
-       leisure_pct = excluded.leisure_pct,
+       fixed_cents = excluded.fixed_cents,
        savings_pct = excluded.savings_pct`,
     plan.incomeCents,
-    fixed,
-    leisure,
-    savings,
+    plan.fixedCents,
+    plan.savingsPct,
   );
 }
 

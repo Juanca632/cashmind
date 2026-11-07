@@ -3,7 +3,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 
-import { BUCKET_LABELS, BucketRows } from '@/components/bucket-rows';
+import { BucketRows, ERROR_COLOR } from '@/components/bucket-rows';
 import { Button } from '@/components/button';
 import { TextField } from '@/components/text-field';
 import { ThemedText } from '@/components/themed-text';
@@ -11,17 +11,14 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { savePlan } from '@/data/income-plan-repo';
 import {
-  BUCKETS,
+  formatPercentOf,
+  maxSavingsPct,
   parseEurosToCents,
-  percentageTotal,
   targetsFor,
   validatePlan,
-  type Bucket,
   type IncomePlan,
 } from '@/domain/income-plan';
 import { useIncomePlan } from '@/hooks/use-income-plan';
-
-const DEFAULT_PERCENTAGES = { fixed: 50, leisure: 30, savings: 20 };
 
 export default function PlanScreen() {
   const state = useIncomePlan();
@@ -29,27 +26,27 @@ export default function PlanScreen() {
   return <PlanForm initialPlan={state.plan} />;
 }
 
+function centsToInput(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',');
+}
+
 function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
   const db = useSQLiteContext();
-  const [incomeText, setIncomeText] = useState(
-    initialPlan ? (initialPlan.incomeCents / 100).toFixed(2).replace('.', ',') : '',
-  );
-  const [percentTexts, setPercentTexts] = useState<Record<Bucket, string>>(() => {
-    const source = initialPlan?.percentages ?? DEFAULT_PERCENTAGES;
-    return { fixed: String(source.fixed), leisure: String(source.leisure), savings: String(source.savings) };
-  });
+  const [incomeText, setIncomeText] = useState(initialPlan ? centsToInput(initialPlan.incomeCents) : '');
+  const [fixedText, setFixedText] = useState(initialPlan ? centsToInput(initialPlan.fixedCents) : '');
+  const [savingsText, setSavingsText] = useState(initialPlan ? String(initialPlan.savingsPct) : '20');
   const [saving, setSaving] = useState(false);
 
   const incomeCents = parseEurosToCents(incomeText);
-  const percentages = {
-    fixed: parsePercent(percentTexts.fixed),
-    leisure: parsePercent(percentTexts.leisure),
-    savings: parsePercent(percentTexts.savings),
+  const fixedCents = parseEurosToCents(fixedText);
+  const plan: IncomePlan = {
+    incomeCents: incomeCents ?? 0,
+    fixedCents: fixedCents ?? -1,
+    savingsPct: /^\d{1,3}$/.test(savingsText.trim()) ? Number(savingsText.trim()) : Number.NaN,
   };
-  const plan: IncomePlan = { incomeCents: incomeCents ?? 0, percentages };
   const errors = validatePlan(plan);
-  const total = percentageTotal(percentages);
-  const canPreview = incomeCents !== null && incomeCents > 0 && !errors.includes('percentage-out-of-range');
+  const incomeValid = !errors.includes('income-not-positive');
+  const fixedValid = incomeValid && !errors.includes('fixed-invalid');
 
   async function onSave() {
     setSaving(true);
@@ -69,33 +66,51 @@ function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
             label="Monthly income"
             suffix="€"
             keyboardType="decimal-pad"
-            placeholder="2500,00"
+            placeholder="2000,00"
             value={incomeText}
             onChangeText={setIncomeText}
           />
-          {errors.includes('income-not-positive') ? (
-            <ThemedText type="small" style={styles.error}>
-              Income must be greater than 0 €.
-            </ThemedText>
+          {incomeText.trim() !== '' && !incomeValid ? <ErrorText>Income must be greater than 0 €.</ErrorText> : null}
+
+          <TextField
+            label="Fixed expenses (rent, bills, subscriptions…)"
+            suffix="€"
+            keyboardType="decimal-pad"
+            placeholder="1000,00"
+            value={fixedText}
+            onChangeText={setFixedText}
+          />
+          {incomeValid && fixedText.trim() !== '' ? (
+            fixedValid ? (
+              <ThemedText type="small" themeColor="textSecondary">
+                {formatPercentOf(plan.fixedCents, plan.incomeCents)} of your income
+              </ThemedText>
+            ) : (
+              <ErrorText>Fixed expenses must be a valid amount and cannot exceed your income.</ErrorText>
+            )
           ) : null}
 
-          {BUCKETS.map((bucket) => (
-            <TextField
-              key={bucket}
-              label={BUCKET_LABELS[bucket]}
-              suffix="%"
-              keyboardType="number-pad"
-              maxLength={3}
-              value={percentTexts[bucket]}
-              onChangeText={(text) => setPercentTexts((current) => ({ ...current, [bucket]: text }))}
-            />
-          ))}
+          <TextField
+            label="Savings (% of income)"
+            suffix="%"
+            keyboardType="number-pad"
+            maxLength={3}
+            value={savingsText}
+            onChangeText={setSavingsText}
+          />
+          {errors.includes('savings-invalid') ? <ErrorText>Savings must be a whole number.</ErrorText> : null}
+          {errors.includes('savings-too-high') ? (
+            <ErrorText>At most {maxSavingsPct(plan.incomeCents, plan.fixedCents)} % is left for savings.</ErrorText>
+          ) : null}
 
-          <ThemedText type="smallBold" style={errors.length ? styles.error : undefined}>
-            {totalMessage(total, errors.includes('percentage-out-of-range'))}
-          </ThemedText>
-
-          {canPreview ? <BucketRows percentages={percentages} targets={targetsFor(incomeCents, percentages)} /> : null}
+          {errors.length === 0 ? (
+            <>
+              <ThemedText type="small" themeColor="textSecondary">
+                Leisure gets the rest of your income.
+              </ThemedText>
+              <BucketRows targets={targetsFor(plan, plan.incomeCents)} incomeCents={plan.incomeCents} />
+            </>
+          ) : null}
 
           <Button label="Save plan" disabled={errors.length > 0 || saving} onPress={onSave} />
         </ScrollView>
@@ -104,16 +119,12 @@ function PlanForm({ initialPlan }: { initialPlan: IncomePlan | null }) {
   );
 }
 
-/** Whole numbers 0–100 only; anything else becomes NaN so validation rejects it. */
-function parsePercent(text: string): number {
-  return /^\d{1,3}$/.test(text.trim()) ? Number(text.trim()) : Number.NaN;
-}
-
-function totalMessage(total: number, outOfRange: boolean): string {
-  if (outOfRange) return 'Each percentage must be a whole number from 0 to 100.';
-  if (total === 100) return 'Total: 100 %';
-  if (total < 100) return `Total: ${total} % — ${100 - total} % left to assign`;
-  return `Total: ${total} % — ${total - 100} % over`;
+function ErrorText({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemedText type="small" style={{ color: ERROR_COLOR }}>
+      {children}
+    </ThemedText>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -123,8 +134,5 @@ const styles = StyleSheet.create({
   content: {
     gap: Spacing.three,
     padding: Spacing.four,
-  },
-  error: {
-    color: '#D93025',
   },
 });

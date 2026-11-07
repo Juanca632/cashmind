@@ -54,8 +54,8 @@ function MonthIncomeForm({
     <ThemedView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ThemedText themeColor="textSecondary">
-          Your usual income is {formatEuros(plan.incomeCents)}. Set a different amount for this month only; next month
-          goes back to the usual income.
+          Your usual income is {formatEuros(plan.incomeCents)}. Set a different amount for this month only: fixed expenses stay the same and leisure and savings
+          adjust in the same proportion. Next month goes back to the usual income.
         </ThemedText>
 
         <TextField
@@ -72,7 +72,7 @@ function MonthIncomeForm({
           </ThemedText>
         ) : null}
 
-        {valid ? <BucketRows percentages={plan.percentages} targets={targetsFor(incomeCents, plan.percentages)} /> : null}
+        {valid ? <BucketRows targets={targetsFor(plan, incomeCents)} incomeCents={incomeCents} /> : null}
 
         <Button
           label="Save for this month"

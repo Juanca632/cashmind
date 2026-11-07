@@ -1,28 +1,41 @@
 /**
  * Income plan domain logic. Pure functions, no React and no storage.
  * All money is integer cents (250000 = 2500,00 €).
+ *
+ * A plan has a recurring income, a fixed-expenses amount and a savings percentage
+ * of the income. Leisure is always what is left.
  */
 
 export type Bucket = 'fixed' | 'leisure' | 'savings';
 
 export const BUCKETS: readonly Bucket[] = ['fixed', 'leisure', 'savings'];
 
-export type Percentages = Record<Bucket, number>;
-
 export type IncomePlan = {
   incomeCents: number;
-  percentages: Percentages;
+  fixedCents: number;
+  /** Whole-number percentage of the recurring income. */
+  savingsPct: number;
 };
 
 /** Income overrides keyed by month, e.g. { '2026-11': 300000 }. */
 export type MonthOverrides = Record<string, number>;
 
-export type Targets = Record<Bucket, number>;
+export type Targets = Record<Bucket, number> & {
+  /** How much the income is below the fixed expenses (0 when it covers them). */
+  shortfall: number;
+};
 
 const euroFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+const percentFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
 
 export function formatEuros(cents: number): string {
   return euroFormatter.format(cents / 100);
+}
+
+/** Share of `totalCents` as a display string like "37 %" or "37,5 %". */
+export function formatPercentOf(cents: number, totalCents: number): string {
+  const pct = totalCents > 0 ? (cents / totalCents) * 100 : 0;
+  return `${percentFormatter.format(pct)} %`;
 }
 
 /**
@@ -38,37 +51,49 @@ export function parseEurosToCents(text: string): number | null {
   return euros * 100 + cents;
 }
 
-export type PlanError = 'income-not-positive' | 'percentage-out-of-range' | 'total-not-100';
-
-export function percentageTotal(percentages: Percentages): number {
-  return BUCKETS.reduce((sum, bucket) => sum + percentages[bucket], 0);
+/** Highest whole savings percentage that still fits after fixed expenses. */
+export function maxSavingsPct(incomeCents: number, fixedCents: number): number {
+  if (incomeCents <= 0) return 0;
+  return Math.floor(((incomeCents - fixedCents) * 100) / incomeCents);
 }
+
+export type PlanError = 'income-not-positive' | 'fixed-invalid' | 'savings-invalid' | 'savings-too-high';
 
 export function validatePlan(plan: IncomePlan): PlanError[] {
   const errors: PlanError[] = [];
   if (!Number.isInteger(plan.incomeCents) || plan.incomeCents <= 0) {
     errors.push('income-not-positive');
   }
-  const outOfRange = BUCKETS.some((bucket) => {
-    const pct = plan.percentages[bucket];
-    return !Number.isInteger(pct) || pct < 0 || pct > 100;
-  });
-  if (outOfRange) {
-    errors.push('percentage-out-of-range');
-  } else if (percentageTotal(plan.percentages) !== 100) {
-    errors.push('total-not-100');
+  if (!Number.isInteger(plan.fixedCents) || plan.fixedCents < 0 || plan.fixedCents > plan.incomeCents) {
+    errors.push('fixed-invalid');
+  }
+  if (!Number.isInteger(plan.savingsPct) || plan.savingsPct < 0) {
+    errors.push('savings-invalid');
+  } else if (errors.length === 0 && planSavingsCents(plan) > plan.incomeCents - plan.fixedCents) {
+    errors.push('savings-too-high');
   }
   return errors;
 }
 
+function planSavingsCents(plan: IncomePlan): number {
+  return Math.floor((plan.incomeCents * plan.savingsPct) / 100);
+}
+
 /**
- * Euro target per bucket. Leisure and savings are rounded down; fixed expenses
- * take the remainder so the three targets always add up exactly to the income.
+ * Targets for a month with `monthIncomeCents`. Fixed expenses stay the same; the rest is
+ * shared between leisure and savings in the plan's proportion. Leisure absorbs rounding.
  */
-export function targetsFor(incomeCents: number, percentages: Percentages): Targets {
-  const leisure = Math.floor((incomeCents * percentages.leisure) / 100);
-  const savings = Math.floor((incomeCents * percentages.savings) / 100);
-  return { fixed: incomeCents - leisure - savings, leisure, savings };
+export function targetsFor(plan: IncomePlan, monthIncomeCents: number): Targets {
+  const fixed = plan.fixedCents;
+  const remainder = monthIncomeCents - fixed;
+  if (remainder < 0) {
+    return { fixed, leisure: 0, savings: 0, shortfall: -remainder };
+  }
+
+  const planRemainder = plan.incomeCents - plan.fixedCents;
+  const savings =
+    planRemainder <= 0 ? remainder : Math.floor((remainder * planSavingsCents(plan)) / planRemainder);
+  return { fixed, leisure: remainder - savings, savings, shortfall: 0 };
 }
 
 /** Month key in the device's local time zone, e.g. '2026-11'. */

@@ -32,7 +32,7 @@ export default function HomeScreen() {
 
   const now = new Date();
   const { incomeCents, isOverride } = incomeForMonth(plan, overrides, monthKey(now));
-  const targets = targetsFor(incomeCents, plan.percentages);
+  const targets = targetsFor(plan, incomeCents);
 
   return (
     <ThemedView style={styles.screen}>
@@ -47,7 +47,7 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
 
-        <BucketRows percentages={plan.percentages} targets={targets} />
+        <BucketRows targets={targets} incomeCents={incomeCents} />
 
         <View style={styles.actions}>
           <Button label="Change this month's income" variant="secondary" onPress={() => router.push('/month-income')} />
