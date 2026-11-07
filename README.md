@@ -1,56 +1,43 @@
-# Welcome to your Expo app 👋
+# cashmind
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A privacy-first personal budgeting app for Android. Set your monthly income, split it into fixed expenses, leisure and savings, record what you spend, and see how each month is going against the plan.
 
-## Get started
+All data stays on the device: no account, no bank access, no backend.
 
-1. Install dependencies
+## Features
 
-   ```bash
-   npm install
-   ```
+- **Monthly plan:** income plus fixed expenses, leisure and savings, each entered in euros or as a percentage. Of leisure and savings, the one you set is kept and the other gets what's left.
+- **Months with a different income:** fixed expenses stay the same and the difference is shared between leisure and savings in the plan's proportion.
+- **Plan history:** changing the plan applies from the current month onwards; past months keep their plan.
+- **Expenses:** record, edit and delete expenses per bucket, with progress bars and percentages against each target. The previous month stays editable during the first 5 days of a new month.
+- **Past months:** browse any past month from a year/month picker, read-only.
 
-2. Start the app
+## Tech stack
 
-   ```bash
-   npx expo start
-   ```
+- [Expo](https://expo.dev) SDK 58 / React Native, TypeScript, Expo Router
+- `expo-sqlite` for on-device storage, with versioned migrations
+- Jest (`jest-expo`) for the money logic; all amounts are integer cents
+- Specs and changes planned with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec/`)
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Getting started
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Scan the QR code with Expo Go on Android.
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Command | What it does |
+| --- | --- |
+| `npm start` | Start the dev server |
+| `npm test` | Unit tests |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript check |
 
-## Learn more
+## CI/CD
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **CI** (pull requests into `main`): dependency audit, lint, typecheck, tests and `expo-doctor`.
+- **CD** (merges into `main`): version tag from conventional commits and a GitHub release.

@@ -1,0 +1,30 @@
+name: CI
+
+# Runs on every pull request into main, before it can be merged. Everything reaches main
+# through a pull request, so pushes are not checked on their own.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # High and above only: the moderate findings live inside Expo and React Native's own
+      # packages and only an SDK upgrade fixes them.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Check Expo config and dependencies
+        run: npx expo-doctor
