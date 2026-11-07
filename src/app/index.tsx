@@ -3,9 +3,11 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BucketRows } from '@/components/bucket-rows';
 import { Button } from '@/components/button';
+import { ExpenseList } from '@/components/expense-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { isExpenseMonthEditable, totalsByBucket } from '@/domain/expenses';
 import {
   formatEuros,
   formatMonth,
@@ -15,15 +17,22 @@ import {
   monthKey,
   planForMonth,
   targetsFor,
+  type Bucket,
   type IncomePlan,
 } from '@/domain/income-plan';
 import { useIncomePlan } from '@/hooks/use-income-plan';
+import { useMonthExpenses } from '@/hooks/use-month-expenses';
 
 export default function HomeScreen() {
   const state = useIncomePlan();
   const params = useLocalSearchParams<{ month?: string }>();
+  const today = new Date();
+  const currentMonth = monthKey(today);
+  // Ignore invalid or future months in the URL and fall back to the current month.
+  const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
+  const expenses = useMonthExpenses(month);
 
-  if (state.status === 'loading') return <ThemedView style={styles.screen} />;
+  if (state.status === 'loading' || expenses === null) return <ThemedView style={styles.screen} />;
 
   const { versions, overrides } = state;
 
@@ -39,10 +48,8 @@ export default function HomeScreen() {
     );
   }
 
-  const currentMonth = monthKey(new Date());
-  // Ignore invalid or future months in the URL and fall back to the current month.
-  const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
   const isPast = isPastMonth(month, currentMonth);
+  const canEditExpenses = isExpenseMonthEditable(month, today);
   const plan = planForMonth(versions, month);
 
   return (
@@ -57,10 +64,26 @@ export default function HomeScreen() {
         </Pressable>
 
         {plan ? (
-          <MonthPlan {...incomeForMonth(plan, overrides, month)} plan={plan} />
+          <MonthPlan {...incomeForMonth(plan, overrides, month)} plan={plan} spent={totalsByBucket(expenses)} />
         ) : (
           <ThemedText themeColor="textSecondary">There was no plan in {formatMonth(month)}.</ThemedText>
         )}
+
+        {canEditExpenses ? (
+          <Button label="Add expense" onPress={() => router.push({ pathname: '/expense', params: { month } })} />
+        ) : null}
+
+        <View style={styles.section}>
+          <ThemedText type="smallBold">Expenses</ThemedText>
+          <ExpenseList
+            expenses={expenses}
+            onPress={
+              canEditExpenses
+                ? (expense) => router.push({ pathname: '/expense', params: { id: String(expense.id) } })
+                : undefined
+            }
+          />
+        </View>
 
         <View style={styles.actions}>
           {isPast ? (
@@ -81,7 +104,9 @@ export default function HomeScreen() {
   );
 }
 
-function MonthPlan({ plan, incomeCents, isOverride }: { plan: IncomePlan; incomeCents: number; isOverride: boolean }) {
+type MonthPlanProps = { plan: IncomePlan; incomeCents: number; isOverride: boolean; spent: Record<Bucket, number> };
+
+function MonthPlan({ plan, incomeCents, isOverride, spent }: MonthPlanProps) {
   const targets = targetsFor(plan, incomeCents);
   return (
     <>
@@ -91,7 +116,7 @@ function MonthPlan({ plan, incomeCents, isOverride }: { plan: IncomePlan; income
           {isOverride ? 'Income for this month only' : 'Monthly income'}
         </ThemedText>
       </View>
-      <BucketRows targets={targets} incomeCents={incomeCents} />
+      <BucketRows targets={targets} incomeCents={incomeCents} spent={spent} />
     </>
   );
 }
@@ -115,6 +140,9 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: Spacing.one,
+  },
+  section: {
+    gap: Spacing.two,
   },
   actions: {
     gap: Spacing.two,

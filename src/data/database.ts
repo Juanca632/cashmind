@@ -4,7 +4,7 @@ import { monthKey } from '@/domain/income-plan';
 
 export const DATABASE_NAME = 'cashmind.db';
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 /** Runs before the app renders (SQLiteProvider onInit). Each step upgrades one version. */
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
@@ -59,6 +59,19 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         effectiveMonth,
       );
       await db.execAsync('DROP TABLE plan');
+    }
+
+    if (version <= 3) {
+      await db.execAsync(`
+        CREATE TABLE expense (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          bucket TEXT NOT NULL CHECK (bucket IN ('fixed', 'leisure', 'savings')),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+      `);
     }
 
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
