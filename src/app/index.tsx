@@ -1,98 +1,84 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { BucketRows } from '@/components/bucket-rows';
+import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Spacing } from '@/constants/theme';
+import { formatEuros, incomeForMonth, monthKey, targetsFor } from '@/domain/income-plan';
+import { useIncomePlan } from '@/hooks/use-income-plan';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const monthFormatter = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' });
 
 export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+  const state = useIncomePlan();
 
-        <ThemedText type="code" style={styles.code}>
-          get started
+  if (state.status === 'loading') return <ThemedView style={styles.screen} />;
+
+  const { plan, overrides } = state;
+
+  if (!plan) {
+    return (
+      <ThemedView style={[styles.screen, styles.empty]}>
+        <ThemedText type="subtitle">Plan your month</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.centered}>
+          Set your monthly income and how much of it goes to fixed expenses, leisure and savings.
         </ThemedText>
+        <Button label="Set up my plan" onPress={() => router.push('/plan')} />
+      </ThemedView>
+    );
+  }
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+  const now = new Date();
+  const { incomeCents, isOverride } = incomeForMonth(plan, overrides, monthKey(now));
+  const targets = targetsFor(incomeCents, plan.percentages);
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
+  return (
+    <ThemedView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <ThemedText type="small" themeColor="textSecondary">
+            {monthFormatter.format(now)}
+          </ThemedText>
+          <ThemedText type="subtitle">{formatEuros(incomeCents)}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {isOverride ? 'Income for this month only' : 'Monthly income'}
+          </ThemedText>
+        </View>
+
+        <BucketRows percentages={plan.percentages} targets={targets} />
+
+        <View style={styles.actions}>
+          <Button label="Change this month's income" variant="secondary" onPress={() => router.push('/month-income')} />
+          <Button label="Edit plan" variant="secondary" onPress={() => router.push('/plan')} />
+        </View>
+      </ScrollView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  empty: {
     alignItems: 'center',
     gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    padding: Spacing.four,
   },
-  title: {
+  centered: {
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  content: {
+    gap: Spacing.four,
+    padding: Spacing.four,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  header: {
+    gap: Spacing.one,
+  },
+  actions: {
+    gap: Spacing.two,
   },
 });
