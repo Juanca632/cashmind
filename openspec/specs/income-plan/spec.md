@@ -17,7 +17,7 @@ The system SHALL let the user set a recurring monthly income in EUR, with cent p
 - **THEN** the system does not save the plan and shows that the income must be greater than zero
 
 ### Requirement: Live euro preview while editing
-The system SHALL show, while the user edits the income, the fixed expenses or the savings percentage, the euro amount and percentage of income of each bucket, updated on every change and before saving.
+The system SHALL show, while the user edits the income or any bucket, the euro amount and percentage of income of each bucket, including the automatic one, updated on every change and before saving.
 
 #### Scenario: Preview updates on change
 - **GIVEN** an income of 2000,00 € and fixed expenses of 1000,00 €
@@ -46,7 +46,7 @@ The system SHALL let the user set a different income for the current month. That
 - **THEN** this month's targets are computed from the recurring income again
 
 ### Requirement: Current month overview
-The system SHALL show, on the home screen, the selected month (the current month by default), its income (marking whether it is an override) and, for each bucket, its euro target and its percentage of that month's income, using the plan that applied to that month. When the income is below the fixed expenses it SHALL show the shortfall warning. When no plan exists yet, the home screen SHALL invite the user to create one.
+The system SHALL show, on the home screen, the selected month (the current month by default), its income (marking whether it is an override) and, for each bucket, its euro target, using the plan that applied to that month. When the income is below the fixed expenses it SHALL show the shortfall warning. When no plan exists yet, the home screen SHALL invite the user to create one.
 
 #### Scenario: First launch
 - **WHEN** the user opens the app without a saved plan
@@ -54,7 +54,7 @@ The system SHALL show, on the home screen, the selected month (the current month
 
 #### Scenario: Plan exists
 - **WHEN** the user opens the app with a saved plan
-- **THEN** the home screen shows the current month's income and the three bucket targets with their percentages
+- **THEN** the home screen shows the current month's income and the three bucket targets
 
 ### Requirement: On-device persistence
 The system SHALL store the plan and month overrides only on the device, keep them across app restarts, and never send them over the network.
@@ -64,7 +64,7 @@ The system SHALL store the plan and month overrides only on the device, keep the
 - **THEN** the same plan and overrides are shown
 
 ### Requirement: Fixed expenses as an amount
-The system SHALL let the user set the monthly fixed expenses as an amount in EUR, with cent precision, that stays the same in every month. The amount MUST be zero or more and MUST NOT exceed the recurring income. The system SHALL show which percentage of the income that amount represents.
+The system SHALL let the user set the monthly fixed expenses in EUR or as a percentage of the recurring income. The resulting amount SHALL stay the same in every month, including months with a different income. The amount MUST be zero or more and MUST NOT exceed the recurring income. The system SHALL show the value in the other unit.
 
 #### Scenario: Fixed expenses shown as a share of income
 - **GIVEN** a recurring income of 2000,00 €
@@ -75,19 +75,6 @@ The system SHALL let the user set the monthly fixed expenses as an amount in EUR
 - **GIVEN** a recurring income of 2000,00 €
 - **WHEN** the user sets fixed expenses to 2100,00 €
 - **THEN** the system does not save the plan and shows that fixed expenses cannot exceed the income
-
-### Requirement: Savings and leisure as a share of the income
-The system SHALL let the user set savings as a whole-number percentage of the recurring income. Leisure SHALL get the rest of the income after fixed expenses and savings, shown as a percentage of the income, so the three percentages add up to 100 %. The savings percentage MUST NOT exceed the share left after fixed expenses.
-
-#### Scenario: Valid split
-- **GIVEN** a recurring income of 2000,00 € and fixed expenses of 1000,00 € (50 %)
-- **WHEN** the user sets savings to 30 %
-- **THEN** savings is 600,00 € (30 %) and leisure is 400,00 € (20 %)
-
-#### Scenario: Savings above what is left
-- **GIVEN** a recurring income of 2000,00 € and fixed expenses of 1000,00 € (50 %)
-- **WHEN** the user sets savings to 60 %
-- **THEN** the system does not save the plan and shows that at most 50 % is left for savings
 
 ### Requirement: Income below fixed expenses
 The system SHALL warn the user when a month's income is lower than the fixed expenses, showing the shortfall in euros, and SHALL set that month's leisure and savings targets to 0 €.
@@ -111,3 +98,37 @@ The system SHALL keep a history of the plan. Saving the plan SHALL make it apply
 - **GIVEN** a plan saved earlier this month
 - **WHEN** the user saves a different plan this month
 - **THEN** this month uses the latest plan and no past month changes
+
+### Requirement: Buckets in euros or percent
+The system SHALL let the user enter each entered bucket either as an amount in EUR (cent precision) or as a whole-number percentage of the recurring income, switching per field, and SHALL show the value in the other unit next to it. A bucket entered as a percentage SHALL keep its percentage when the recurring income is edited, and one entered in EUR SHALL keep its amount.
+
+#### Scenario: Savings as a percentage
+- **GIVEN** a recurring income of 2000,00 €
+- **WHEN** the user enters savings as 30 %
+- **THEN** the editor shows 600,00 € next to it
+
+#### Scenario: Income edited with a percentage bucket
+- **GIVEN** savings entered as 30 % and leisure filled in automatically
+- **WHEN** the user changes the income from 2000,00 € to 2500,00 €
+- **THEN** savings becomes 750,00 € and leisure is recomputed
+
+### Requirement: Last edited of leisure and savings is kept
+The system SHALL keep the value of whichever of leisure and savings the user edited last and SHALL fill the other one automatically with what is left of the income after fixed expenses and the kept bucket. Fixed expenses SHALL never be filled in automatically. Changing the income or fixed expenses SHALL only adjust the automatic bucket.
+
+#### Scenario: Two fields filled, third automatic
+- **GIVEN** an income of 2000,00 €
+- **WHEN** the user sets fixed expenses to 1000,00 € and savings to 30 %
+- **THEN** leisure is filled in automatically with 400,00 €
+
+#### Scenario: Switching which bucket is kept
+- **GIVEN** fixed 1000,00 €, savings 30 % and leisure automatic on 2000,00 €
+- **WHEN** the user sets leisure to 500,00 €
+- **THEN** savings is filled in automatically with 500,00 €
+
+### Requirement: Plan must fit in the income
+The system SHALL NOT save a plan where fixed expenses plus the kept bucket exceed the recurring income, and SHALL show by how much it exceeds.
+
+#### Scenario: Kept bucket too high
+- **GIVEN** an income of 2000,00 € and fixed expenses of 1000,00 €
+- **WHEN** the user sets savings to 60 %
+- **THEN** the system does not save the plan and shows that it is 200,00 € over the income
