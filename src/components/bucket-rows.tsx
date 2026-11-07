@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { bucketProgress } from '@/domain/expenses';
-import { BUCKETS, formatEuros, formatPercentOf, type Bucket, type Targets } from '@/domain/income-plan';
+import { BUCKETS, formatEuros, progressPercent, type Bucket, type Targets } from '@/domain/income-plan';
 import { useTheme } from '@/hooks/use-theme';
 
 export const BUCKET_LABELS: Record<Bucket, string> = {
@@ -18,13 +18,12 @@ const SUCCESS_COLOR = '#1E8E3E';
 
 type BucketRowsProps = {
   targets: Targets;
-  incomeCents: number;
   /** Amount recorded per bucket; when given, each row shows its progress against the target. */
   spent?: Record<Bucket, number>;
 };
 
-/** One row per bucket (name, share of the income, euro target, optional progress) plus the shortfall warning. */
-export function BucketRows({ targets, incomeCents, spent }: BucketRowsProps) {
+/** One row per bucket (name, euro target, optional progress) plus the shortfall warning. */
+export function BucketRows({ targets, spent }: BucketRowsProps) {
   return (
     <View style={styles.container}>
       {targets.shortfall > 0 ? (
@@ -37,10 +36,7 @@ export function BucketRows({ targets, incomeCents, spent }: BucketRowsProps) {
         {BUCKETS.map((bucket) => (
           <View key={bucket} style={styles.bucket}>
             <View style={styles.row}>
-              <ThemedText>
-                {BUCKET_LABELS[bucket]}{' '}
-                <ThemedText themeColor="textSecondary">{formatPercentOf(targets[bucket], incomeCents)}</ThemedText>
-              </ThemedText>
+              <ThemedText>{BUCKET_LABELS[bucket]}</ThemedText>
               <ThemedText type="smallBold" style={styles.amount}>
                 {formatEuros(targets[bucket])}
               </ThemedText>
@@ -77,7 +73,7 @@ function Progress({ bucket, spent, target }: { bucket: Bucket; spent: number; ta
       </View>
       <View style={styles.row}>
         <ThemedText type="small" themeColor="textSecondary">
-          {formatEuros(spent)} {isSavings ? 'saved' : 'spent'}
+          {progressLabel(spent, target, isSavings)}
         </ThemedText>
         <ThemedText
           type="small"
@@ -88,6 +84,13 @@ function Progress({ bucket, spent, target }: { bucket: Bucket; spent: number; ta
       </View>
     </View>
   );
+}
+
+/** '70 % saved · 630,00 €', or just the amount when there is no target. */
+function progressLabel(spent: number, target: number, isSavings: boolean): string {
+  const verb = isSavings ? 'saved' : 'spent';
+  const pct = progressPercent(spent, target);
+  return pct === null ? `${formatEuros(spent)} ${verb}` : `${pct} % ${verb} · ${formatEuros(spent)}`;
 }
 
 const styles = StyleSheet.create({

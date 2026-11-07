@@ -1,39 +1,61 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { IncomePlan, MonthOverrides, PlanVersion } from '@/domain/income-plan';
+import type { Amount, FlexibleBucket, IncomePlan, MonthOverrides, PlanVersion } from '@/domain/income-plan';
+
+type Unit = 'eur' | 'pct';
 
 type PlanVersionRow = {
   effective_month: string;
   income_cents: number;
-  fixed_cents: number;
-  savings_pct: number;
+  fixed_unit: Unit;
+  fixed_value: number;
+  kept_bucket: FlexibleBucket;
+  kept_unit: Unit;
+  kept_value: number;
 };
+
+function toAmount(unit: Unit, value: number): Amount {
+  return unit === 'eur' ? { unit, cents: value } : { unit, pct: value };
+}
+
+function amountValue(amount: Amount): number {
+  return amount.unit === 'eur' ? amount.cents : amount.pct;
+}
 
 export async function getPlanVersions(db: SQLiteDatabase): Promise<PlanVersion[]> {
   const rows = await db.getAllAsync<PlanVersionRow>(
-    'SELECT effective_month, income_cents, fixed_cents, savings_pct FROM plan_version ORDER BY effective_month',
+    `SELECT effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value
+     FROM plan_version ORDER BY effective_month`,
   );
   return rows.map((row) => ({
     effectiveMonth: row.effective_month,
     incomeCents: row.income_cents,
-    fixedCents: row.fixed_cents,
-    savingsPct: row.savings_pct,
+    fixed: toAmount(row.fixed_unit, row.fixed_value),
+    kept: row.kept_bucket,
+    keptAmount: toAmount(row.kept_unit, row.kept_value),
   }));
 }
 
 /** Saves the plan as the version that applies from `month` onwards, replacing that month's version if any. */
 export async function savePlanFromMonth(db: SQLiteDatabase, plan: IncomePlan, month: string): Promise<void> {
   await db.runAsync(
-    `INSERT INTO plan_version (effective_month, income_cents, fixed_cents, savings_pct)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO plan_version
+       (effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(effective_month) DO UPDATE SET
        income_cents = excluded.income_cents,
-       fixed_cents = excluded.fixed_cents,
-       savings_pct = excluded.savings_pct`,
+       fixed_unit = excluded.fixed_unit,
+       fixed_value = excluded.fixed_value,
+       kept_bucket = excluded.kept_bucket,
+       kept_unit = excluded.kept_unit,
+       kept_value = excluded.kept_value`,
     month,
     plan.incomeCents,
-    plan.fixedCents,
-    plan.savingsPct,
+    plan.fixed.unit,
+    amountValue(plan.fixed),
+    plan.kept,
+    plan.keptAmount.unit,
+    amountValue(plan.keptAmount),
   );
 }
 

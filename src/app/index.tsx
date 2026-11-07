@@ -116,7 +116,7 @@ function MonthPlan({ plan, incomeCents, isOverride, spent }: MonthPlanProps) {
           {isOverride ? 'Income for this month only' : 'Monthly income'}
         </ThemedText>
       </View>
-      <BucketRows targets={targets} incomeCents={incomeCents} spent={spent} />
+      <BucketRows targets={targets} spent={spent} />
     </>
   );
 }

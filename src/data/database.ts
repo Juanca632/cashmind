@@ -4,7 +4,7 @@ import { monthKey } from '@/domain/income-plan';
 
 export const DATABASE_NAME = 'cashmind.db';
 
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 /** Runs before the app renders (SQLiteProvider onInit). Each step upgrades one version. */
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
@@ -71,6 +71,26 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           note TEXT NOT NULL DEFAULT '',
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+      `);
+    }
+
+    if (version <= 4) {
+      // Each bucket is stored as typed (euros or percent); the other flexible bucket is automatic.
+      await db.execAsync(`
+        CREATE TABLE plan_version_new (
+          effective_month TEXT PRIMARY KEY NOT NULL,
+          income_cents INTEGER NOT NULL,
+          fixed_unit TEXT NOT NULL CHECK (fixed_unit IN ('eur', 'pct')),
+          fixed_value INTEGER NOT NULL,
+          kept_bucket TEXT NOT NULL CHECK (kept_bucket IN ('leisure', 'savings')),
+          kept_unit TEXT NOT NULL CHECK (kept_unit IN ('eur', 'pct')),
+          kept_value INTEGER NOT NULL
+        );
+        INSERT INTO plan_version_new
+          (effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value)
+        SELECT effective_month, income_cents, 'eur', fixed_cents, 'savings', 'pct', savings_pct FROM plan_version;
+        DROP TABLE plan_version;
+        ALTER TABLE plan_version_new RENAME TO plan_version;
       `);
     }
 

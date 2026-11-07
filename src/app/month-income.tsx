@@ -80,7 +80,7 @@ function MonthIncomeForm({
           </ThemedText>
         ) : null}
 
-        {valid ? <BucketRows targets={targetsFor(plan, incomeCents)} incomeCents={incomeCents} /> : null}
+        {valid ? <BucketRows targets={targetsFor(plan, incomeCents)} /> : null}
 
         <Button
           label="Save for this month"
