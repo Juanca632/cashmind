@@ -1,3 +1,16 @@
+# cashmind
+
+Personal budgeting app for Android. The user enters a monthly income, splits it into savings, leisure and fixed expenses, and sees how the current month is going against that plan.
+
+## Project rules
+
+- **Privacy first:** all financial data stays on the device. No bank credentials, no open banking, no backend unless explicitly decided.
+- **Keep it simple:** build only what the current change needs. No speculative abstractions, layers or libraries "for later".
+- **Android first.** iOS is out of scope for now.
+- **Money:** amounts are EUR. Never use floating point for money; store integer cents.
+- **Language:** all code, comments, docs, specs and commit messages in English.
+- **Planning:** features are planned with OpenSpec (`openspec/`). Use `/opsx:propose` for new work, `/opsx:apply` to implement, `/opsx:archive` when done.
+
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 
 ## Expo has changed — do not trust your training data
