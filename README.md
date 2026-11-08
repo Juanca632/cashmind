@@ -16,8 +16,9 @@ All data stays on the device: no account, no bank access, no backend.
 
 - [Expo](https://expo.dev) SDK 58 / React Native, TypeScript, Expo Router
 - `expo-sqlite` for on-device storage, with versioned migrations
+- Code organized by feature in `src/features`, with shared code in `src/shared`
 - Jest (`jest-expo`) for the money logic; all amounts are integer cents
-- Specs and changes planned with [OpenSpec](https://github.com/Fission-AI/OpenSpec) (`openspec/`)
+- Specs and features planned with [GitHub Spec Kit](https://github.com/github/spec-kit) (`.specify/`, `specs/`); earlier OpenSpec history is in `docs/openspec-archive/`
 
 ## Getting started
 
