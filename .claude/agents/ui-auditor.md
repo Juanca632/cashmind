@@ -9,7 +9,7 @@ You audit the UI of cashmind, a privacy-first personal budgeting app (Expo SDK 5
 
 ## Before you start
 
-Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use them as your standard. Read `AGENTS.md`, `src/constants/theme.ts`, and the specs in `openspec/specs/` so you know what each screen is for.
+Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use them as your standard. Read `AGENTS.md`, `src/constants/theme.ts`, and the specs in `specs/` so you know what each screen is for.
 
 ## What to do
 

@@ -9,7 +9,9 @@ Personal budgeting app for Android. The user enters a monthly income, splits it 
 - **Android first.** iOS is out of scope for now.
 - **Money:** amounts are EUR. Never use floating point for money; store integer cents.
 - **Language:** all code, comments, docs, specs and commit messages in English.
-- **Planning:** features are planned with OpenSpec (`openspec/`). Use `/opsx:propose` for new work, `/opsx:apply` to implement, `/opsx:archive` when done.
+- **Planning:** features are planned with GitHub Spec Kit (`.specify/`, `specs/`). For new work use `/speckit-specify`, `/speckit-plan` and `/speckit-tasks`, then `/speckit-implement` and `/speckit-converge`. Project principles are in `.specify/memory/constitution.md`. Keep specs short and state what is out of scope; break work into small tasks that can each be verified on the phone or with a test.
+- **Current behavior:** `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs. A feature that changes that behavior must update the affected baseline spec in the same change.
+- **History:** the OpenSpec specs and archived changes are kept read-only in `docs/openspec-archive/`.
 
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
 

@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Writes black-box tests from OpenSpec scenarios, without reading how the feature is implemented. Use only when asked, with a capability name (expenses, income-plan, month-browsing), an OpenSpec change name, or "all".
+description: Writes black-box tests from Spec Kit acceptance scenarios, without reading how the feature is implemented. Use only when asked, with a feature directory name (for example 001-expenses) or "all".
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
 ---
@@ -11,13 +11,14 @@ You write tests for cashmind, a privacy-first personal budgeting app (Expo SDK 5
 
 One of:
 
-- a capability name: read `openspec/specs/<name>/spec.md`
-- an OpenSpec change name: read `openspec/changes/<name>/specs/` and its `design.md`
-- `all`: every spec in `openspec/specs/`
+- a feature directory name: read `specs/<name>/spec.md`, and its `plan.md` if it has one
+- `all`: every `specs/*/spec.md`
+
+`specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs describing current behavior. Do not read `docs/openspec-archive/`, which is history.
 
 ## What you may read
 
-- The specs and design above, and `AGENTS.md`.
+- The spec and plan above, `.specify/memory/constitution.md` and `AGENTS.md`.
 - Existing tests, for conventions and to avoid duplicates.
 - Public signatures only: `grep -rn "^export" src/domain src/data src/hooks`, plus the list of routes in `src/app/`.
 - What a screen renders, by rendering it in a test and using `screen.debug()`. This is how you learn visible text and roles.
@@ -30,7 +31,7 @@ Only test files and test helpers. Never edit anything else in `src/`, the specs,
 
 ## How to write tests
 
-1. Map every scenario to one test. Use the requirement as the `describe` name and the scenario as the `it` name, so a failure points back to the spec.
+1. Map every acceptance scenario to one test. Use the user story title as the `describe` name and the scenario as the `it` name, so a failure points back to the spec.
 2. Pick the lowest layer that really proves the scenario:
    - Calculation and validation rules: plain Jest on `src/domain`.
    - Anything the user does or sees: render the route or screen.
