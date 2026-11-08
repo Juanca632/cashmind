@@ -20,7 +20,7 @@ One of:
 
 - The spec and plan above, `.specify/memory/constitution.md` and `AGENTS.md`.
 - Existing tests, for conventions and to avoid duplicates.
-- Public signatures only: `grep -rn "^export" src/domain src/data src/hooks`, plus the list of routes in `src/app/`.
+- Public signatures only: `grep -rn "^export" src/features src/shared src/db`, plus the list of routes in `src/app/`.
 - What a screen renders, by rendering it in a test and using `screen.debug()`. This is how you learn visible text and roles.
 
 Do not open function bodies or component source in `src/` to decide what a test should expect. If you cannot write a test without reading the implementation, list the scenario as not covered and say why.
@@ -33,7 +33,7 @@ Only test files and test helpers. Never edit anything else in `src/`, the specs,
 
 1. Map every acceptance scenario to one test. Use the user story title as the `describe` name and the scenario as the `it` name, so a failure points back to the spec.
 2. Pick the lowest layer that really proves the scenario:
-   - Calculation and validation rules: plain Jest on `src/domain`.
+   - Calculation and validation rules: plain Jest on the feature's rules or service.
    - Anything the user does or sees: render the route or screen.
 3. Take expected values from the scenario text. Never copy them from running the code. Amounts are integer cents.
 4. Assert what the user can observe. Query by role, label or visible text. Use `testID` only as a last resort, and no snapshots.
@@ -42,7 +42,7 @@ Only test files and test helpers. Never edit anything else in `src/`, the specs,
 
 ## Conventions
 
-- Files are named `*-test.ts` or `*-test.tsx` inside a `__tests__` folder. Domain tests live in `src/domain/__tests__/`; screen tests live in `src/__tests__/`.
+- Files are named `*-test.ts` or `*-test.tsx` inside a `__tests__` folder. Tests of a feature's rules or service live in `src/features/<feature>/__tests__/`; screen tests live in `src/__tests__/`.
 - Never put a file inside `src/app/`. Every file there becomes a route.
 - React Native Testing Library is v14: `render`, `fireEvent`, `rerender`, `unmount`, `renderHook` and `act` are async and must be awaited. A missing `await` makes assertions run too early.
 - For navigation use `renderRouter`, `screen` and `testRouter` from `expo-router/testing-library`, and await them. Matchers such as `expect(screen).toHavePathname()` are available.

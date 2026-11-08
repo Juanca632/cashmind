@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useColorScheme } from 'react-native';
 
-import { DATABASE_NAME, migrateDbIfNeeded } from '@/data/database';
+import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/database';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

@@ -144,6 +144,17 @@ Lets the user define how their monthly income is split between fixed expenses, l
 
 ---
 
+### User Story 13 - Changes that cannot be saved and unreadable data
+
+**Implements**: FR-013, FR-014
+
+**Acceptance Scenarios**:
+
+1. *Failed save*: **When** the plan or the month's income cannot be saved, **Then** a message explains it and the form stays open
+2. *Unreadable plan*: **Given** a stored plan has the wrong format, **When** the user opens the home, plan, month income or month picker screen, **Then** the screen says some data could not be read and no data is changed
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -160,6 +171,8 @@ Lets the user define how their monthly income is split between fixed expenses, l
 - **FR-010** (Buckets in euros or percent): The system SHALL let the user enter each entered bucket either as an amount in EUR (cent precision) or as a whole-number percentage of the recurring income, switching per field, and SHALL show the value in the other unit next to it. A bucket entered as a percentage SHALL keep its percentage when the recurring income is edited, and one entered in EUR SHALL keep its amount.
 - **FR-011** (Last edited of leisure and savings is kept): The system SHALL keep the value of whichever of leisure and savings the user edited last and SHALL fill the other one automatically with what is left of the income after fixed expenses and the kept bucket. Fixed expenses SHALL never be filled in automatically. Changing the income or fixed expenses SHALL only adjust the automatic bucket.
 - **FR-012** (Plan must fit in the income): The system SHALL NOT save a plan where fixed expenses plus the kept bucket exceed the recurring income, and SHALL show by how much it exceeds.
+- **FR-013** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
+- **FR-014** (Unreadable data): The system SHALL check the format of the plan data it reads and, when it has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
 
 ## Success Criteria *(mandatory)*
 

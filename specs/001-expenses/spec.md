@@ -82,6 +82,17 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 
 ---
 
+### User Story 7 - Changes that cannot be saved and unreadable data
+
+**Implements**: FR-007, FR-008
+
+**Acceptance Scenarios**:
+
+1. *Failed save*: **When** an expense cannot be added, edited or deleted, **Then** a message explains it and the form stays open
+2. *Unreadable expense*: **Given** a stored expense has the wrong format, **When** the user opens its month, **Then** the screen says some data could not be read and no data is changed
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -92,6 +103,8 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 - **FR-004** (Editable period for expenses): The system SHALL allow expense changes in the current month, and in the previous month only during days 1 to 5 of the current month. Expenses of any other past month SHALL be read-only.
 - **FR-005** (Month progress against targets): The system SHALL show, for the selected month and each bucket, the amount recorded, the target and the progress as a percentage of the target. For fixed expenses and leisure it SHALL show what is left, or a warning with the excess when the recorded amount is above the target. For savings it SHALL show what is left to reach the goal, or that the goal is reached.
 - **FR-006** (Month expense list): The system SHALL list the selected month's expenses, newest date first, showing date, bucket, note and amount.
+- **FR-007** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
+- **FR-008** (Unreadable data): The system SHALL check the format of the expenses it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
 
 ## Success Criteria *(mandatory)*
 

@@ -1,7 +1,7 @@
 import { Alert } from 'react-native';
 import { act, fireEvent, screen } from 'expo-router/testing-library';
 
-import type { IncomePlan } from '@/domain/income-plan';
+import type { IncomePlan } from '@/features/plan/rules';
 
 import { exactText, standardPlan, startApp } from '../test-support/app';
 

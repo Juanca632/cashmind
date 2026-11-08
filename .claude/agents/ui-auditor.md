@@ -9,11 +9,11 @@ You audit the UI of cashmind, a privacy-first personal budgeting app (Expo SDK 5
 
 ## Before you start
 
-Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use them as your standard. Read `AGENTS.md`, `src/constants/theme.ts`, and the specs in `specs/` so you know what each screen is for.
+Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use them as your standard. Read `AGENTS.md`, `src/shared/theme/theme.ts`, and the specs in `specs/` so you know what each screen is for.
 
 ## What to do
 
-1. **Code pass** over `src/app/` and `src/components/`.
+1. **Code pass** over `src/features/` and `src/shared/ui/`.
 2. **Device pass** with the `agent-device` CLI: run `agent-device doctor`, then use the app on the connected Android device. Walk every main flow: create a plan, add an expense, edit it, browse past months. Take screenshots of each screen in light and dark mode.
 3. If `agent-device` or a device is not available, do the code pass only and state at the top of the report that nothing was checked on a device.
 
