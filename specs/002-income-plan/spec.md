@@ -23,7 +23,8 @@ Lets the user define how their monthly income is split between fixed expenses, l
 **Acceptance Scenarios**:
 
 1. *Set recurring income*: **When** the user enters 2500,00 € as their monthly income and saves, **Then** the current month and following months without an override use 2500,00 € as their income
-2. *Reject invalid income*: **When** the user enters an empty value, zero or a negative amount, **Then** the system does not save the plan and shows that the income must be greater than zero
+2. *Reject invalid income*: **When** the user enters zero or a negative amount, **Then** the system does not save the plan and shows that the income must be greater than zero
+3. *Empty income*: **When** the income is empty, **Then** the save action is disabled and the system does not save the plan
 
 ---
 
@@ -53,7 +54,7 @@ Lets the user define how their monthly income is split between fixed expenses, l
 
 **Acceptance Scenarios**:
 
-1. *Month with a different income*: **Given** a recurring income of 2000,00 €, fixed expenses of 1000,00 € and savings 30 % (leisure 20 %), **When** the user sets this month's income to 2500,00 €, **Then** this month's targets are 1000,00 € fixed (40 %), 600,00 € leisure (24 %) and 900,00 € savings (36 %), **And** next month still uses 2000,00 €
+1. *Month with a different income*: **Given** a recurring income of 2000,00 €, fixed expenses of 1000,00 € and savings 30 % (leisure 20 %), **When** the user sets this month's income to 2500,00 €, **Then** this month's targets are 1000,00 € fixed, 600,00 € leisure and 900,00 € savings, **And** next month still uses 2000,00 €
 2. *Remove the override*: **When** the user removes this month's override, **Then** this month's targets are computed from the recurring income again
 
 ---

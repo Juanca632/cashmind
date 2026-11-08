@@ -32,7 +32,7 @@ All code, comments, docs, specs and commit messages MUST be in English.
 
 ## Development Workflow
 
-- Specs MUST state what is out of scope and stay short.
+- New feature specs MUST state what is out of scope and stay short.
 - Tasks MUST be small enough that each can be verified on the phone or with a test.
 - `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs describing current behavior. A feature that changes that behavior MUST update the affected baseline spec in the same change.
 - Lint, typecheck and tests MUST pass before a feature is considered done.

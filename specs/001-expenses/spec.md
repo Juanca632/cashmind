@@ -23,7 +23,8 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 **Acceptance Scenarios**:
 
 1. *Add a leisure expense*: **When** the user adds 12,50 € to leisure with the note "Cinema" and today's date, **Then** the expense appears in this month's list and leisure spending increases by 12,50 €
-2. *Invalid amount*: **When** the user tries to save an expense with an empty, zero or negative amount, **Then** the system does not save it and shows that the amount must be greater than zero
+2. *Invalid amount*: **When** the user tries to save an expense with a zero or negative amount, **Then** the system does not save it and shows that the amount must be greater than zero
+3. *Empty amount*: **When** the amount is empty, **Then** the save action is disabled and the system does not save the expense
 
 ---
 
