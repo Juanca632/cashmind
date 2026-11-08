@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-08
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Restructure the app so it can keep growing: every write goes through one validation point, everything read is checked for the right format, screens only show data and send actions, and each part of the app lives in its own folder. Validated in the Notion page '6. Architecture proposal'."
 

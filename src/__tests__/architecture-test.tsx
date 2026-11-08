@@ -8,6 +8,7 @@ import {
   standardPlan,
   startApp,
 } from '../test-support/app';
+import { RELAX_TABLES } from '../test-support/damaged-data';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 jest.mock('@/global.css', () => ({}));
@@ -140,9 +141,11 @@ describe('A failed change is always explained', () => {
 
 describe('Damaged data is detected, never hidden or altered', () => {
   const damagedExpense = [
+    ...RELAX_TABLES,
     "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'leisure', 12.5, 'Broken')",
   ];
   const damagedPlan = [
+    ...RELAX_TABLES,
     'PRAGMA ignore_check_constraints = ON',
     "INSERT INTO plan_version (effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value) VALUES ('2026-07', 200000, 'eur', 100000, 'savings', 'weeks', 30)",
     'PRAGMA ignore_check_constraints = OFF',
@@ -161,7 +164,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     await startApp({
       today: [2026, 10, 7],
       plans: [[standardPlan, '2026-07']],
-      raw: ["INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'leisure', 'abc', 'Broken')"],
+      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'leisure', 'abc', 'Broken')"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -171,7 +174,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     await startApp({
       today: [2026, 10, 7],
       plans: [[standardPlan, '2026-07']],
-      raw: ["INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-02-31', 'leisure', 500, 'Broken')"],
+      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-02-31', 'leisure', 500, 'Broken')"],
     });
     await press(/▾/);
     await press('Feb');
@@ -201,7 +204,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     await startApp({
       today: [2026, 10, 7],
       plans: [[standardPlan, '2026-07']],
-      raw: ["INSERT INTO month_income_override (month, income_cents) VALUES ('2026-11', 2500.5)"],
+      raw: [...RELAX_TABLES, "INSERT INTO month_income_override (month, income_cents) VALUES ('2026-11', 2500.5)"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -212,7 +215,9 @@ describe('Damaged data is detected, never hidden or altered', () => {
       today: [2026, 10, 7],
       plans: [[standardPlan, '2026-06']],
       expenses: [cinema],
-      raw: [...damagedExpense, ...damagedPlan.map((sql) => sql.replace('2026-07', '2026-08'))],
+      raw: [
+        ...damagedExpense,
+        ...damagedPlan.filter((sql) => !RELAX_TABLES.includes(sql)).map((sql) => sql.replace('2026-07', '2026-08'))],
     });
     const before = await dumpDevice();
 

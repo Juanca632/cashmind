@@ -1,6 +1,7 @@
 import { migrateDbIfNeeded } from '@/db/database';
 import { addExpense, deleteExpense, editExpense } from '@/features/expenses/service';
 
+import { RELAX_TABLES } from '../../../test-support/damaged-data';
 import { createFakeDb } from '../../../test-support/fake-sqlite';
 
 const NOV_7 = new Date(2026, 10, 7, 12);
@@ -167,6 +168,7 @@ describe('Edge cases (expense writes)', () => {
 
   it('Damaged data found while validating an edit or delete stores nothing and is reported as failed', async () => {
     const db = await newDb();
+    for (const sql of RELAX_TABLES) await db.execAsync(sql);
     await db.runAsync(
       "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'leisure', 12.5, 'Lunch')",
     );

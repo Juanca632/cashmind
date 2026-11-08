@@ -62,16 +62,23 @@ export function resetDevice() {
 /** Same as SQLiteProvider but the database survives unmount/mount, like a file on the device. */
 function SQLiteProvider({ children, onInit }: { children: React.ReactNode; onInit?: (db: any) => Promise<void> }) {
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   useEffect(() => {
     if (!current) resetDevice();
     (async () => {
-      if (!initialized) {
-        initialized = true;
-        await onInit?.(current);
+      try {
+        if (!initialized) {
+          initialized = true;
+          await onInit?.(current);
+        }
+        setReady(true);
+      } catch (e) {
+        setError(e as Error);
       }
-      setReady(true);
     })();
   }, [onInit]);
+  // Like the real provider, initialization errors surface during render.
+  if (error) throw error;
   if (!ready || !current) return null;
   return <DbContext.Provider value={current}>{children}</DbContext.Provider>;
 }

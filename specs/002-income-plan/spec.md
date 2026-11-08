@@ -155,6 +155,17 @@ Lets the user define how their monthly income is split between fixed expenses, l
 
 ---
 
+### User Story 14 - App updates keep the data
+
+**Implements**: FR-015
+
+**Acceptance Scenarios**:
+
+1. *Update keeps the data*: **Given** data saved by an older version of the app, **When** the user opens a newer version, **Then** the same data is shown
+2. *Update that cannot be applied*: **Given** the database cannot be updated, **When** the user opens the app, **Then** a message says the data is safe, instead of the app closing
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -173,6 +184,7 @@ Lets the user define how their monthly income is split between fixed expenses, l
 - **FR-012** (Plan must fit in the income): The system SHALL NOT save a plan where fixed expenses plus the kept bucket exceed the recurring income, and SHALL show by how much it exceeds.
 - **FR-013** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
 - **FR-014** (Unreadable data): The system SHALL check the format of the plan data it reads and, when it has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
+- **FR-015** (App updates keep the data): The system SHALL update the on-device database when a new version needs it, keep the existing data, and show a message saying the data is safe if the update cannot be applied.
 
 ## Success Criteria *(mandatory)*
 

@@ -2,21 +2,24 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useColorScheme } from 'react-native';
 
+import { DatabaseBoundary } from '@/db/database-boundary';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/database';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
-    <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ title: 'cashmind' }} />
-          <Stack.Screen name="plan" options={{ title: 'Monthly plan' }} />
-          <Stack.Screen name="month-income" options={{ title: "This month's income" }} />
-          <Stack.Screen name="month-picker" options={{ title: 'Pick a month' }} />
-          <Stack.Screen name="expense" options={{ title: 'Expense' }} />
-        </Stack>
-      </ThemeProvider>
-    </SQLiteProvider>
+    <DatabaseBoundary>
+      <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack>
+            <Stack.Screen name="index" options={{ title: 'cashmind' }} />
+            <Stack.Screen name="plan" options={{ title: 'Monthly plan' }} />
+            <Stack.Screen name="month-income" options={{ title: "This month's income" }} />
+            <Stack.Screen name="month-picker" options={{ title: 'Pick a month' }} />
+            <Stack.Screen name="expense" options={{ title: 'Expense' }} />
+          </Stack>
+        </ThemeProvider>
+      </SQLiteProvider>
+    </DatabaseBoundary>
   );
 }

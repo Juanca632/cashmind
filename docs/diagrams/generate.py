@@ -45,7 +45,7 @@ def box(x, y, w, h, fill, stroke, lines):
 MARKERS = "".join(
     f'<marker id="a{n}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">'
     f'<path d="M0 0L10 5L0 10z" fill="{c}"/></marker>'
-    for n, c in [("g", LINE), ("b", BLUE), ("t", TEAL), ("a", AMBER), ("p", PURPLE), ("s", SLATE)]
+    for n, c in [("g", LINE), ("b", BLUE), ("t", TEAL), ("a", AMBER), ("p", PURPLE), ("s", SLATE), ("r", RED)]
 )
 
 
@@ -177,11 +177,12 @@ def table(x, y, w, title, sub, color, light, rows):
     return s, h
 
 
-b = box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Everything links by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
+b = box(30, 24, 330, 92, SLATE_L, SLATE, [("STRICT tables", 25, 700, SLATE), ("with CHECK rules", 19, 400, INK)])
+b += box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Everything links by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
 t1, h1 = table(30, 200, 490, "plan_version", "History: one row per month with a change", BLUE, BLUE_L, [
-    ("effective_month", "TEXT · PK", True), ("income_cents", "INTEGER", False), ("fixed_unit", "'eur' | 'pct'", False),
-    ("fixed_value", "INTEGER", False), ("kept_bucket", "'leisure' | 'savings'", False), ("kept_unit", "'eur' | 'pct'", False), ("kept_value", "INTEGER", False)])
-t2, h2 = table(545, 200, 385, "month_income_override", "Different income that month", TEAL, TEAL_L, [("month", "TEXT · PK", True), ("income_cents", "INTEGER", False)])
+    ("effective_month", "TEXT · PK", True), ("income_cents", "INTEGER > 0", False), ("fixed_unit", "'eur' | 'pct'", False),
+    ("fixed_value", "INTEGER ≥ 0", False), ("kept_bucket", "'leisure' | 'savings'", False), ("kept_unit", "'eur' | 'pct'", False), ("kept_value", "INTEGER ≥ 0", False)])
+t2, h2 = table(545, 200, 385, "month_income_override", "Different income that month", TEAL, TEAL_L, [("month", "TEXT · PK", True), ("income_cents", "INTEGER > 0", False)])
 t3, h3 = table(955, 200, 415, "expense", "Each recorded expense or saving", AMBER, AMBER_L, [
     ("id", "INTEGER · PK", True), ("date", "'YYYY-MM-DD'", True), ("bucket", "fixed|leisure|savings", False),
     ("amount_cents", "INTEGER > 0", False), ("note", "TEXT", False), ("created_at", "TEXT", False)])
@@ -190,12 +191,14 @@ b += arrow([(520, 116), (275, 196)], BLUE, "b", dash="8 6")
 b += arrow([(700, 116), (737, 196)], TEAL, "t", dash="8 6")
 b += arrow([(880, 116), (1162, 196)], AMBER, "a", dash="8 6")
 b += text(1200, 128, "first 7 characters of date", 18, 500, AMBER)
-b += rect(30, 660, 1340, 150, SLATE_L, SLATE_L, 12, 0)
-for i, s in enumerate(["No foreign keys: the code resolves the month link.",
-                       "fixed_value and kept_value: cents if the unit is eur, whole number if pct.",
-                       "The automatic category (leisure or savings) is not stored: it is computed."]):
-    b += text(60, 702 + i * 42, s, 22, 500, INK, "start")
-page("4-database", 1400, 830, b)
+b += rect(30, 660, 1340, 230, SLATE_L, SLATE_L, 12, 0)
+for i, s_ in enumerate(["All tables are STRICT: SQLite rejects a value of the wrong type.",
+                        "CHECK rules: month 'YYYY-MM', date 'YYYY-MM-DD', amounts above 0, fixed lists for units and buckets.",
+                        "fixed_value and kept_value: cents if the unit is eur, whole number up to 100 if pct.",
+                        "No foreign keys: the code resolves the month link.",
+                        "The automatic category (leisure or savings) is not stored: it is computed."]):
+    b += text(60, 702 + i * 42, s_, 22, 500, INK, "start")
+page("4-database", 1400, 920, b)
 
 # 5. Monthly calculation
 cards = [
@@ -217,19 +220,28 @@ b += text(70, 628, "Rounding: leftover cents go to leisure, so the three amounts
 page("5-month-calculation", 1400, 680, b)
 
 # 6. Migrations
-nodes = [("v1", "Single plan", "with percentages"), ("v2", "Fixed", "in euros"), ("v3", "Plan", "history"), ("v4", "Expense", "table"), ("v5", "Euros or %", "per category")]
-b = f'<line x1="170" y1="85" x2="1230" y2="85" stroke="{LINE}" stroke-width="4"/>'
-for i, (v, a, c) in enumerate(nodes):
-    x = 170 + i * 265
-    now = i == 4
-    b += f'<circle cx="{x}" cy="85" r="44" fill="{TEAL_L if now else BLUE_L}" stroke="{TEAL if now else BLUE}" stroke-width="3"/>'
-    b += text(x, 95, v, 28, 700, TEAL if now else BLUE)
-    b += text(x, 170, a, 24, 700, INK) + text(x, 204, c, 21, 400, INK)
-b += text(1230, 240, "CURRENT", 18, 700, TEAL)
-b += rect(40, 270, 1320, 110, SLATE_L, SLATE_L, 12, 0)
-b += text(70, 314, "On launch, the app reads PRAGMA user_version and applies only what is missing, in one transaction.", 22, 500, INK, "start")
-b += text(70, 354, "If anything fails nothing is half-applied, and existing data is kept when upgrading.", 22, 500, INK, "start")
-page("6-migrations", 1400, 400, b)
+b = f'<line x1="170" y1="85" x2="830" y2="85" stroke="{LINE}" stroke-width="4"/>'
+nodes = [("v1", "Starting point", "final structure", True), ("v2", "Next change", "one new step", False), ("v3", "Next change", "one new step", False)]
+for i, (v, a_, c, now) in enumerate(nodes):
+    x = 170 + i * 330
+    dash = "" if now else ' stroke-dasharray="8 6"'
+    b += f'<circle cx="{x}" cy="85" r="44" fill="{TEAL_L if now else "#ffffff"}" stroke="{TEAL if now else LINE}" stroke-width="3"{dash}/>'
+    b += text(x, 95, v, 28, 700, TEAL if now else MUTED)
+    b += text(x, 170, a_, 24, 700, INK) + text(x, 204, c, 21, 400, INK)
+b += text(170, 240, "CURRENT", 18, 700, TEAL)
+b += text(920, 85, "Each step runs in", 22, 700, SLATE, "start") + text(920, 115, "its own transaction", 22, 700, SLATE, "start")
+b += box(40, 280, 300, 100, BLUE_L, BLUE, [("App starts", 24, 700, BLUE), ("reads user_version", 19, 400, INK, MONO)])
+b += box(400, 280, 360, 100, BLUE_L, BLUE, [("Apply missing steps", 24, 700, BLUE), ("in order, one at a time", 19, 400, INK)])
+b += box(820, 280, 300, 100, TEAL_L, TEAL, [("App opens", 24, 700, TEAL), ("data kept", 19, 400, INK)])
+b += arrow([(340, 330), (396, 330)], LINE, "g", sw=3) + arrow([(760, 330), (816, 330)], LINE, "g", sw=3)
+b += box(400, 450, 360, 110, RED_L, RED, [("A step fails", 24, 700, RED), ("rolled back, message shown", 19, 400, INK)])
+b += box(40, 450, 300, 110, RED_L, RED, [("Database newer", 24, 700, RED), ("than the app: message", 19, 400, INK)])
+b += arrow([(580, 384), (580, 446)], RED, "r", dash="8 6")
+b += arrow([(190, 384), (190, 446)], RED, "r", dash="8 6")
+b += rect(820, 450, 540, 110, SLATE_L, SLATE_L, 12, 0)
+b += text(845, 495, "The app does not close: it shows a message", 21, 500, INK, "start")
+b += text(845, 535, "and asks to install the latest version.", 21, 500, INK, "start")
+page("6-migrations", 1400, 600, b)
 
 # 7. Workflow
 flow = [("Specify", "/speckit-specify", BLUE, BLUE_L), ("Plan", "/speckit-plan", BLUE, BLUE_L), ("Tasks", "/speckit-tasks", BLUE, BLUE_L),
