@@ -2,12 +2,13 @@ import { Feather } from '@react-native-vector-icons/feather';
 import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState, type ComponentProps } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useExpense } from '@/features/expenses/hooks/use-expense';
 import {
   EXPENSE_MISSING,
   MONTH_LOCKED,
+  canUseBucket,
   defaultExpenseDate,
   expenseErrorMessage,
   firstEditableDay,
@@ -19,7 +20,9 @@ import {
 import { addExpense, deleteExpense, editExpense } from '@/features/expenses/service';
 import { BUCKETS, BUCKET_DESCRIPTIONS, BUCKET_LABELS, type Bucket } from '@/shared/buckets';
 import { addDays, dayKey, formatDay } from '@/shared/days';
+import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
 import { BUCKET_COLORS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -62,7 +65,11 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
   const [bucket, setBucket] = useState<Bucket>(expense?.bucket ?? 'leisure');
   const [note, setNote] = useState(expense?.note ?? '');
   const [date, setDate] = useState(expense?.date ?? defaultDate);
-  const { submit, submitting } = useSubmit();
+  const form = JSON.stringify({ amountText, bucket, note, date });
+  const [savedForm] = useState(form);
+  const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
+  const { dialog: confirmDialog, ask } = useConfirm();
+  const { submit, submitting } = useSubmit(allowLeave);
 
   const firstDay = firstEditableDay(today);
   const lastDay = dayKey(today);
@@ -80,15 +87,20 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
 
   function onDelete() {
     if (!expense) return;
-    Alert.alert('Delete expense?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => submit(() => deleteExpense(db, expense.id, new Date())) },
-    ]);
+    ask({
+      title: 'Delete expense?',
+      message: 'This cannot be undone.',
+      cancel: 'Cancel',
+      confirm: 'Delete',
+      onConfirm: () => submit(() => deleteExpense(db, expense.id, new Date())),
+    });
   }
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
+        {discardDialog}
+        {confirmDialog}
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.amount}>
             <TextInput
@@ -109,7 +121,7 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
           {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError, today)}</ErrorText> : null}
 
           <View style={styles.bucketRow}>
-            {BUCKETS.map((option) => {
+            {BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
               const selected = option === bucket;
               return (
                 <Pressable

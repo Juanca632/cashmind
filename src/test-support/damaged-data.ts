@@ -5,11 +5,16 @@
  */
 export const RELAX_TABLES: string[] = [
   `CREATE TABLE plan_version_loose (
-     effective_month TEXT PRIMARY KEY NOT NULL, income_cents INTEGER NOT NULL, fixed_unit TEXT NOT NULL,
-     fixed_value INTEGER NOT NULL, kept_bucket TEXT NOT NULL, kept_unit TEXT NOT NULL, kept_value INTEGER NOT NULL)`,
-  "INSERT INTO plan_version_loose SELECT effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value FROM plan_version",
+     effective_month TEXT PRIMARY KEY NOT NULL, income_cents INTEGER NOT NULL,
+     kept_bucket TEXT NOT NULL, kept_unit TEXT NOT NULL, kept_value INTEGER NOT NULL)`,
+  "INSERT INTO plan_version_loose SELECT effective_month, income_cents, kept_bucket, kept_unit, kept_value FROM plan_version",
   "DROP TABLE plan_version",
   "ALTER TABLE plan_version_loose RENAME TO plan_version",
+  `CREATE TABLE fixed_item_loose (
+     id INTEGER PRIMARY KEY AUTOINCREMENT, effective_month TEXT NOT NULL, name TEXT NOT NULL, amount_cents INTEGER NOT NULL)`,
+  "INSERT INTO fixed_item_loose SELECT id, effective_month, name, amount_cents FROM fixed_item",
+  "DROP TABLE fixed_item",
+  "ALTER TABLE fixed_item_loose RENAME TO fixed_item",
   `CREATE TABLE month_income_override_loose (month TEXT PRIMARY KEY NOT NULL, income_cents INTEGER NOT NULL)`,
   "INSERT INTO month_income_override_loose SELECT month, income_cents FROM month_income_override",
   "DROP TABLE month_income_override",

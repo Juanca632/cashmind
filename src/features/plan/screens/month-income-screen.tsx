@@ -5,7 +5,9 @@ import { ScrollView, StyleSheet } from 'react-native';
 
 import { BucketRows } from '@/shared/ui/bucket-rows';
 import { PlanBar } from '@/shared/ui/plan-bar';
+import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ErrorText } from '@/shared/ui/error-text';
@@ -25,7 +27,7 @@ export default function MonthIncomeScreen() {
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
   const month = monthKey(new Date());
   const plan = planForMonth(state.data.versions, month);
-  if (!plan) return <Redirect href="/plan" />;
+  if (!plan) return <Redirect href="/plan-edit" />;
 
   return <MonthIncomeForm plan={plan} overrideCents={state.data.overrides[month]} />;
 }
@@ -38,14 +40,29 @@ function MonthIncomeForm({
   overrideCents: number | undefined;
 }) {
   const db = useSQLiteContext();
-  const [incomeText, setIncomeText] = useState(overrideCents !== undefined ? centsToInput(overrideCents) : '');
-  const { submit, submitting } = useSubmit();
+  const [savedText] = useState(overrideCents !== undefined ? centsToInput(overrideCents) : '');
+  const [incomeText, setIncomeText] = useState(savedText);
+  const { dialog: discardDialog, allowLeave } = useDiscardGuard(incomeText !== savedText);
+  const { dialog: confirmDialog, ask } = useConfirm();
+  const { submit, submitting } = useSubmit(allowLeave);
+
+  function confirmUsualIncome() {
+    ask({
+      title: 'Use your usual income?',
+      message: "This month's income will be removed.",
+      cancel: 'Cancel',
+      confirm: 'Remove',
+      onConfirm: () => submit(() => removeMonthIncome(db, new Date())),
+    });
+  }
 
   const incomeCents = parseEurosToCents(incomeText);
   const valid = incomeCents !== null && isValidMonthIncome(incomeCents);
 
   return (
     <ThemedView style={styles.screen}>
+      {discardDialog}
+      {confirmDialog}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ThemedText themeColor="textSecondary">
           Usual income: {formatEuros(plan.incomeCents)}. Only this month changes.
@@ -79,7 +96,7 @@ function MonthIncomeForm({
             label="Use my usual income"
             variant="secondary"
             disabled={submitting}
-            onPress={() => submit(() => removeMonthIncome(db, new Date()))}
+            onPress={confirmUsualIncome}
           />
         ) : null}
       </ScrollView>

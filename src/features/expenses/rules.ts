@@ -47,6 +47,11 @@ export function validateExpense(input: ExpenseInput, today: Date): ExpenseError[
   return errors;
 }
 
+/** Fixed expenses count by themselves: only an expense already recorded as fixed can stay fixed. */
+export function canUseBucket(bucket: Bucket, currentBucket?: Bucket): boolean {
+  return bucket !== 'fixed' || currentBucket === 'fixed';
+}
+
 export const EXPENSE_MISSING = 'This expense no longer exists.';
 export const MONTH_LOCKED = 'Expenses of this month can no longer be changed.';
 

@@ -1,7 +1,8 @@
 import { Alert } from 'react-native';
-import { act, fireEvent, screen, testRouter } from 'expo-router/testing-library';
+import { fireEvent, screen, testRouter } from 'expo-router/testing-library';
 
 import {
+  answerDialog,
   breakDeviceWrites,
   dumpDevice,
   exactText,
@@ -36,21 +37,23 @@ function expectMessage(message: RegExp) {
 describe('A failed change is always explained', () => {
   it('Plan: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('My plan');
     await press('Edit plan');
-    await type('Monthly income', '2500');
+    await type('Income', '2500');
     await breakDeviceWrites();
     await press('Save plan');
 
     expectMessage(/plan could not be saved/i);
-    expect(screen).toHavePathname('/plan');
+    expect(screen).toHavePathname('/plan-edit');
     expect(screen.getByRole('button', { name: 'Save plan' })).toBeOnTheScreen();
   });
 
   it('Plan: first-time setup fails when saving', async () => {
     await startApp({ today: [2026, 10, 7] });
     await press('Set up my plan');
-    await type('Monthly income', '2500');
-    await type('Needs', '1000');
+    await type('Income', '2500');
+    await type('Item 1 name', 'House');
+    await type('Item 1 amount', '1000');
     await type('Savings', '10');
     await breakDeviceWrites();
     await press('Save plan');
@@ -61,7 +64,7 @@ describe('A failed change is always explained', () => {
 
   it('Month income: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('Edit plan');
+    await press('My plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await breakDeviceWrites();
@@ -78,10 +81,11 @@ describe('A failed change is always explained', () => {
       plans: [[standardPlan, '2026-07']],
       overrides: { '2026-11': 250000 },
     });
-    await press('Edit plan');
+    await press('My plan');
     await press("Change this month's income");
     await breakDeviceWrites();
     await press('Use my usual income');
+    await answerDialog('Remove');
 
     expectMessage(NOT_SAVED);
     expect(screen).toHavePathname('/month-income');
@@ -117,9 +121,7 @@ describe('A failed change is always explained', () => {
     await press(/Cinema/);
     await breakDeviceWrites();
     await press('Delete');
-    const confirm = alertSpy.mock.calls[0]?.[2]?.find((button) => button.style === 'destructive');
-    expect(confirm).toBeDefined();
-    await act(async () => confirm?.onPress?.());
+    await answerDialog('Delete');
 
     expectMessage(NOT_SAVED);
     expect(screen).toHavePathname('/expense');
@@ -137,7 +139,7 @@ describe('A failed change is always explained', () => {
 
     expect(screen).toHavePathname('/expense');
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
-    expect(await dumpDevice()).toEqual([[], [expect.anything()], []]);
+    expect(await dumpDevice()).toEqual([[], [expect.anything()], [expect.anything()], []]);
   });
 });
 
@@ -149,7 +151,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   const damagedPlan = [
     ...RELAX_TABLES,
     'PRAGMA ignore_check_constraints = ON',
-    "INSERT INTO plan_version (effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value) VALUES ('2026-07', 200000, 'eur', 100000, 'savings', 'weeks', 30)",
+    "INSERT INTO plan_version (effective_month, income_cents, kept_bucket, kept_unit, kept_value) VALUES ('2026-07', 200000, 'savings', 'weeks', 30)",
     'PRAGMA ignore_check_constraints = OFF',
   ];
 
@@ -178,7 +180,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
       plans: [[standardPlan, '2026-07']],
       raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-02-31', 'leisure', 500, 'Broken')"],
     });
-    await press(/Your plan for/);
+    await press(/^Month:/);
     await press('Feb');
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -239,7 +241,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
       plans: [[standardPlan, '2026-07']],
       expenses: [{ date: '2026-11-30', bucket: 'leisure', amountCents: 1250, note: 'Cinema' }],
     });
-    await press(/Your plan for/);
+    await press(/^Month:/);
     await press('Previous year');
     await press('Nov');
 

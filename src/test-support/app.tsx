@@ -1,4 +1,4 @@
-import { renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
 import { insertExpense } from '@/features/expenses/repository';
 import { migrateDbIfNeeded } from '@/db/database';
@@ -8,10 +8,10 @@ import type { IncomePlan } from '@/features/plan/rules';
 
 import { resetDevice, seedDevice } from './fake-sqlite';
 
-/** 2000 € income, 1000 € fixed, savings 30 % kept, leisure automatic (400 €). */
+/** 2000 € income, 1000 € fixed in one item, savings 30 % kept, leisure automatic (400 €). */
 export const standardPlan: IncomePlan = {
   incomeCents: 200000,
-  fixed: { unit: 'eur', cents: 100000 },
+  fixedItems: [{ name: 'House', amountCents: 100000 }],
   kept: 'savings',
   keptAmount: { unit: 'pct', pct: 30 },
 };
@@ -54,6 +54,13 @@ export function partialText(text: string): RegExp {
   return new RegExp(escaped);
 }
 
+/** Presses a button of the open confirmation dialog. */
+export async function answerDialog(label: string) {
+  await act(async () => {
+    fireEvent.press(within(screen.getByTestId('confirm-dialog')).getByRole('button', { name: label }));
+  });
+}
+
 /** Closes the app and opens it again on the same device, optionally on another day. */
 export async function reopenApp(today?: [year: number, monthIndex: number, day: number]) {
   await screen.unmount();
@@ -81,6 +88,7 @@ export async function dumpDevice() {
     rows = [
       await db.getAllAsync('SELECT * FROM expense ORDER BY id'),
       await db.getAllAsync('SELECT * FROM plan_version ORDER BY effective_month'),
+      await db.getAllAsync('SELECT * FROM fixed_item ORDER BY id'),
       await db.getAllAsync('SELECT * FROM month_income_override ORDER BY month'),
     ];
   });

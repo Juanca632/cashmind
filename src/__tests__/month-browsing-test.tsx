@@ -1,9 +1,9 @@
 import { Alert } from 'react-native';
-import { act, fireEvent, screen } from 'expo-router/testing-library';
+import { fireEvent, screen } from 'expo-router/testing-library';
 
 import type { IncomePlan } from '@/features/plan/rules';
 
-import { exactText, standardPlan, startApp } from '../test-support/app';
+import { answerDialog, exactText, standardPlan, startApp } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 jest.mock('@/global.css', () => ({}));
@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
-const openPicker = () => press(/Your plan for/);
+const openPicker = () => press(/^Month:/);
 
 const threeThousand: IncomePlan = { ...standardPlan, incomeCents: 300000 };
 
@@ -29,16 +29,15 @@ describe('Month picker', () => {
         [threeThousand, '2026-10'],
       ],
     });
-    expect(screen.getByText(exactText('3 000,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0,00 € of 900,00 €'))).toBeOnTheScreen();
 
     await openPicker();
     expect(screen.getByRole('button', { name: 'Nov' })).toBeSelected();
     await press('Sep');
 
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('2 000,00 €'))).toBeOnTheScreen();
     expect(screen.getByText(exactText('400,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('600,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
   });
 });
 
@@ -81,14 +80,14 @@ describe('Past months are read-only', () => {
     await press('Sep');
 
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: 'Edit plan' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: "Change this month's income" })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Add expense' })).not.toBeOnTheScreen();
 
     await press('Back to current month');
 
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Edit plan' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'My plan' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Back to current month' })).not.toBeOnTheScreen();
   });
 
@@ -105,7 +104,7 @@ describe('Past months are read-only', () => {
     await press('Nov');
 
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: 'Edit plan' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: "Change this month's income" })).not.toBeOnTheScreen();
 
     // Edit an expense.
@@ -117,8 +116,7 @@ describe('Past months are read-only', () => {
     // Delete an expense.
     await press(/Lunch/);
     await press('Delete');
-    const confirm = alertSpy.mock.calls[0]?.[2]?.find((button) => button.style === 'destructive');
-    if (confirm) await act(async () => confirm.onPress?.());
+    await answerDialog('Delete');
     expect(screen.queryByText('Lunch')).not.toBeOnTheScreen();
 
     // Add an expense dated in November.

@@ -13,7 +13,8 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'pill';
+  /** `soft` is for buttons on a white card. */
+  variant?: 'primary' | 'secondary' | 'pill' | 'soft';
 };
 
 export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
@@ -23,14 +24,16 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
-        primary ? { backgroundColor: Hero.background } : { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
+        primary && { backgroundColor: Hero.background },
+        (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
+        variant === 'soft' && { backgroundColor: theme.background },
         (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
       ]}>
       {icon ? <Feather name={icon} size={16} color={primary ? Hero.text : theme.text} /> : null}

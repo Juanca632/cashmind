@@ -199,3 +199,30 @@ describe('A failed change is always explained (expense writes)', () => {
     expect(await rows(db)).toEqual([expect.objectContaining({ amount_cents: 900 })]);
   });
 });
+
+describe('Fixed expenses count by themselves', () => {
+  it('A new expense cannot be fixed and nothing is stored', async () => {
+    const db = await newDb();
+
+    expect(await addExpense(db, { ...lunch, bucket: 'fixed' }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
+    expect(await rows(db)).toEqual([]);
+  });
+
+  it('An expense cannot be moved into fixed', async () => {
+    const db = await newDb();
+    await addExpense(db, lunch, NOV_7);
+    const [{ id }] = await rows(db);
+
+    expect(await editExpense(db, id, { ...lunch, bucket: 'fixed' }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
+    expect((await rows(db))[0].bucket).toBe('leisure');
+  });
+
+  it('An expense already recorded as fixed can stay fixed', async () => {
+    const db = await newDb();
+    await db.execAsync("INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'fixed', 90000, 'Rent')");
+    const [{ id }] = await rows(db);
+
+    expect(await editExpense(db, id, { date: '2026-11-05', bucket: 'fixed', amountCents: 95000, note: 'Rent' }, NOV_7)).toMatchObject({ ok: true });
+    expect((await rows(db))[0].amount_cents).toBe(95000);
+  });
+});

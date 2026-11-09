@@ -13,14 +13,12 @@ const plan = (over: Record<string, string> = {}) => {
   const v = {
     month: "'2026-07'",
     income: "200000",
-    fu: "'eur'",
-    fv: "100000",
     kb: "'savings'",
     ku: "'pct'",
     kv: "30",
     ...over,
   };
-  return `INSERT INTO plan_version (effective_month, income_cents, fixed_unit, fixed_value, kept_bucket, kept_unit, kept_value) VALUES (${v.month}, ${v.income}, ${v.fu}, ${v.fv}, ${v.kb}, ${v.ku}, ${v.kv})`;
+  return `INSERT INTO plan_version (effective_month, income_cents, kept_bucket, kept_unit, kept_value) VALUES (${v.month}, ${v.income}, ${v.kb}, ${v.ku}, ${v.kv})`;
 };
 const override = (month: string, cents: string) =>
   `INSERT INTO month_income_override (month, income_cents) VALUES (${month}, ${cents})`;
@@ -28,12 +26,32 @@ const expense = (date: string, bucket: string, cents: string) =>
   `INSERT INTO expense (date, bucket, amount_cents, note) VALUES (${date}, ${bucket}, ${cents}, 'x')`;
 
 describe("The database rejects invalid data", () => {
+  const item = (name: string, cents: string) =>
+    `INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES ('2026-07', ${name}, ${cents})`;
+
+  it.each([
+    ["empty name", item("''", "100")],
+    ["name of 41 characters", item(`'${"x".repeat(41)}'`, "100")],
+    ["zero amount", item("'House'", "0")],
+    ["negative amount", item("'House'", "-1")],
+    ["decimal amount", item("'House'", "10.5")],
+    ["text amount", item("'House'", "'ten'")],
+  ])("A fixed item with %s is refused", async (_label, sql) => {
+    const db = await newDb();
+    await expect(db.execAsync(sql)).rejects.toThrow();
+  });
+
+  it("A fixed item with a name of 40 characters is accepted", async () => {
+    const db = await newDb();
+    await db.execAsync(item(`'${"x".repeat(40)}'`, "100"));
+    expect(await db.getAllAsync("SELECT * FROM fixed_item")).toHaveLength(1);
+  });
+
   it.each([
     ["text income in a plan", plan({ income: "'abc'" })],
     ["decimal income in a plan", plan({ income: "2000.5" })],
-    ["decimal fixed value", plan({ fv: "10.5" })],
     ["text kept value", plan({ kv: "'many'" })],
-    ["decimal percentage", plan({ fu: "'pct'", fv: "12.5" })],
+    ["decimal percentage", plan({ ku: "'pct'", kv: "12.5" })],
     ["text income override", override("'2026-11'", "'abc'")],
     ["decimal income override", override("'2026-11'", "1000.5")],
     ["text expense amount", expense("'2026-11-05'", "'leisure'", "'abc'")],
@@ -71,13 +89,11 @@ describe("The database rejects invalid data", () => {
     ["negative plan income", plan({ income: "-1" })],
     ["zero override income", override("'2026-11'", "0")],
     ["negative override income", override("'2026-11'", "-500")],
-    ["fixed percentage above 100", plan({ fu: "'pct'", fv: "101" })],
     ["kept percentage above 100", plan({ ku: "'pct'", kv: "101" })],
-    ["negative fixed value", plan({ fv: "-1" })],
     ["negative kept value", plan({ kv: "-1" })],
     ["zero expense", expense("'2026-11-05'", "'leisure'", "0")],
     ["negative expense", expense("'2026-11-05'", "'leisure'", "-100")],
-    ["unknown unit", plan({ fu: "'weeks'" })],
+    ["unknown unit", plan({ ku: "'weeks'" })],
     ["unknown kept bucket", plan({ kb: "'fixed'" })],
     ["unknown expense bucket", expense("'2026-11-05'", "'food'", "100")],
   ])(
@@ -100,14 +116,12 @@ describe("The database rejects invalid data", () => {
     await db.execAsync(
       plan({
         month: "'2026-08'",
-        fu: "'pct'",
-        fv: "100",
         ku: "'pct'",
         kv: "0",
       }),
     );
     await db.execAsync(
-      plan({ month: "'2026-09'", income: "90000001", fv: "90000001" }),
+      plan({ month: "'2026-09'", income: "90000001" }),
     );
     await db.execAsync(override("'2026-11'", "90000001"));
     await db.execAsync(expense("'2026-11-05'", "'fixed'", "90000001"));
@@ -129,6 +143,7 @@ describe("The database rejects invalid data", () => {
     );
     expect(tables.map((t: any) => t.name).sort()).toEqual([
       "expense",
+      "fixed_item",
       "month_income_override",
       "plan_version",
     ]);
@@ -142,8 +157,6 @@ describe("The database rejects invalid data", () => {
     expect(await cols("plan_version")).toEqual([
       "effective_month",
       "income_cents",
-      "fixed_unit",
-      "fixed_value",
       "kept_bucket",
       "kept_unit",
       "kept_value",

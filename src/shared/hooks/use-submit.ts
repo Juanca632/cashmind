@@ -6,15 +6,21 @@ import type { WriteResult } from '@/shared/write-result';
 
 const UNEXPECTED = 'The change could not be saved. Please try again.';
 
-/** Runs a write from a form: goes back on success, otherwise explains why and keeps the form open. */
-export function useSubmit() {
+/**
+ * Runs a write from a form: goes back on success, otherwise explains why and keeps the form open.
+ * `beforeLeave` runs right before going back, so a form guarding unsaved changes lets it through.
+ */
+export function useSubmit(beforeLeave?: () => void) {
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(write: () => Promise<WriteResult>) {
     setSubmitting(true);
     try {
       const result = await write();
-      if (result.ok) router.back();
+      if (result.ok) {
+        beforeLeave?.();
+        router.back();
+      }
       else Alert.alert('Something went wrong', result.message);
     } catch {
       Alert.alert('Something went wrong', UNEXPECTED);

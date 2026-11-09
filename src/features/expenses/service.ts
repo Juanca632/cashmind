@@ -5,6 +5,7 @@ import { deleteExpense as removeRow, getExpense, insertExpense, updateExpense } 
 import {
   EXPENSE_MISSING,
   MONTH_LOCKED,
+  canUseBucket,
   expenseErrorMessage,
   isExpenseMonthEditable,
   validateExpense,
@@ -30,6 +31,7 @@ export function addExpense(db: SQLiteDatabase, input: ExpenseInput, today: Date)
   return attemptWrite(WRITE_FAILED, async () => {
     const refusal = rejectIfInvalid(input, today);
     if (refusal) return refusal;
+    if (!canUseBucket(input.bucket)) return rejected(expenseErrorMessage('bucket-invalid', today));
     await insertExpense(db, input);
     return WRITE_OK;
   });
@@ -39,6 +41,8 @@ export function editExpense(db: SQLiteDatabase, id: number, input: ExpenseInput,
   return attemptWrite(WRITE_FAILED, async () => {
     const refusal = rejectIfInvalid(input, today) ?? (await rejectIfLocked(db, id, today));
     if (refusal) return refusal;
+    const current = await getExpense(db, id);
+    if (!canUseBucket(input.bucket, current?.bucket)) return rejected(expenseErrorMessage('bucket-invalid', today));
     await updateExpense(db, id, input);
     return WRITE_OK;
   });

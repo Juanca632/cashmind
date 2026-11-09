@@ -168,17 +168,18 @@ describe("A failed update is explained and harmless (runner)", () => {
 });
 
 describe("Updates never lose or break data (real list)", () => {
-  it("Given an empty database, the final structure is created and marked as version 1", async () => {
+  it("Given an empty database, the final structure is created and marked as the latest version", async () => {
     const db = createFakeDb() as any;
     await runMigrations(db, MIGRATIONS);
 
-    expect(await version(db)).toBe(1);
+    expect(await version(db)).toBe(MIGRATIONS.length);
     const names = (await structure(db)).map((r: any) => r.name);
     expect(names).toEqual(
       expect.arrayContaining([
         "plan_version",
         "month_income_override",
         "expense",
+        "fixed_item",
       ]),
     );
   });
@@ -195,15 +196,28 @@ describe("Updates never lose or break data (real list)", () => {
     );
   });
 
-  const sampleData = `
-    INSERT INTO plan_version VALUES ('2026-07', 200000, 'eur', 100000, 'savings', 'pct', 30);
-    INSERT INTO plan_version VALUES ('2026-09', 250000, 'pct', 40, 'leisure', 'eur', 5000);
+  const otherData = `
     INSERT INTO month_income_override VALUES ('2026-11', 300000);
     INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'leisure', 1250, 'Cinema');
     INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'fixed', 90000, '');
   `;
+  const sampleData: Record<number, string> = {
+    1: `
+      INSERT INTO plan_version VALUES ('2026-07', 200000, 'eur', 100000, 'savings', 'pct', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 250000, 'pct', 40, 'leisure', 'eur', 5000);
+      ${otherData}
+    `,
+    2: `
+      INSERT INTO plan_version VALUES ('2026-07', 200000, 'savings', 'pct', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 250000, 'leisure', 'eur', 5000);
+      INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES ('2026-07', 'House', 100000);
+      ${otherData}
+    `,
+  };
   const dump = async (db: any) => [
-    await db.getAllAsync("SELECT * FROM plan_version ORDER BY effective_month"),
+    await db.getAllAsync(
+      "SELECT effective_month, income_cents, kept_bucket, kept_unit, kept_value FROM plan_version ORDER BY effective_month",
+    ),
     await db.getAllAsync("SELECT * FROM month_income_override ORDER BY month"),
     await db.getAllAsync("SELECT * FROM expense ORDER BY id"),
   ];
@@ -213,7 +227,7 @@ describe("Updates never lose or break data (real list)", () => {
     async (released) => {
       const old = createFakeDb() as any;
       await old.execAsync(RELEASED_SCHEMAS[released]);
-      await old.execAsync(sampleData);
+      await old.execAsync(sampleData[released]);
       await old.execAsync(`PRAGMA user_version = ${released}`);
       const dataBefore = await dump(old);
 
@@ -227,4 +241,65 @@ describe("Updates never lose or break data (real list)", () => {
       expect(dataBefore[2]).toHaveLength(2);
     },
   );
+
+  describe("Existing data is kept", () => {
+    const upgradeFromV1 = async (data: string) => {
+      const db = createFakeDb() as any;
+      await db.execAsync(RELEASED_SCHEMAS[1]);
+      await db.execAsync(data);
+      await db.execAsync("PRAGMA user_version = 1");
+      await runMigrations(db, MIGRATIONS);
+      return db;
+    };
+    const items = (db: any) =>
+      db.getAllAsync("SELECT effective_month, name, amount_cents FROM fixed_item ORDER BY id");
+    const planRow = (month: string, income: number, unit: string, value: number) =>
+      `INSERT INTO plan_version VALUES ('${month}', ${income}, '${unit}', ${value}, 'savings', 'pct', 20);`;
+
+    it("Amount becomes one item", async () => {
+      const db = await upgradeFromV1(planRow("2026-07", 200000, "eur", 100000));
+      expect(await items(db)).toEqual([
+        { effective_month: "2026-07", name: "Fixed expenses", amount_cents: 100000 },
+      ]);
+    });
+
+    it("Percentage becomes euros", async () => {
+      const db = await upgradeFromV1(planRow("2026-07", 200000, "pct", 40));
+      expect(await items(db)).toEqual([
+        { effective_month: "2026-07", name: "Fixed expenses", amount_cents: 80000 },
+      ]);
+    });
+
+    it("A percentage rounds down to the cent, as before", async () => {
+      const db = await upgradeFromV1(planRow("2026-07", 100001, "pct", 50));
+      expect((await items(db))[0].amount_cents).toBe(50000);
+    });
+
+    it("Every past plan keeps its total", async () => {
+      const db = await upgradeFromV1(
+        planRow("2026-07", 200000, "eur", 100000) + planRow("2026-09", 250000, "pct", 40),
+      );
+      expect((await items(db)).map((i: any) => [i.effective_month, i.amount_cents])).toEqual([
+        ["2026-07", 100000],
+        ["2026-09", 100000],
+      ]);
+      expect(await db.getAllAsync("SELECT * FROM plan_version")).toHaveLength(2);
+    });
+
+    it("A plan with no fixed expenses gets an empty list", async () => {
+      const db = await upgradeFromV1(planRow("2026-07", 200000, "eur", 0));
+      expect(await items(db)).toEqual([]);
+      expect(await db.getAllAsync("SELECT * FROM plan_version")).toHaveLength(1);
+    });
+
+    it("Recorded fixed expenses stay", async () => {
+      const db = await upgradeFromV1(
+        planRow("2026-07", 200000, "eur", 100000) +
+          "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-07-05', 'fixed', 90000, 'Rent');",
+      );
+      expect(await db.getAllAsync("SELECT bucket, amount_cents, note FROM expense")).toEqual([
+        { bucket: "fixed", amount_cents: 90000, note: "Rent" },
+      ]);
+    });
+  });
 });

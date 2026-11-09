@@ -7,17 +7,23 @@ import { useTheme } from '@/shared/theme/use-theme';
 type TextFieldProps = Omit<TextInputProps, 'style'> & {
   label: string;
   suffix?: string;
+  /** The section title already says what this is: keep the label for screen readers only. */
+  hideLabel?: boolean;
+  /** The field sits on a white card. */
+  onCard?: boolean;
 };
 
-export function TextField({ label, suffix, ...inputProps }: TextFieldProps) {
+export function TextField({ label, suffix, hideLabel, onCard, ...inputProps }: TextFieldProps) {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <View style={[styles.inputRow, { backgroundColor: theme.backgroundElement }]}>
+      {hideLabel ? null : (
+        <ThemedText type="small" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+      )}
+      <View style={[styles.inputRow, { backgroundColor: onCard ? theme.background : theme.backgroundElement }]}>
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={theme.textSecondary}

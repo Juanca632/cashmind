@@ -17,7 +17,7 @@ const overrides = (db: any) => db.getAllAsync('SELECT * FROM month_income_overri
 
 const fits: IncomePlan = {
   incomeCents: 200000,
-  fixed: { unit: 'eur', cents: 100000 },
+  fixedItems: [{ name: 'House', amountCents: 100000 }],
   kept: 'savings',
   keptAmount: { unit: 'pct', pct: 30 },
 };
@@ -33,8 +33,8 @@ describe('Invalid data is never saved (plan)', () => {
 
   it('A fixed amount above the limit is rejected and nothing is stored', async () => {
     const db = await newDb();
-    const huge = { unit: 'eur', cents: 1e22 } as const;
-    expect((await savePlan(db, { ...fits, fixed: huge }, NOV_7)).ok).toBe(false);
+    const huge = [{ name: 'House', amountCents: 1e22 }];
+    expect((await savePlan(db, { ...fits, fixedItems: huge }, NOV_7)).ok).toBe(false);
     expect(await plans(db)).toEqual([]);
   });
 
@@ -71,8 +71,8 @@ describe('Invalid data is never saved (plan)', () => {
 
   it.each([
     ['zero income', { ...fits, incomeCents: 0 }],
-    ['negative fixed amount', { ...fits, fixed: { unit: 'eur', cents: -100 } }],
-    ['fractional fixed amount', { ...fits, fixed: { unit: 'eur', cents: 10.5 } }],
+    ['negative fixed amount', { ...fits, fixedItems: [{ name: 'House', amountCents: -100 }] }],
+    ['fractional fixed amount', { ...fits, fixedItems: [{ name: 'House', amountCents: 10.5 }] }],
     ['fractional percentage', { ...fits, keptAmount: { unit: 'pct', pct: 12.5 } }],
   ] as [string, IncomePlan][])('Invalid plan (%s) is rejected and nothing is stored', async (_label, plan) => {
     const db = await newDb();
@@ -139,5 +139,49 @@ describe('A failed change is always explained (plan writes)', () => {
     }
     expect(await plans(db)).toEqual([]);
     expect(await overrides(db)).toEqual([]);
+  });
+});
+
+describe('Saving the list of fixed expenses', () => {
+  const items = (db: any) => db.getAllAsync('SELECT name, amount_cents FROM fixed_item ORDER BY id');
+
+  it('Stores the items in order, trimming their names', async () => {
+    const db = await newDb();
+    const list = [
+      { name: ' House ', amountCents: 70000 },
+      { name: 'Transport', amountCents: 6000 },
+    ];
+    await savePlan(db, { ...fits, fixedItems: list }, NOV_7);
+
+    expect(await items(db)).toEqual([
+      { name: 'House', amount_cents: 70000 },
+      { name: 'Transport', amount_cents: 6000 },
+    ]);
+  });
+
+  it('Saving twice in the same month replaces the list', async () => {
+    const db = await newDb();
+    await savePlan(db, fits, NOV_7);
+    await savePlan(db, { ...fits, fixedItems: [{ name: 'Rent', amountCents: 50000 }] }, NOV_7);
+
+    expect(await items(db)).toEqual([{ name: 'Rent', amount_cents: 50000 }]);
+    expect(await plans(db)).toHaveLength(1);
+  });
+
+  it('A failure keeps the plan and its list as they were', async () => {
+    const db = await newDb();
+    await savePlan(db, fits, NOV_7);
+    const original = db.runAsync;
+    db.runAsync = async (sql: string, ...params: unknown[]) => {
+      if (sql.startsWith('INSERT INTO fixed_item')) throw new Error('disk failure');
+      return original(sql, ...params);
+    };
+
+    const result = await savePlan(db, { ...fits, incomeCents: 300000 }, NOV_7);
+
+    expect(result.ok).toBe(false);
+    db.runAsync = original;
+    expect(await items(db)).toEqual([{ name: 'House', amount_cents: 100000 }]);
+    expect((await plans(db))[0].income_cents).toBe(200000);
   });
 });

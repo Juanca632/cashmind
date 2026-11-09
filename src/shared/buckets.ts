@@ -15,13 +15,8 @@ export function otherFlexible(bucket: FlexibleBucket): FlexibleBucket {
   return bucket === 'leisure' ? 'savings' : 'leisure';
 }
 
-/** Recorded amount as a whole percentage of its target, or null when the target is 0. */
-export function progressPercent(spentCents: number, targetCents: number): number | null {
-  return targetCents > 0 ? Math.round((spentCents * 100) / targetCents) : null;
-}
-
 export const BUCKET_LABELS: Record<Bucket, string> = {
-  fixed: 'Needs',
+  fixed: 'Fixed',
   leisure: 'Wants',
   savings: 'Savings',
 };
@@ -32,8 +27,8 @@ export const BUCKET_DESCRIPTIONS: Record<Bucket, string> = {
   savings: 'Money you set aside',
 };
 
-/** The 50/30/20 starting point, shown as a suggestion only. */
-export const SUGGESTED_PERCENT: Record<Bucket, number> = { fixed: 50, leisure: 30, savings: 20 };
+/** The savings share of the 50/30/20 reference, shown as a suggestion only. */
+export const SUGGESTED_SAVINGS_PERCENT = 20;
 
 export type BucketProgress = {
   spent: number;

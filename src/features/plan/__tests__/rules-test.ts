@@ -1,13 +1,13 @@
-import { firstPlanMonth, incomeForMonth, convertAmount, planExcessCents, planTargets, resolveAmount, planForMonth, targetsFor, validatePlan, type IncomePlan, type PlanVersion } from '../rules';
-import { progressPercent } from '@/shared/buckets';
+import { firstPlanMonth, incomeForMonth, wholePercent, suggestedSplit, fixedTotal, isValidFixedItem, planExcessCents, planTargets, resolveAmount, planForMonth, targetsFor, validatePlan, type IncomePlan, type PlanVersion } from '../rules';
 import { formatEuros, formatPercentOf, parseEurosToCents, parsePercent } from '@/shared/money';
 import { formatMonth, formatShortMonth, isPastMonth, isValidMonthKey, monthKey, monthsOfYear, monthStart, yearOf } from '@/shared/months';
 
 const eur = (cents: number) => ({ unit: 'eur', cents }) as const;
 const pct = (value: number) => ({ unit: 'pct', pct: value }) as const;
+const items = (cents: number) => (cents > 0 ? [{ name: 'House', amountCents: cents }] : []);
 
 /** 2000 € income, 1000 € fixed (50 %), savings 30 % kept → leisure automatic (20 %). */
-const plan: IncomePlan = { incomeCents: 200000, fixed: eur(100000), kept: 'savings', keptAmount: pct(30) };
+const plan: IncomePlan = { incomeCents: 200000, fixedItems: items(100000), kept: 'savings', keptAmount: pct(30) };
 
 const normalizeSpaces = (text: string) => text.replace(/\s/g, ' ');
 
@@ -59,19 +59,50 @@ describe('amounts', () => {
     expect(resolveAmount(pct(33), 100001)).toBe(33000);
   });
 
-  it('converts between units without jumping', () => {
-    expect(convertAmount(pct(30), 200000)).toEqual(eur(60000));
-    expect(convertAmount(eur(60000), 200000)).toEqual(pct(30));
-    expect(convertAmount(eur(65000), 200000)).toEqual(pct(33));
-    expect(convertAmount(eur(64000), 200000)).toEqual(pct(32));
-    expect(convertAmount(eur(500000), 200000)).toEqual(pct(100));
-    expect(convertAmount(eur(100), 0)).toEqual(pct(0));
+  it('gives the nearest whole percentage of an amount in euros', () => {
+    expect(wholePercent(pct(30), 200000)).toBe(30);
+    expect(wholePercent(eur(60000), 200000)).toBe(30);
+    expect(wholePercent(eur(65000), 200000)).toBe(33);
+    expect(wholePercent(eur(500000), 200000)).toBe(100);
+    expect(wholePercent(eur(100), 0)).toBe(0);
+  });
+});
+
+describe('fixed items', () => {
+  it('adds up the list', () => {
+    const list = [
+      { name: 'House', amountCents: 70000 },
+      { name: 'Transport', amountCents: 6000 },
+      { name: 'Phone', amountCents: 2000 },
+      { name: 'Supermarket', amountCents: 25000 },
+    ];
+    expect(fixedTotal(list)).toBe(103000);
+    expect(fixedTotal([])).toBe(0);
   });
 
-  it('keeps a whole percentage across % → € → % on an income with cents (2345,67 €)', () => {
-    for (const value of [20, 30, 50, 99, 100]) {
-      expect(convertAmount(convertAmount(pct(value), 234567), 234567)).toEqual(pct(value));
-    }
+  it.each([
+    ['no name', { name: '   ', amountCents: 100 }],
+    ['a name of 41 characters', { name: 'x'.repeat(41), amountCents: 100 }],
+    ['zero', { name: 'House', amountCents: 0 }],
+    ['negative', { name: 'House', amountCents: -1 }],
+    ['fractional cents', { name: 'House', amountCents: 10.5 }],
+  ])('rejects %s', (_label, item) => {
+    expect(isValidFixedItem(item)).toBe(false);
+  });
+
+  it('accepts a name of 40 characters', () => {
+    expect(isValidFixedItem({ name: 'x'.repeat(40), amountCents: 100 })).toBe(true);
+  });
+});
+
+describe('suggestedSplit', () => {
+  it('suggests 20 % savings and the rest for wants', () => {
+    expect(suggestedSplit(200000, 103000)).toEqual({ savings: 40000, leisure: 57000 });
+  });
+
+  it('never suggests more than what is left', () => {
+    expect(suggestedSplit(200000, 190000)).toEqual({ savings: 10000, leisure: 0 });
+    expect(suggestedSplit(200000, 210000)).toEqual({ savings: 0, leisure: 0 });
   });
 });
 
@@ -92,9 +123,6 @@ describe('planTargets', () => {
     expect(planTargets({ ...plan, incomeCents: 250000 })).toMatchObject({ savings: 75000, leisure: 75000 });
   });
 
-  it('accepts fixed expenses as a percentage', () => {
-    expect(planTargets({ ...plan, fixed: pct(50) })).toMatchObject({ fixed: 100000 });
-  });
 });
 
 describe('validatePlan', () => {
@@ -107,12 +135,12 @@ describe('validatePlan', () => {
   });
 
   it('rejects fixed expenses above the income', () => {
-    expect(validatePlan({ ...plan, fixed: eur(210000) })).toEqual(['fixed-invalid']);
+    expect(validatePlan({ ...plan, fixedItems: items(210000) })).toEqual(['fixed-over-income']);
   });
 
   it('accepts fixed expenses of 0 € and equal to the income', () => {
-    expect(validatePlan({ ...plan, fixed: eur(0) })).toEqual([]);
-    expect(validatePlan({ ...plan, fixed: eur(200000), keptAmount: pct(0) })).toEqual([]);
+    expect(validatePlan({ ...plan, fixedItems: items(0) })).toEqual([]);
+    expect(validatePlan({ ...plan, fixedItems: items(200000), keptAmount: pct(0) })).toEqual([]);
   });
 
   it('rejects savings 60 % with 1000 € fixed: 200 € over the income', () => {
@@ -126,7 +154,7 @@ describe('validatePlan', () => {
     expect(validatePlan({ ...plan, keptAmount: pct(12.5) })).toEqual(['kept-invalid']);
     expect(validatePlan({ ...plan, keptAmount: eur(-1) })).toEqual(['kept-invalid']);
     expect(validatePlan({ ...plan, keptAmount: pct(Number.NaN) })).toEqual(['kept-invalid']);
-    expect(validatePlan({ ...plan, fixed: pct(120) })).toEqual(['fixed-invalid']);
+    expect(validatePlan({ ...plan, fixedItems: [{ name: '', amountCents: 100 }] })).toEqual(['item-invalid']);
   });
 });
 
@@ -140,30 +168,35 @@ describe('targetsFor', () => {
     expect(targetsFor({ ...plan, keptAmount: pct(25) }, 200000)).toMatchObject({ leisure: 50000, savings: 50000 });
   });
 
-  it('keeps fixed and shares a higher income proportionally (2500 €)', () => {
-    expect(targetsFor(plan, 250000)).toEqual({ fixed: 100000, leisure: 60000, savings: 90000, shortfall: 0 });
+  it('keeps fixed and applies the kept share to that month: savings 30 % of 2500 € is 750 €', () => {
+    expect(targetsFor(plan, 250000)).toEqual({ fixed: 100000, leisure: 75000, savings: 75000, shortfall: 0 });
   });
 
-  it('keeps the proportion when leisure is the kept bucket', () => {
-    const leisureKept: IncomePlan = { ...plan, kept: 'leisure', keptAmount: eur(40000) };
-    expect(targetsFor(leisureKept, 250000)).toEqual({ fixed: 100000, leisure: 60000, savings: 90000, shortfall: 0 });
+  it('applies the share when wants is the kept bucket', () => {
+    const wantsKept: IncomePlan = { ...plan, kept: 'leisure', keptAmount: pct(20) };
+    expect(targetsFor(wantsKept, 250000)).toEqual({ fixed: 100000, leisure: 50000, savings: 100000, shortfall: 0 });
   });
 
-  it('keeps a percentage-based fixed amount fixed in a month with another income', () => {
-    expect(targetsFor({ ...plan, fixed: pct(50) }, 250000)).toMatchObject({ fixed: 100000 });
+  it('keeps an amount saved in euros as it is', () => {
+    const euros: IncomePlan = { ...plan, kept: 'savings', keptAmount: eur(40000) };
+    expect(targetsFor(euros, 250000)).toEqual({ fixed: 100000, leisure: 110000, savings: 40000, shortfall: 0 });
+  });
+
+  it('never gives the kept part more than what is left', () => {
+    expect(targetsFor({ ...plan, keptAmount: pct(60) }, 150000)).toEqual({ fixed: 100000, leisure: 0, savings: 50000, shortfall: 0 });
   });
 
   it('warns about a shortfall when income is below fixed expenses (800 €)', () => {
     expect(targetsFor(plan, 80000)).toEqual({ fixed: 100000, leisure: 0, savings: 0, shortfall: 20000 });
   });
 
-  it('saves all extra money when the plan leaves nothing after fixed expenses', () => {
-    const tight: IncomePlan = { ...plan, fixed: eur(200000), keptAmount: pct(0) };
-    expect(targetsFor(tight, 250000)).toEqual({ fixed: 200000, leisure: 0, savings: 50000, shortfall: 0 });
+  it('gives extra money to the automatic part when the plan leaves nothing after fixed expenses', () => {
+    const tight: IncomePlan = { ...plan, fixedItems: items(200000), keptAmount: pct(0) };
+    expect(targetsFor(tight, 250000)).toEqual({ fixed: 200000, leisure: 50000, savings: 0, shortfall: 0 });
   });
 
   it('always adds up exactly to the income (1000,01 €)', () => {
-    const odd: IncomePlan = { incomeCents: 100001, fixed: eur(50000), kept: 'savings', keptAmount: pct(20) };
+    const odd: IncomePlan = { incomeCents: 100001, fixedItems: items(50000), kept: 'savings', keptAmount: pct(20) };
     const targets = targetsFor(odd, 100001);
     expect(targets.fixed + targets.leisure + targets.savings).toBe(100001);
   });
@@ -171,18 +204,6 @@ describe('targetsFor', () => {
   it('adds up exactly for an override with an awkward amount', () => {
     const targets = targetsFor(plan, 233333);
     expect(targets.fixed + targets.leisure + targets.savings).toBe(233333);
-  });
-});
-
-describe('progressPercent', () => {
-  it('gives 70 % saved of 900 € and 50 % spent of 400 €', () => {
-    expect(progressPercent(63000, 90000)).toBe(70);
-    expect(progressPercent(20000, 40000)).toBe(50);
-    expect(progressPercent(45000, 40000)).toBe(113);
-  });
-
-  it('has no percentage for a zero target', () => {
-    expect(progressPercent(1000, 0)).toBeNull();
   });
 });
 

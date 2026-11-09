@@ -2,19 +2,29 @@
  * Income plan domain logic. Pure functions, no React and no storage.
  * All money is integer cents (250000 = 2500,00 €).
  *
- * A plan has a recurring income, fixed expenses and one "kept" bucket (leisure or savings),
- * each entered in euros or as a percentage of the income. The other bucket is automatic:
- * it gets whatever is left.
+ * A plan has a recurring income, a list of fixed expenses in euros and one "kept" bucket
+ * (leisure or savings), a share of the income. The other bucket is automatic: it gets what is left.
  */
-import { BUCKET_LABELS, otherFlexible, type Bucket, type FlexibleBucket, type Targets } from '@/shared/buckets';
+import {
+  BUCKET_LABELS,
+  SUGGESTED_SAVINGS_PERCENT,
+  otherFlexible,
+  type Bucket,
+  type FlexibleBucket,
+  type Targets,
+} from '@/shared/buckets';
 import { AMOUNT_TOO_LARGE, MAX_CENTS, formatEuros, isValidCents } from '@/shared/money';
 
 /** What the user typed for a bucket: euros (in cents) or a whole percentage of the income. */
 export type Amount = { unit: 'eur'; cents: number } | { unit: 'pct'; pct: number };
 
+export type FixedItem = { name: string; amountCents: number };
+
+export const MAX_ITEM_NAME_LENGTH = 40;
+
 export type IncomePlan = {
   incomeCents: number;
-  fixed: Amount;
+  fixedItems: FixedItem[];
   /** The bucket the user entered; the other flexible bucket is automatic. */
   kept: FlexibleBucket;
   keptAmount: Amount;
@@ -23,16 +33,24 @@ export type IncomePlan = {
 /** Income overrides keyed by month, e.g. { '2026-11': 300000 }. */
 export type MonthOverrides = Record<string, number>;
 
+export function fixedTotal(items: readonly FixedItem[]): number {
+  return items.reduce((sum, item) => sum + item.amountCents, 0);
+}
+
+export function isValidFixedItem(item: FixedItem): boolean {
+  const name = item.name.trim();
+  return name.length >= 1 && name.length <= MAX_ITEM_NAME_LENGTH && isValidCents(item.amountCents) && item.amountCents > 0;
+}
+
 /** Euro value of an amount on a given income. Percentages round down to the cent. */
 export function resolveAmount(amount: Amount, incomeCents: number): number {
   return amount.unit === 'eur' ? amount.cents : Math.floor((incomeCents * amount.pct) / 100);
 }
 
-/** The same amount in the other unit (percent rounds to the nearest whole number). */
-export function convertAmount(amount: Amount, incomeCents: number): Amount {
-  if (amount.unit === 'pct') return { unit: 'eur', cents: resolveAmount(amount, incomeCents) };
-  const pct = incomeCents > 0 ? Math.min(Math.round((amount.cents * 100) / incomeCents), 100) : 0;
-  return { unit: 'pct', pct };
+/** The amount as a whole percentage of the income, rounded to the nearest and at most 100. */
+export function wholePercent(amount: Amount, incomeCents: number): number {
+  if (amount.unit === 'pct') return amount.pct;
+  return incomeCents > 0 ? Math.min(Math.round((amount.cents * 100) / incomeCents), 100) : 0;
 }
 
 function isValidAmount(amount: Amount): boolean {
@@ -43,25 +61,32 @@ function isValidAmount(amount: Amount): boolean {
 
 /** Euro targets on the plan's own recurring income. The automatic bucket may be negative if the plan doesn't fit. */
 export function planTargets(plan: IncomePlan): Record<Bucket, number> {
-  const fixed = resolveAmount(plan.fixed, plan.incomeCents);
+  const fixed = fixedTotal(plan.fixedItems);
   const kept = resolveAmount(plan.keptAmount, plan.incomeCents);
   const auto = plan.incomeCents - fixed - kept;
   return { fixed, [plan.kept]: kept, [otherFlexible(plan.kept)]: auto } as Record<Bucket, number>;
 }
 
-export type PlanError = 'income-not-positive' | 'income-too-large' | 'fixed-invalid' | 'kept-invalid' | 'over-income';
+export type PlanError =
+  | 'income-not-positive'
+  | 'income-too-large'
+  | 'item-invalid'
+  | 'fixed-over-income'
+  | 'kept-invalid'
+  | 'over-income';
 
 export function validatePlan(plan: IncomePlan): PlanError[] {
   const errors: PlanError[] = [];
   if (!Number.isInteger(plan.incomeCents) || plan.incomeCents <= 0) errors.push('income-not-positive');
   else if (!isValidCents(plan.incomeCents)) errors.push('income-too-large');
-  if (!isValidAmount(plan.fixed) || resolveAmount(plan.fixed, plan.incomeCents) > plan.incomeCents) {
-    errors.push('fixed-invalid');
-  }
+  if (!plan.fixedItems.every(isValidFixedItem)) errors.push('item-invalid');
+  else if (errors.length === 0 && fixedTotal(plan.fixedItems) > plan.incomeCents) errors.push('fixed-over-income');
   if (!isValidAmount(plan.keptAmount)) errors.push('kept-invalid');
   if (errors.length === 0 && planExcessCents(plan) > 0) errors.push('over-income');
   return errors;
 }
+
+export const ITEM_INVALID = 'Every fixed expense needs a name and an amount greater than 0 €.';
 
 export const INCOME_INVALID = 'Income must be greater than 0 €.';
 
@@ -79,12 +104,14 @@ export function planErrorMessage(error: PlanError, plan: IncomePlan): string {
       return INCOME_INVALID;
     case 'income-too-large':
       return AMOUNT_TOO_LARGE;
-    case 'fixed-invalid':
-      return 'Needs must be a valid amount and cannot exceed your income.';
+    case 'item-invalid':
+      return ITEM_INVALID;
+    case 'fixed-over-income':
+      return `Fixed expenses are ${formatEuros(fixedTotal(plan.fixedItems) - plan.incomeCents)} over your income.`;
     case 'kept-invalid':
-      return `${BUCKET_LABELS[plan.kept]} must be an amount in euros or a whole percentage from 0 to 100.`;
+      return `${BUCKET_LABELS[plan.kept]} must be a whole percentage from 0 to 100.`;
     case 'over-income':
-      return `Needs and ${BUCKET_LABELS[plan.kept].toLowerCase()} are ${formatEuros(planExcessCents(plan))} over your income.`;
+      return `Fixed expenses and ${BUCKET_LABELS[plan.kept].toLowerCase()} are ${formatEuros(planExcessCents(plan))} over your income.`;
   }
 }
 
@@ -95,20 +122,26 @@ export function planExcessCents(plan: IncomePlan): number {
 }
 
 /**
- * Targets for a month with `monthIncomeCents`. Fixed expenses stay as in the plan; the rest is
- * shared between leisure and savings in the plan's proportion. Leisure absorbs rounding.
+ * Targets for a month with `monthIncomeCents`, the same rule for every month: fixed expenses stay
+ * as listed, the kept bucket is its share of that month's income (never above what is left) and
+ * the other bucket takes the rest.
  */
 export function targetsFor(plan: IncomePlan, monthIncomeCents: number): Targets {
-  const base = planTargets(plan);
-  const fixed = base.fixed;
+  const fixed = fixedTotal(plan.fixedItems);
   const remainder = monthIncomeCents - fixed;
   if (remainder < 0) {
     return { fixed, leisure: 0, savings: 0, shortfall: -remainder };
   }
 
-  const planRemainder = plan.incomeCents - fixed;
-  const savings = planRemainder <= 0 ? remainder : Math.floor((remainder * base.savings) / planRemainder);
-  return { fixed, leisure: remainder - savings, savings, shortfall: 0 };
+  const kept = Math.min(resolveAmount(plan.keptAmount, monthIncomeCents), remainder);
+  return { fixed, [plan.kept]: kept, [otherFlexible(plan.kept)]: remainder - kept, shortfall: 0 } as Targets;
+}
+
+/** The 50/30/20 reference: savings is 20 % of the income, never above what is left; wants is the rest. */
+export function suggestedSplit(incomeCents: number, fixedCents: number): Record<FlexibleBucket, number> {
+  const left = Math.max(incomeCents - fixedCents, 0);
+  const savings = Math.min(Math.floor((incomeCents * SUGGESTED_SAVINGS_PERCENT) / 100), left);
+  return { savings, leisure: left - savings };
 }
 
 export function incomeForMonth(
