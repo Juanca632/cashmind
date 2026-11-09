@@ -4,6 +4,11 @@ export type Bucket = 'fixed' | 'leisure' | 'savings';
 
 export const BUCKETS: readonly Bucket[] = ['fixed', 'leisure', 'savings'];
 
+/** What can be recorded during a month: the parts of the plan, and income. */
+export type EntryBucket = Bucket | 'income';
+
+export const ENTRY_BUCKETS: readonly EntryBucket[] = [...BUCKETS, 'income'];
+
 export type FlexibleBucket = 'leisure' | 'savings';
 
 export type Targets = Record<Bucket, number> & {
@@ -15,16 +20,22 @@ export function otherFlexible(bucket: FlexibleBucket): FlexibleBucket {
   return bucket === 'leisure' ? 'savings' : 'leisure';
 }
 
-/** Recorded amount as a whole percentage of its target, or null when the target is 0. */
-export function progressPercent(spentCents: number, targetCents: number): number | null {
-  return targetCents > 0 ? Math.round((spentCents * 100) / targetCents) : null;
-}
-
-export const BUCKET_LABELS: Record<Bucket, string> = {
-  fixed: 'Fixed expenses',
+export const BUCKET_LABELS: Record<EntryBucket, string> = {
+  fixed: 'Fixed',
   leisure: 'Leisure',
   savings: 'Savings',
+  income: 'Income',
 };
+
+export const BUCKET_DESCRIPTIONS: Record<EntryBucket, string> = {
+  fixed: 'Rent, bills, groceries',
+  leisure: 'Going out, hobbies, treats',
+  savings: 'Money you set aside',
+  income: 'Money you received',
+};
+
+/** The savings share a new plan starts with. */
+export const SUGGESTED_SAVINGS_PERCENT = 20;
 
 export type BucketProgress = {
   spent: number;

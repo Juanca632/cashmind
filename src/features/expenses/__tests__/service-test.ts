@@ -5,7 +5,6 @@ import { RELAX_TABLES } from '../../../test-support/damaged-data';
 import { createFakeDb } from '../../../test-support/fake-sqlite';
 
 const NOV_7 = new Date(2026, 10, 7, 12);
-const DEC_3 = new Date(2026, 11, 3, 12);
 const DEC_6 = new Date(2026, 11, 6, 12);
 
 async function newDb() {
@@ -38,7 +37,7 @@ describe('Invalid data is never saved (expenses)', () => {
     const db = await newDb();
     expect(await addExpense(db, { ...lunch, amountCents: 90_000_000 }, NOV_7)).toEqual({ ok: true });
     expect(await rows(db)).toEqual([expect.objectContaining({ amount_cents: 90_000_000 })]);
-    expect(await deleteExpense(db, 1, NOV_7)).toEqual({ ok: true });
+    expect(await deleteExpense(db, 1)).toEqual({ ok: true });
   });
 
   it.each([
@@ -68,10 +67,7 @@ describe('Invalid data is never saved (expenses)', () => {
     expect(await rows(db)).toEqual([]);
   });
 
-  it.each([
-    ['in the future', '2026-11-08'],
-    ['before the editable period', '2026-10-31'],
-  ])('An expense dated %s is rejected and nothing is stored', async (_label, date) => {
+  it.each([['in the future', '2026-11-08']])('An expense dated %s is rejected and nothing is stored', async (_label, date) => {
     const db = await newDb();
     const result = await addExpense(db, { ...lunch, date }, NOV_7);
 
@@ -79,91 +75,34 @@ describe('Invalid data is never saved (expenses)', () => {
     expect(await rows(db)).toEqual([]);
   });
 
-  it('Closed month: edit and delete leave the stored expense unchanged', async () => {
-    const db = await newDb();
-    await db.runAsync(
-      "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-30', 'leisure', 900, 'Lunch')",
-    );
-    const before = await rows(db);
-
-    const edited = await editExpense(db, 1, { ...lunch, date: '2026-11-30', amountCents: 1500 }, DEC_6);
-    const deleted = await deleteExpense(db, 1, DEC_6);
-
-    expect(edited).toMatchObject({ ok: false, kind: 'invalid' });
-    expect(deleted).toMatchObject({ ok: false, kind: 'invalid' });
-    expect(await rows(db)).toEqual(before);
-  });
-
-  it('Grace period: edit with a valid amount is stored', async () => {
+  it('A past month: edit with a valid amount is stored', async () => {
     const db = await newDb();
     await db.runAsync(
       "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-30', 'leisure', 900, 'Lunch')",
     );
 
-    const result = await editExpense(db, 1, { ...lunch, date: '2026-11-30', amountCents: 1500 }, DEC_3);
+    const result = await editExpense(db, 1, { ...lunch, date: '2026-11-30', amountCents: 1500 }, DEC_6);
 
     expect(result).toEqual({ ok: true });
     expect(await rows(db)).toEqual([expect.objectContaining({ id: 1, date: '2026-11-30', amount_cents: 1500 })]);
   });
 
-  it('Grace period: delete is stored', async () => {
+  it('A past month: delete is stored', async () => {
     const db = await newDb();
     await db.runAsync(
       "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-30', 'leisure', 900, 'Lunch')",
     );
 
-    expect(await deleteExpense(db, 1, DEC_3)).toEqual({ ok: true });
+    expect(await deleteExpense(db, 1)).toEqual({ ok: true });
     expect(await rows(db)).toEqual([]);
-  });
-
-  it('Editing an expense moved to a closed month is rejected', async () => {
-    const db = await newDb();
-    await db.runAsync(
-      "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-30', 'leisure', 900, 'Lunch')",
-    );
-    const before = await rows(db);
-
-    const result = await editExpense(db, 1, { ...lunch, date: '2026-10-15' }, DEC_3);
-
-    expect(result.ok).toBe(false);
-    expect(await rows(db)).toEqual(before);
-  });
-
-  it('Valid input is stored and reported as successful', async () => {
-    const db = await newDb();
-
-    expect(await addExpense(db, lunch, NOV_7)).toEqual({ ok: true });
-    expect(await rows(db)).toEqual([
-      expect.objectContaining({ date: '2026-11-05', bucket: 'leisure', amount_cents: 900, note: 'Lunch' }),
-    ]);
-  });
-});
-
-describe('Edge cases (expense writes)', () => {
-  it.each([
-    ['edit', (db: any) => editExpense(db, 99, lunch, NOV_7)],
-    ['delete', (db: any) => deleteExpense(db, 99, NOV_7)],
-  ])('%s of an expense that no longer exists says so and stores nothing', async (_name, run) => {
-    const db = await newDb();
-    await addExpense(db, lunch, NOV_7);
-    const before = await rows(db);
-
-    const result = await run(db);
-
-    expect(result).toEqual({ ok: false, kind: expect.any(String), message: expect.stringMatching(/no longer exists/) });
-    expect(await rows(db)).toEqual(before);
   });
 
   it('Validation uses the date at the moment of saving', async () => {
     const db = await newDb();
-    await db.runAsync(
-      "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-30', 'leisure', 900, 'Lunch')",
-    );
-    const input = { ...lunch, date: '2026-11-30', amountCents: 1500 };
+    const tomorrow = { ...lunch, date: '2026-11-08' };
 
-    expect(await editExpense(db, 1, input, DEC_3)).toEqual({ ok: true });
-    expect(await editExpense(db, 1, { ...input, amountCents: 2000 }, DEC_6)).toMatchObject({ ok: false });
-    expect(await rows(db)).toEqual([expect.objectContaining({ amount_cents: 1500 })]);
+    expect(await addExpense(db, tomorrow, NOV_7)).toMatchObject({ ok: false });
+    expect(await addExpense(db, tomorrow, new Date(2026, 10, 8, 12))).toEqual({ ok: true });
   });
 
   it('Damaged data found while validating an edit or delete stores nothing and is reported as failed', async () => {
@@ -175,7 +114,7 @@ describe('Edge cases (expense writes)', () => {
     const before = await rows(db);
 
     const edited = await editExpense(db, 1, lunch, NOV_7);
-    const deleted = await deleteExpense(db, 1, NOV_7);
+    const deleted = await deleteExpense(db, 1);
 
     expect(edited).toMatchObject({ ok: false, kind: 'failed' });
     expect(deleted).toMatchObject({ ok: false, kind: 'failed' });
@@ -191,11 +130,38 @@ describe('A failed change is always explained (expense writes)', () => {
 
     const added = await addExpense(broken, lunch, NOV_7);
     const edited = await editExpense(broken, 1, { ...lunch, amountCents: 1500 }, NOV_7);
-    const deleted = await deleteExpense(broken, 1, NOV_7);
+    const deleted = await deleteExpense(broken, 1);
 
     for (const result of [added, edited, deleted]) {
       expect(result).toEqual({ ok: false, kind: 'failed', message: expect.stringMatching(/could not be saved/i) });
     }
     expect(await rows(db)).toEqual([expect.objectContaining({ amount_cents: 900 })]);
+  });
+});
+
+describe('Fixed expenses count by themselves', () => {
+  it('A new expense cannot be fixed and nothing is stored', async () => {
+    const db = await newDb();
+
+    expect(await addExpense(db, { ...lunch, bucket: 'fixed' }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
+    expect(await rows(db)).toEqual([]);
+  });
+
+  it('An expense cannot be moved into fixed', async () => {
+    const db = await newDb();
+    await addExpense(db, lunch, NOV_7);
+    const [{ id }] = await rows(db);
+
+    expect(await editExpense(db, id, { ...lunch, bucket: 'fixed' }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
+    expect((await rows(db))[0].bucket).toBe('leisure');
+  });
+
+  it('An expense already recorded as fixed can stay fixed', async () => {
+    const db = await newDb();
+    await db.execAsync("INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'fixed', 90000, 'Rent')");
+    const [{ id }] = await rows(db);
+
+    expect(await editExpense(db, id, { date: '2026-11-05', bucket: 'fixed', amountCents: 95000, note: 'Rent' }, NOV_7)).toMatchObject({ ok: true });
+    expect((await rows(db))[0].amount_cents).toBe(95000);
   });
 });

@@ -1,105 +1,83 @@
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, TextInput, View } from 'react-native';
 
+import type { FlexibleBucket } from '@/shared/buckets';
+import { BUCKET_COLORS, BUCKET_TINTS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
+import { BucketBadge } from '@/shared/ui/bucket-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { Spacing } from '@/shared/theme/theme';
-import type { Amount } from '@/features/plan/rules';
-import { useTheme } from '@/shared/theme/use-theme';
-
-type Unit = Amount['unit'];
 
 type AmountFieldProps = {
   label: string;
-  unit: Unit;
+  bucket: FlexibleBucket;
   value: string;
   onChangeText: (text: string) => void;
-  onChangeUnit: (unit: Unit) => void;
-  /** Small text under the field, e.g. the value in the other unit. */
+  /** The value in euros. */
   hint?: string;
-  /** Highlights the field as filled in automatically. */
+  /** The part that takes the rest. */
   automatic?: boolean;
 };
 
-/** Number input with a € / % switch, used for the plan buckets. */
-export function AmountField({ label, unit, value, onChangeText, onChangeUnit, hint, automatic }: AmountFieldProps) {
-  const theme = useTheme();
+/** One row of the split, laid out like an Activity row: icon, name with its euros, and a colored percentage field. */
+export function AmountField({ label, bucket, value, onChangeText, hint, automatic }: AmountFieldProps) {
+  const color = BUCKET_COLORS[bucket];
 
   return (
-    <View style={styles.container}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-        {automatic ? ' · automatic' : ''}
-      </ThemedText>
-      <View
-        style={[
-          styles.inputRow,
-          { backgroundColor: theme.backgroundElement },
-          automatic && { borderColor: theme.backgroundSelected, borderStyle: 'dashed', borderWidth: 1 },
-        ]}>
+    <View style={styles.row}>
+      <BucketBadge bucket={bucket} />
+      <View style={styles.text}>
+        <ThemedText type="smallBold">{label}</ThemedText>
+        {hint ? (
+          <ThemedText type="caption" themeColor="textSecondary">
+            {hint}
+          </ThemedText>
+        ) : null}
+      </View>
+      <View style={[styles.field, { backgroundColor: BUCKET_TINTS[bucket] }]}>
         <TextInput
           accessibilityLabel={label}
-          keyboardType={unit === 'eur' ? 'decimal-pad' : 'number-pad'}
-          maxLength={unit === 'pct' ? 3 : 12}
-          placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { color: automatic ? theme.textSecondary : theme.text }]}
+          accessibilityHint={automatic ? 'Filled in automatically' : undefined}
+          keyboardType="number-pad"
+          maxLength={4}
+          placeholder={automatic ? 'Rest' : undefined}
+          placeholderTextColor={color}
+          selectTextOnFocus
+          style={[styles.input, { color }]}
           value={value}
           onChangeText={onChangeText}
         />
-        <View style={[styles.switch, { backgroundColor: theme.backgroundSelected }]}>
-          {(['eur', 'pct'] as const).map((option) => {
-            const selected = option === unit;
-            return (
-              <Pressable
-                key={option}
-                accessibilityRole="radio"
-                accessibilityLabel={option === 'eur' ? `${label} in euros` : `${label} in percent`}
-                accessibilityState={{ selected }}
-                hitSlop={Spacing.one}
-                onPress={() => onChangeUnit(option)}
-                style={[styles.option, selected && { backgroundColor: theme.text }]}>
-                <ThemedText type="smallBold" style={selected ? { color: theme.background } : undefined}>
-                  {option === 'eur' ? '€' : '%'}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-      {hint ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {hint}
+        <ThemedText type="smallBold" style={{ color }}>
+          %
         </ThemedText>
-      ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: Spacing.one,
-  },
-  inputRow: {
+  row: {
     alignItems: 'center',
-    borderRadius: Spacing.two,
     flexDirection: 'row',
-    gap: Spacing.two,
-    paddingLeft: Spacing.three,
-    paddingRight: Spacing.one,
+    gap: Spacing.two + Spacing.one,
+    minHeight: 68,
+  },
+  text: {
+    flex: 1,
+  },
+  field: {
+    alignItems: 'center',
+    borderRadius: Radius.field,
+    flexDirection: 'row',
+    gap: Spacing.one,
+    minHeight: 48,
+    paddingHorizontal: Spacing.two + Spacing.one,
+    width: 96,
   },
   input: {
     flex: 1,
-    fontSize: 18,
-    paddingVertical: Spacing.two,
-  },
-  switch: {
-    borderRadius: Spacing.two,
-    flexDirection: 'row',
-    padding: Spacing.half,
-  },
-  option: {
-    alignItems: 'center',
-    borderRadius: Spacing.two,
-    minWidth: 36,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
+    fontFamily: FontFamily.bold,
+    fontSize: 17,
+    fontVariant: ['tabular-nums'],
+    minWidth: 0,
+    padding: 0,
+    textAlign: 'right',
   },
 });

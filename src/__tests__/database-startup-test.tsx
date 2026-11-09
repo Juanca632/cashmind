@@ -6,7 +6,6 @@ jest.mock(
   "expo-sqlite",
   () => jest.requireActual("../test-support/fake-sqlite").expoSqliteMock,
 );
-jest.mock("@/global.css", () => ({}));
 
 const FAILED = /could not update your data.*data is safe/i;
 const NEWER = /newer version/i;
@@ -75,7 +74,7 @@ describe("A failed update is explained and harmless (screen)", () => {
   it("A database saved by a newer version: the screen asks to install the latest version and nothing is written", async () => {
     await seedDevice(async (db) => {
       await db.execAsync(
-        "CREATE TABLE old (x TEXT); INSERT INTO old VALUES ('dev'); PRAGMA user_version = 3",
+        "CREATE TABLE old (x TEXT); INSERT INTO old VALUES ('dev'); PRAGMA user_version = 99",
       );
     });
     const before = await state();

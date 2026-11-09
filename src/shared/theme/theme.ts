@@ -1,57 +1,67 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
+/** Design tokens. The app is light mode only for now. */
 
-import '@/global.css';
-
-import { Platform } from 'react-native';
-
-export const ERROR_COLOR = '#D93025';
+export const ERROR_COLOR = '#C92A2A';
 
 export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+  text: '#111318',
+  background: '#F3F4F6',
+  backgroundElement: '#FFFFFF',
+  backgroundSelected: '#E5E7EB',
+  textSecondary: '#5F6673',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type ThemeColor = keyof typeof Colors;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+/** The main action on a screen. */
+export const Accent = {
+  background: '#065F52',
+  text: '#FFFFFF',
+} as const;
+
+/** The month card at the top of Home. */
+export const Hero = {
+  background: '#065F52',
+  gradient: 'linear-gradient(145deg, #065F52 0%, #0A7A66 60%, #0B8A6F 100%)',
+  text: '#FFFFFF',
+  label: '#DFF7EF',
+  control: 'rgba(255, 255, 255, 0.18)',
+} as const;
+
+/** One color per part of the plan, the same on every screen. Readable with white text on top. */
+export const BUCKET_COLORS = {
+  fixed: '#3730A3',
+  leisure: '#9A3412',
+  savings: '#065F46',
+  income: '#0F766E',
+} as const;
+
+/** The soft background of each part; its BUCKET_COLORS value reads on top of it. */
+export const BUCKET_TINTS = {
+  fixed: '#E7E5FF',
+  leisure: '#FDEBDD',
+  savings: '#D9F2E6',
+  income: '#D5F2EE',
+} as const;
+
+export const CARD_SHADOW = '0 2px 8px rgba(14, 17, 22, 0.06)';
+
+export const Radius = {
+  hero: 28,
+  card: 20,
+  field: 16,
+  full: 999,
+} as const;
+
+/** Minimum size of anything tappable. */
+export const MIN_TOUCH = 48;
+
+/** Each Manrope weight is its own font family: use these instead of fontWeight. */
+export const FontFamily = {
+  regular: 'Manrope_400Regular',
+  medium: 'Manrope_500Medium',
+  semiBold: 'Manrope_600SemiBold',
+  bold: 'Manrope_700Bold',
+} as const;
 
 export const Spacing = {
   half: 2,
@@ -60,7 +70,4 @@ export const Spacing = {
   three: 16,
   four: 24,
   five: 32,
-  six: 64,
 } as const;
-
-export const MaxContentWidth = 800;

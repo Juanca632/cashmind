@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { DataError } from '@/shared/ui/data-error';
+import { IconButton } from '@/shared/ui/icon-button';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/theme/theme';
+import { Accent, Radius, Spacing } from '@/shared/theme/theme';
 import { firstPlanMonth } from '@/features/plan/rules';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
 import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
@@ -17,7 +18,7 @@ export default function MonthPickerScreen() {
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
 
   const currentMonth = monthKey(new Date());
-  const firstMonth = firstPlanMonth(state.data.versions) ?? currentMonth;
+  const firstMonth = firstPlanMonth(state.data) ?? currentMonth;
   return <MonthPicker currentMonth={currentMonth} minYear={Math.min(yearOf(firstMonth), yearOf(currentMonth))} />;
 }
 
@@ -36,9 +37,9 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
   return (
     <ThemedView style={styles.screen}>
       <View style={styles.yearRow}>
-        <YearButton label="‹" accessibilityLabel="Previous year" disabled={year <= minYear} onPress={() => setYear(year - 1)} />
-        <ThemedText type="subtitle">{year}</ThemedText>
-        <YearButton label="›" accessibilityLabel="Next year" disabled={year >= maxYear} onPress={() => setYear(year + 1)} />
+        <IconButton icon="chevron-left" accessibilityLabel="Previous year" disabled={year <= minYear} onPress={() => setYear(year - 1)} />
+        <ThemedText type="heading">{year}</ThemedText>
+        <IconButton icon="chevron-right" accessibilityLabel="Next year" disabled={year >= maxYear} onPress={() => setYear(year + 1)} />
       </View>
 
       <View style={styles.grid}>
@@ -55,12 +56,12 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
               onPress={() => pick(month)}
               style={({ pressed }) => [
                 styles.cell,
-                { backgroundColor: isSelected ? theme.text : theme.backgroundElement },
-                isCurrent && !isSelected && { borderColor: theme.text, borderWidth: 2 },
+                { backgroundColor: isSelected ? Accent.background : theme.backgroundElement },
+                isCurrent && !isSelected && { borderColor: Accent.background, borderWidth: 2 },
                 isFuture && styles.disabled,
                 pressed && styles.pressed,
               ]}>
-              <ThemedText type="smallBold" style={isSelected ? { color: theme.background } : undefined}>
+              <ThemedText type="smallBold" style={isSelected ? { color: Accent.text } : undefined}>
                 {formatShortMonth(month)}
               </ThemedText>
             </Pressable>
@@ -71,44 +72,16 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
   );
 }
 
-function YearButton({
-  label,
-  accessibilityLabel,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  accessibilityLabel: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      hitSlop={Spacing.three}
-      onPress={onPress}
-      style={({ pressed }) => [styles.yearButton, disabled && styles.disabled, pressed && styles.pressed]}>
-      <ThemedText type="subtitle">{label}</ThemedText>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     gap: Spacing.four,
-    padding: Spacing.four,
+    padding: Spacing.three,
   },
   yearRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  yearButton: {
-    paddingHorizontal: Spacing.three,
   },
   grid: {
     flexDirection: 'row',
@@ -117,7 +90,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     alignItems: 'center',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
     flexBasis: '30%',
     flexGrow: 1,
     paddingVertical: Spacing.four,

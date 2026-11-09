@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { Expense, ExpenseInput } from '@/features/expenses/rules';
-import { BUCKETS } from '@/shared/buckets';
+import { ENTRY_BUCKETS } from '@/shared/buckets';
 import { readDay, readInteger, readOneOf, readPositiveInteger, readText } from '@/shared/read-checks';
 
 type ExpenseRow = Record<'id' | 'date' | 'bucket' | 'amount_cents' | 'note', unknown>;
@@ -12,7 +12,7 @@ function toExpense(row: ExpenseRow): Expense {
   return {
     id: readInteger(row.id, 'expense.id'),
     date: readDay(row.date, 'expense.date'),
-    bucket: readOneOf(row.bucket, BUCKETS, 'expense.bucket'),
+    bucket: readOneOf(row.bucket, ENTRY_BUCKETS, 'expense.bucket'),
     amountCents: readPositiveInteger(row.amount_cents, 'expense.amount_cents'),
     note: readText(row.note, 'expense.note'),
   };
@@ -25,6 +25,17 @@ export async function getExpensesOfMonth(db: SQLiteDatabase, month: string): Pro
     month,
   );
   return rows.map(toExpense);
+}
+
+/** Total income of the most recent month before `month`, or null when there is none. */
+export async function getLatestIncomeBefore(db: SQLiteDatabase, month: string): Promise<number | null> {
+  const row = await db.getFirstAsync<{ total: unknown }>(
+    `SELECT sum(amount_cents) AS total FROM expense
+     WHERE bucket = 'income' AND substr(date, 1, 7) < ?
+     GROUP BY substr(date, 1, 7) ORDER BY substr(date, 1, 7) DESC LIMIT 1`,
+    month,
+  );
+  return row ? readPositiveInteger(row.total, 'expense.amount_cents') : null;
 }
 
 export async function getExpense(db: SQLiteDatabase, id: number): Promise<Expense | null> {

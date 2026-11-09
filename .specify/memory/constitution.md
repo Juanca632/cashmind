@@ -37,10 +37,12 @@ All code, comments, docs, specs and commit messages MUST be in English.
 - `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs describing current behavior. A feature that changes that behavior MUST update the affected baseline spec in the same change.
 - Lint, typecheck and tests MUST pass before a feature is considered done.
 - Domain logic changes MUST have unit tests covering the spec scenarios.
+- User-facing changes MUST have integration tests: real routes, services and repositories on the test database, following whole journeys across screens.
+- The main journeys MUST be run end to end (E2E) on the real app, on an Android emulator or phone, before any release or APK.
 - The `code-reviewer` subagent MUST review a feature before it is committed.
 
 ## Governance
 
 This constitution takes precedence over other practices. Amending it requires the developer's approval and a version bump. `AGENTS.md` holds runtime guidance for agents and MUST stay consistent with it.
 
-**Version**: 1.0.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-08
+**Version**: 1.1.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-09
