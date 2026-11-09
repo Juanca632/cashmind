@@ -34,7 +34,7 @@ Scan the QR code with Expo Go on Android.
 | Command | What it does |
 | --- | --- |
 | `npm start` | Start the dev server |
-| `npm test` | Unit tests |
+| `npm test` | Unit and integration tests |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript check |
 

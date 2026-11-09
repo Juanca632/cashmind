@@ -35,6 +35,7 @@ Only test files and test helpers. Never edit anything else in `src/`, the specs,
 2. Pick the lowest layer that really proves the scenario:
    - Calculation and validation rules: plain Jest on the feature's rules or service.
    - Anything the user does or sees: render the route or screen.
+   - Journeys across screens: integration tests with the real routes, services and repositories on the fake SQLite. Every user story that spans screens needs at least one.
 3. Take expected values from the scenario text. Never copy them from running the code. Amounts are integer cents.
 4. Assert what the user can observe. Query by role, label or visible text. Use `testID` only as a last resort, and no snapshots.
 5. Fake only what cannot run in Jest: native modules such as `expo-sqlite`, and the clock (`jest.useFakeTimers` with `jest.setSystemTime`, using the date the scenario gives). Never mock the module under test.
