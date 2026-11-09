@@ -63,4 +63,84 @@ export const MIGRATIONS: readonly Migration[] = [
         ALTER TABLE plan_version_new RENAME TO plan_version;
       `),
   },
+  {
+    // Income becomes recorded entries: each month gets the income it had, and the plan stops storing one.
+    version: 3,
+    up: async (db) => {
+      const versions = await db.getAllAsync<{ effective_month: string; income_cents: number }>(
+        'SELECT effective_month, income_cents FROM plan_version ORDER BY effective_month',
+      );
+      const overrides = await db.getAllAsync<{ month: string; income_cents: number }>(
+        'SELECT month, income_cents FROM month_income_override',
+      );
+
+      await db.execAsync(`
+        CREATE TABLE expense_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          bucket TEXT NOT NULL CHECK (bucket IN ('fixed', 'leisure', 'savings', 'income')),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        ) STRICT;
+        INSERT INTO expense_new (id, date, bucket, amount_cents, note, created_at)
+          SELECT id, date, bucket, amount_cents, note, created_at FROM expense;
+        DROP TABLE expense;
+        ALTER TABLE expense_new RENAME TO expense;
+      `);
+
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const now = new Date();
+      const lastMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+      if (versions.length > 0) {
+        const overrideOf = new Map(overrides.map((row) => [row.month, row.income_cents]));
+        let [year, monthNumber] = versions[0].effective_month.split('-').map(Number);
+        for (;;) {
+          const month = `${year}-${pad(monthNumber)}`;
+          if (month > lastMonth) break;
+          const planned = versions.filter((version) => version.effective_month <= month).at(-1);
+          const income = overrideOf.get(month) ?? planned?.income_cents;
+          if (income !== undefined) {
+            await db.runAsync(
+              "INSERT INTO expense (date, bucket, amount_cents, note) VALUES (?, 'income', ?, 'Monthly income')",
+              `${month}-01`,
+              income,
+            );
+          }
+          monthNumber += 1;
+          if (monthNumber > 12) {
+            monthNumber = 1;
+            year += 1;
+          }
+        }
+      }
+
+      // An override outside the months above is still the user's data: keep it as an entry too.
+      const firstMonth = versions[0]?.effective_month;
+      for (const { month, income_cents: cents } of overrides) {
+        if (firstMonth === undefined || month < firstMonth || month > lastMonth) {
+          await db.runAsync(
+            "INSERT INTO expense (date, bucket, amount_cents, note) VALUES (?, 'income', ?, 'Monthly income')",
+            `${month}-01`,
+            cents,
+          );
+        }
+      }
+
+      await db.execAsync(`
+        CREATE TABLE plan_version_new (
+          effective_month TEXT PRIMARY KEY NOT NULL CHECK (effective_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+          kept_bucket TEXT NOT NULL CHECK (kept_bucket IN ('leisure', 'savings')),
+          kept_unit TEXT NOT NULL CHECK (kept_unit IN ('eur', 'pct')),
+          kept_value INTEGER NOT NULL CHECK (kept_value >= 0 AND (kept_unit = 'eur' OR kept_value <= 100))
+        ) STRICT;
+        INSERT INTO plan_version_new (effective_month, kept_bucket, kept_unit, kept_value)
+          SELECT effective_month, kept_bucket, kept_unit, kept_value FROM plan_version;
+        DROP TABLE plan_version;
+        ALTER TABLE plan_version_new RENAME TO plan_version;
+        DROP TABLE month_income_override;
+      `);
+    },
+  },
 ];

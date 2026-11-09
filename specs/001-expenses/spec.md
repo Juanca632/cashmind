@@ -12,7 +12,7 @@ This is a baseline spec: it describes the current behavior of the app and is kep
 
 ## Purpose
 
-Lets the user record what they spend or save in each bucket and see, for any month, how it compares to that month's targets.
+Lets the user record what they earn, spend or save and see, for any month, how it compares to that month's targets.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -68,9 +68,9 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 
 **Acceptance Scenarios**:
 
-1. *Leisure over its limit*: **Given** a wants target of 400,00 €, **When** wants expenses add up to 450,00 €, **Then** the home screen shows that it is 50,00 € over
-2. *Within the limit*: **Given** a wants target of 400,00 €, **When** wants expenses add up to 100,00 €, **Then** the home screen shows 300,00 € left
-3. *Progress percentage*: **Given** a savings target of 900,00 € and a wants target of 400,00 €, **When** 630,00 € are saved and 200,00 € of wants are spent, **Then** savings shows 630,00 € of 900,00 € and wants shows 200,00 € of 400,00 €
+1. *Leisure over its limit*: **Given** a leisure target of 400,00 €, **When** leisure expenses add up to 450,00 €, **Then** leisure shows that it is 50,00 € over
+2. *Within the limit*: **Given** a leisure target of 400,00 €, **When** leisure expenses add up to 100,00 €, **Then** leisure shows 300,00 € left
+3. *Progress percentage*: **Given** a savings target of 900,00 € and a leisure target of 400,00 €, **When** 630,00 € are saved and 200,00 € of leisure are spent, **Then** savings shows 630,00 € of 900,00 € and leisure shows 200,00 € of 400,00 €
 
 ---
 
@@ -111,7 +111,7 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 
 **Acceptance Scenarios**:
 
-1. *Saving is not spending*: **When** the user adds an expense it counts as wants, and **When** the user taps Add savings it counts as savings
+1. *The form chooses*: **When** the user adds an entry, **Then** they choose Leisure, Savings or Income, and not Fixed
 2. *An expense already recorded as fixed keeps its part*: **Given** an expense recorded as fixed by an older version, **When** the user edits it, **Then** it can stay fixed
 
 ---
@@ -120,16 +120,17 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 
 ### Functional Requirements
 
-- **FR-001** (Record an expense): The system SHALL let the user record an expense with an amount in EUR greater than zero (cent precision), one part (wants or savings), chosen by how it is added (Add for wants, Add savings for savings), an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the expense is recorded.
+- **FR-001** (Record an expense): The system SHALL let the user record an expense with an amount in EUR greater than zero (cent precision), one part (leisure or savings), chosen in the form, an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the expense is recorded.
 - **FR-002** (Savings entries count towards the savings goal): The system SHALL treat expenses in the savings bucket as money set aside, and SHALL show them as progress towards the month's savings target.
 - **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an expense or delete it, in any month. Deleting SHALL ask for confirmation, and leaving the form with unsaved changes SHALL ask before discarding them.
 - **FR-004** (Past months can be corrected): The system SHALL let the user add, edit and delete expenses in any month with a plan, up to today. There is no editable period.
-- **FR-005** (Month progress against targets): The system SHALL show, for the selected month, the total spent (fixed expenses plus wants, never savings) against what the plan allows, and how much is left or over. For wants and savings it SHALL show the recorded amount against its target. The fixed part counts as spent in full by itself and shows its total and number of items.
+- **FR-005** (Month progress against targets): The system SHALL show, for the selected month, the total spent (fixed expenses plus leisure, never savings). For leisure and savings it SHALL show what is left and the percentage reached. The fixed part counts as spent in full by itself.
 - **FR-006** (Month expense list): The system SHALL list the selected month's expenses, newest date first, showing date, bucket, note and amount.
 - **FR-007** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
 - **FR-008** (Unreadable data): The system SHALL check the format of the expenses it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
-- **FR-009** (Look inside one part of the plan): The system SHALL let the user tap wants or savings on the home screen to list only that part's expenses for the selected month, and SHALL let the user return to the full list. Tapping fixed shows the plan's list of fixed expenses (see 002).
+- **FR-009** (Look inside one part of the plan): The system SHALL let the user tap leisure or savings on the home screen to list only that part's entries for the selected month, and SHALL let the user return to the full list.
 - **FR-010** (Expenses recorded as fixed): New expenses SHALL NOT be recorded as fixed. An expense already recorded as fixed SHALL be kept, stay listed in its month and keep its part when edited.
+- **FR-011** (Income entries): The system SHALL let the user record income the same way, chosen in the form, with an amount, an optional note and a date. Income entries appear in the month's list and can be edited and deleted.
 
 ## Success Criteria *(mandatory)*
 

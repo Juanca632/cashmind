@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Amount, FixedItem, IncomePlan, MonthOverrides, PlanVersion } from '@/features/plan/rules';
+import type { Amount, FixedItem, IncomePlan, PlanVersion } from '@/features/plan/rules';
 import type { FlexibleBucket } from '@/shared/buckets';
 import { readInteger, readMonth, readOneOf, readPositiveInteger, readText } from '@/shared/read-checks';
 
@@ -8,7 +8,7 @@ const UNITS = ['eur', 'pct'] as const;
 const FLEXIBLE_BUCKETS: readonly FlexibleBucket[] = ['leisure', 'savings'];
 
 type PlanVersionRow = Record<
-  'effective_month' | 'income_cents' | 'kept_bucket' | 'kept_unit' | 'kept_value',
+  'effective_month' | 'kept_bucket' | 'kept_unit' | 'kept_value',
   unknown
 >;
 
@@ -40,7 +40,7 @@ async function getFixedItemsByMonth(db: SQLiteDatabase): Promise<Map<string, Fix
 
 export async function getPlanVersions(db: SQLiteDatabase): Promise<PlanVersion[]> {
   const rows = await db.getAllAsync<PlanVersionRow>(
-    `SELECT effective_month, income_cents, kept_bucket, kept_unit, kept_value
+    `SELECT effective_month, kept_bucket, kept_unit, kept_value
      FROM plan_version ORDER BY effective_month`,
   );
   const itemsByMonth = await getFixedItemsByMonth(db);
@@ -48,7 +48,6 @@ export async function getPlanVersions(db: SQLiteDatabase): Promise<PlanVersion[]
     const effectiveMonth = readMonth(row.effective_month, 'plan_version.effective_month');
     return {
       effectiveMonth,
-      incomeCents: readInteger(row.income_cents, 'plan_version.income_cents'),
       fixedItems: itemsByMonth.get(effectiveMonth) ?? [],
       kept: readOneOf(row.kept_bucket, FLEXIBLE_BUCKETS, 'plan_version.kept_bucket'),
       keptAmount: toAmount(row.kept_unit, row.kept_value, 'plan_version.kept'),
@@ -63,15 +62,13 @@ export async function getPlanVersions(db: SQLiteDatabase): Promise<PlanVersion[]
 export async function savePlanFromMonth(db: SQLiteDatabase, plan: IncomePlan, month: string): Promise<void> {
   await db.withTransactionAsync(async () => {
     await db.runAsync(
-      `INSERT INTO plan_version (effective_month, income_cents, kept_bucket, kept_unit, kept_value)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO plan_version (effective_month, kept_bucket, kept_unit, kept_value)
+       VALUES (?, ?, ?, ?)
        ON CONFLICT(effective_month) DO UPDATE SET
-         income_cents = excluded.income_cents,
          kept_bucket = excluded.kept_bucket,
          kept_unit = excluded.kept_unit,
          kept_value = excluded.kept_value`,
       month,
-      plan.incomeCents,
       plan.kept,
       plan.keptAmount.unit,
       amountValue(plan.keptAmount),
@@ -86,29 +83,4 @@ export async function savePlanFromMonth(db: SQLiteDatabase, plan: IncomePlan, mo
       );
     }
   });
-}
-
-export async function getMonthOverrides(db: SQLiteDatabase): Promise<MonthOverrides> {
-  const rows = await db.getAllAsync<Record<'month' | 'income_cents', unknown>>(
-    'SELECT month, income_cents FROM month_income_override',
-  );
-  return Object.fromEntries(
-    rows.map((row) => [
-      readMonth(row.month, 'month_income_override.month'),
-      readInteger(row.income_cents, 'month_income_override.income_cents'),
-    ]),
-  );
-}
-
-export async function setMonthOverride(db: SQLiteDatabase, month: string, incomeCents: number): Promise<void> {
-  await db.runAsync(
-    `INSERT INTO month_income_override (month, income_cents) VALUES (?, ?)
-     ON CONFLICT(month) DO UPDATE SET income_cents = excluded.income_cents`,
-    month,
-    incomeCents,
-  );
-}
-
-export async function removeMonthOverride(db: SQLiteDatabase, month: string): Promise<void> {
-  await db.runAsync('DELETE FROM month_income_override WHERE month = ?', month);
 }

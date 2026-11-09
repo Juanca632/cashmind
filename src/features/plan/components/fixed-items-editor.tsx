@@ -1,22 +1,29 @@
 import { Feather } from '@react-native-vector-icons/feather';
+import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { isBlankDraft, type ItemDraft } from '@/features/plan/plan-form';
 import { MAX_ITEM_NAME_LENGTH } from '@/features/plan/rules';
-import { FontFamily, Accent, MIN_TOUCH, Spacing } from '@/shared/theme/theme';
+import { formatEuros } from '@/shared/money';
+import { BUCKET_COLORS, BUCKET_TINTS, FontFamily, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
+import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { Button } from '@/shared/ui/button';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { ThemedView } from '@/shared/ui/themed-view';
 
 type FixedItemsEditorProps = {
   drafts: ItemDraft[];
+  total: number;
   onChange: (drafts: ItemDraft[]) => void;
 };
 
-/** The list of what the user pays every month: flat rows with a name, an amount and a remove button. */
-export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
+/** What the user pays every month, laid out like Activity: title and Add, the rows, then the total. */
+export function FixedItemsEditor({ drafts, total, onChange }: FixedItemsEditorProps) {
   const theme = useTheme();
   const { dialog, ask } = useConfirm();
+  const [addedKey, setAddedKey] = useState<number | null>(null);
 
   function update(key: number, change: Partial<ItemDraft>) {
     onChange(drafts.map((draft) => (draft.key === key ? { ...draft, ...change } : draft)));
@@ -24,6 +31,7 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
 
   function add() {
     const key = Math.max(0, ...drafts.map((draft) => draft.key)) + 1;
+    setAddedKey(key);
     onChange([...drafts, { key, name: '', amountText: '' }]);
   }
 
@@ -43,15 +51,29 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
   }
 
   return (
-    <View>
+    <View style={styles.container}>
       {dialog}
-      {drafts.map((draft, index) => {
-        const position = index + 1;
-        return (
-          <View key={draft.key} style={[styles.item, { borderBottomColor: theme.backgroundSelected }]}>
-            <View style={styles.row}>
+      <View style={styles.title}>
+        <ThemedText type="smallBold" themeColor="textSecondary">
+          Every month
+        </ThemedText>
+        <Button label="Add" icon="plus" accessibilityLabel="Add fixed expense" variant="pill" onPress={add} />
+      </View>
+
+      <ThemedView type="backgroundElement" style={styles.list}>
+        {drafts.length === 0 ? (
+          <ThemedText themeColor="textSecondary" style={styles.empty}>
+            Nothing here yet.
+          </ThemedText>
+        ) : null}
+        {drafts.map((draft, index) => {
+          const position = index + 1;
+          return (
+            <View key={draft.key} style={styles.row}>
+              <BucketBadge bucket="fixed" />
               <TextInput
                 accessibilityLabel={`Item ${position} name`}
+                autoFocus={draft.key === addedKey}
                 maxLength={MAX_ITEM_NAME_LENGTH}
                 placeholder="Name"
                 placeholderTextColor={theme.textSecondary}
@@ -62,7 +84,7 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
               <TextInput
                 accessibilityLabel={`Item ${position} amount`}
                 keyboardType="decimal-pad"
-                maxLength={12}
+                maxLength={10}
                 placeholder="0,00"
                 placeholderTextColor={theme.textSecondary}
                 style={[styles.input, styles.amount, { color: theme.text }]}
@@ -80,51 +102,62 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
                 <Feather name="trash-2" size={20} color={theme.textSecondary} />
               </Pressable>
             </View>
-          </View>
-        );
-      })}
+          );
+        })}
+      </ThemedView>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add fixed expense"
-        onPress={add}
-        style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
-        <Feather name="plus" size={18} color={Accent.background} />
-        <ThemedText type="smallBold" style={{ color: Accent.background }}>
-          Add expense
+      <View style={styles.total}>
+        <ThemedText type="smallBold" style={{ color: BUCKET_COLORS.fixed }}>
+          Total
         </ThemedText>
-      </Pressable>
-      <ThemedText type="caption" themeColor="textSecondary">
-        Use your usual amount. Divide yearly bills by 12.
-      </ThemedText>
+        <ThemedText type="heading" style={{ color: BUCKET_COLORS.fixed }}>
+          {formatEuros(total)}
+        </ThemedText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  item: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingBottom: Spacing.one,
+  container: {
+    gap: Spacing.two,
+  },
+  title: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: MIN_TOUCH,
+    paddingLeft: Spacing.one,
+  },
+  list: {
+    borderRadius: Radius.card,
+    paddingLeft: Spacing.three,
+    paddingRight: Spacing.one,
+    paddingVertical: Spacing.two,
+  },
+  empty: {
+    paddingVertical: Spacing.two,
   },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.one,
-    minHeight: MIN_TOUCH,
+    gap: Spacing.two,
+    minHeight: 62,
   },
   input: {
-    fontSize: 16,
+    fontSize: 15,
     minHeight: MIN_TOUCH,
     padding: 0,
   },
   name: {
     flex: 1,
-    fontFamily: FontFamily.medium,
+    fontFamily: FontFamily.semiBold,
   },
   amount: {
     fontFamily: FontFamily.semiBold,
     fontVariant: ['tabular-nums'],
-    minWidth: 72,
+    flexShrink: 0,
+    minWidth: 68,
     textAlign: 'right',
   },
   remove: {
@@ -133,11 +166,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: MIN_TOUCH,
   },
-  add: {
+  total: {
     alignItems: 'center',
+    backgroundColor: BUCKET_TINTS.fixed,
+    borderRadius: Radius.card,
     flexDirection: 'row',
-    gap: Spacing.two,
-    minHeight: MIN_TOUCH,
+    justifyContent: 'space-between',
+    minHeight: 64,
+    paddingHorizontal: Spacing.three,
   },
   pressed: {
     opacity: 0.6,

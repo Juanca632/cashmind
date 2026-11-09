@@ -1,9 +1,7 @@
 import { Alert } from 'react-native';
 import { fireEvent, screen } from 'expo-router/testing-library';
 
-import type { IncomePlan } from '@/features/plan/rules';
-
-import { answerDialog, exactText, standardPlan, startApp } from '../test-support/app';
+import { answerDialog, exactText, standardPlan, startApp, type TestPlan } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 
@@ -17,7 +15,7 @@ afterEach(() => {
 const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 const openPicker = () => press(/^Month:/);
 
-const threeThousand: IncomePlan = { ...standardPlan, incomeCents: 300000 };
+const threeThousand: TestPlan = { ...standardPlan, incomeCents: 300000 };
 
 describe('Month picker', () => {
   it('Pick a past month', async () => {
@@ -28,15 +26,15 @@ describe('Month picker', () => {
         [threeThousand, '2026-10'],
       ],
     });
-    expect(screen.getByText(exactText('0 / 900'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('900 € to go'))).toBeOnTheScreen();
 
     await openPicker();
     expect(screen.getByRole('button', { name: 'Nov' })).toBeSelected();
     await press('Sep');
 
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('400 € left'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('600 € to go'))).toBeOnTheScreen();
   });
 });
 
@@ -68,7 +66,7 @@ describe('Months without a plan', () => {
     // The picker does not go back before the year of the first plan.
     await openPicker();
     expect(screen.getByRole('button', { name: 'Previous year' })).toBeDisabled();
-    expect(screen.queryByText('Wants')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Leisure')).not.toBeOnTheScreen();
   });
 });
 

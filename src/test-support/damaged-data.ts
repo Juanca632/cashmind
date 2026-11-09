@@ -5,9 +5,9 @@
  */
 export const RELAX_TABLES: string[] = [
   `CREATE TABLE plan_version_loose (
-     effective_month TEXT PRIMARY KEY NOT NULL, income_cents INTEGER NOT NULL,
+     effective_month TEXT PRIMARY KEY NOT NULL,
      kept_bucket TEXT NOT NULL, kept_unit TEXT NOT NULL, kept_value INTEGER NOT NULL)`,
-  "INSERT INTO plan_version_loose SELECT effective_month, income_cents, kept_bucket, kept_unit, kept_value FROM plan_version",
+  "INSERT INTO plan_version_loose SELECT effective_month, kept_bucket, kept_unit, kept_value FROM plan_version",
   "DROP TABLE plan_version",
   "ALTER TABLE plan_version_loose RENAME TO plan_version",
   `CREATE TABLE fixed_item_loose (
@@ -15,10 +15,6 @@ export const RELAX_TABLES: string[] = [
   "INSERT INTO fixed_item_loose SELECT id, effective_month, name, amount_cents FROM fixed_item",
   "DROP TABLE fixed_item",
   "ALTER TABLE fixed_item_loose RENAME TO fixed_item",
-  `CREATE TABLE month_income_override_loose (month TEXT PRIMARY KEY NOT NULL, income_cents INTEGER NOT NULL)`,
-  "INSERT INTO month_income_override_loose SELECT month, income_cents FROM month_income_override",
-  "DROP TABLE month_income_override",
-  "ALTER TABLE month_income_override_loose RENAME TO month_income_override",
   `CREATE TABLE expense_loose (
      id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, bucket TEXT NOT NULL, amount_cents INTEGER NOT NULL,
      note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))`,

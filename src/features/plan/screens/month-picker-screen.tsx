@@ -18,7 +18,7 @@ export default function MonthPickerScreen() {
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
 
   const currentMonth = monthKey(new Date());
-  const firstMonth = firstPlanMonth(state.data.versions) ?? currentMonth;
+  const firstMonth = firstPlanMonth(state.data) ?? currentMonth;
   return <MonthPicker currentMonth={currentMonth} minYear={Math.min(yearOf(firstMonth), yearOf(currentMonth))} />;
 }
 

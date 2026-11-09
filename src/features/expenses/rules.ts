@@ -2,7 +2,7 @@
  * Expense domain logic. Pure functions, no React and no storage.
  * Dates are local-time day keys 'YYYY-MM-DD'; months are 'YYYY-MM'. Money is integer cents.
  */
-import { BUCKETS, type Bucket } from '@/shared/buckets';
+import { ENTRY_BUCKETS, type EntryBucket } from '@/shared/buckets';
 import { AMOUNT_TOO_LARGE, isValidCents } from '@/shared/money';
 import { dayKey, isValidDayKey } from '@/shared/days';
 import { isValidMonthKey, monthKey } from '@/shared/months';
@@ -10,7 +10,7 @@ import { isValidMonthKey, monthKey } from '@/shared/months';
 export type Expense = {
   id: number;
   date: string;
-  bucket: Bucket;
+  bucket: EntryBucket;
   amountCents: number;
   note: string;
 };
@@ -23,13 +23,13 @@ export function validateExpense(input: ExpenseInput, today: Date): ExpenseError[
   const errors: ExpenseError[] = [];
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
   else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
-  if (!BUCKETS.includes(input.bucket)) errors.push('bucket-invalid');
+  if (!ENTRY_BUCKETS.includes(input.bucket)) errors.push('bucket-invalid');
   if (!isValidDayKey(input.date) || input.date > dayKey(today)) errors.push('date-invalid');
   return errors;
 }
 
 /** Fixed expenses count by themselves: only an expense already recorded as fixed can stay fixed. */
-export function canUseBucket(bucket: Bucket, currentBucket?: Bucket): boolean {
+export function canUseBucket(bucket: EntryBucket, currentBucket?: EntryBucket): boolean {
   return bucket !== 'fixed' || currentBucket === 'fixed';
 }
 
@@ -58,8 +58,8 @@ export function defaultExpenseDate(month: string | undefined, today: Date): stri
   return isValidMonthKey(month) && month < monthKey(today) ? lastDayOfMonth(month) : dayKey(today);
 }
 
-export function totalsByBucket(expenses: readonly Pick<Expense, 'bucket' | 'amountCents'>[]): Record<Bucket, number> {
-  const totals: Record<Bucket, number> = { fixed: 0, leisure: 0, savings: 0 };
+export function totalsByBucket(expenses: readonly Pick<Expense, 'bucket' | 'amountCents'>[]): Record<EntryBucket, number> {
+  const totals: Record<EntryBucket, number> = { fixed: 0, leisure: 0, savings: 0, income: 0 };
   for (const expense of expenses) totals[expense.bucket] += expense.amountCents;
   return totals;
 }

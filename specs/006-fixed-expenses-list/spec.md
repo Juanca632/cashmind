@@ -24,13 +24,13 @@ The user builds the plan by first writing down each thing they must pay every mo
 2. *Change an item*: **Given** House at 700,00 € in a list totalling 1030,00 €, **When** the user changes House to 750,00 €, **Then** the total becomes 1080,00 €
 3. *Remove an item*: **Given** a list totalling 1030,00 € with Phone at 20,00 €, **When** the user removes Phone, **Then** the total becomes 1010,00 €
 4. *Invalid item*: **When** an item has no name or its amount is empty, zero or negative, **Then** the plan cannot be saved and the item shows what is wrong
-5. *No fixed expenses*: **Given** an empty list and a valid income, **When** the user saves the plan, **Then** it is saved with a fixed total of 0,00 €
+5. *No fixed expenses*: **Given** an empty list, **When** the user saves the plan, **Then** it is saved with a fixed total of 0,00 €
 
 ---
 
 ### User Story 2 - Split only what is left (Priority: P1)
 
-After the list comes the income, and the app shows what is left to split between savings and wants.
+After the list comes the income, and the app shows what is left to split between savings and leisure.
 
 **Why this priority**: This order is the purpose of the app: what I must pay, what comes in, and how I share the rest.
 
@@ -38,11 +38,9 @@ After the list comes the income, and the app shows what is left to split between
 
 **Acceptance Scenarios**:
 
-1. *What is left*: **Given** a fixed total of 1030,00 €, **When** the user enters an income of 2000,00 €, **Then** the plan shows 970,00 € left to split
-2. *Split what is left*: **Given** an income of 2000,00 € and 970,00 € left, **When** the user sets savings to 20 %, **Then** it shows 400,00 €, **And** wants is filled in with 28,5 % (570,00 €)
-3. *Adjust by trial and error*: **Given** savings at 20 % and wants filled in with 28,5 %, **When** the user sets wants to 30 %, **Then** savings is filled in with 18,5 %
-4. *List above the income*: **Given** an income of 1000,00 €, **When** the list totals 1030,00 €, **Then** the plan cannot be saved and shows that it is 30,00 € over the income
-5. *Reference, not a rule*: **Given** an income of 2000,00 € and 970,00 € left, **When** the user edits the plan, **Then** savings suggests 20 % and wants suggests the rest, 28,5 %, and no value changes by itself
+1. *Split what is left*: **Given** a trial income of 2000,00 € and 970,00 € left, **When** the user sets savings to 20 %, **Then** it shows 400,00 €, **And** leisure is filled in with 28,5 % (570,00 €)
+2. *Adjust by trial and error*: **Given** savings at 20 % and leisure filled in with 28,5 %, **When** the user sets leisure to 30 %, **Then** savings is filled in with 18,5 %
+3. *List above the income*: **Given** a trial income of 1000,00 €, **When** the list totals 1030,00 €, **Then** the editor shows that it is 30,00 € over the income
 
 ---
 
@@ -56,8 +54,8 @@ The list stays the same every month until the user changes it. Earning more or l
 
 **Acceptance Scenarios**:
 
-1. *Higher income*: **Given** a fixed total of 1030,00 €, an income of 2000,00 € and savings at 20 %, **When** the user changes the recurring income to 2500,00 €, **Then** the fixed total stays 1030,00 €, savings becomes 500,00 € and wants takes the rest, 970,00 €
-2. *One different month*: **Given** a fixed total of 1030,00 € and savings at 20 %, **When** this month's income is set to 3000,00 €, **Then** this month's fixed total stays 1030,00 €, savings is 600,00 € and wants takes the rest, 1370,00 €
+1. *Higher income*: **Given** a fixed total of 1030,00 € and savings at 20 %, **When** a month records an income of 2500,00 €, **Then** the fixed total stays 1030,00 €, savings is 500,00 € and leisure takes the remaining 970,00 €
+2. *One different month*: **Given** a fixed total of 1030,00 € and savings at 20 %, **When** this month records an income of 3000,00 €, **Then** this month's fixed total stays 1030,00 €, savings is 600,00 € and leisure takes the remaining 1370,00 €
 3. *Changes apply onwards*: **Given** a list saved in July with House at 700,00 €, **When** the user changes House to 750,00 € in December, **Then** December and later months use 750,00 €, **And** July to November still use 700,00 €
 4. *Next month repeats*: **Given** a list saved this month, **When** a new month starts, **Then** the same list applies without doing anything
 
@@ -65,7 +63,7 @@ The list stays the same every month until the user changes it. Earning more or l
 
 ### User Story 4 - Fixed expenses count by themselves (Priority: P2)
 
-The fixed part is treated as already spent. Tapping it shows the list, and during the month the user only records wants and savings.
+The fixed part is treated as already spent. The list is edited from the plan, and during the month the user only records leisure and savings.
 
 **Why this priority**: It removes the monthly chore of recording rent and bills, but the plan already has value without it.
 
@@ -73,11 +71,9 @@ The fixed part is treated as already spent. Tapping it shows the list, and durin
 
 **Acceptance Scenarios**:
 
-1. *Nothing to record*: **Given** a list totalling 1030,00 € and no recorded expenses, **When** the user opens the home screen, **Then** Fixed shows 1030,00 € with no amount left or over
-2. *See the list*: **Given** that list, **When** the user taps Fixed, **Then** the screen shows House, Transport, Phone and Supermarket with their amounts
-3. *A past month's list*: **Given** House changed from 700,00 € to 750,00 € in December, **When** the user views November and taps Fixed, **Then** House shows 700,00 €
-4. *Only two choices*: **When** the user adds an expense, **Then** they can choose Wants or Savings and not Fixed
-5. *Parts on screen*: **When** the user sees the plan, **Then** the three parts are called Fixed, Wants and Savings
+1. *Nothing to record*: **Given** a list totalling 1030,00 € and no recorded expenses, **When** the user opens the home screen, **Then** the month's spent figure is 1030,00 €
+2. *Only two choices*: **When** the user adds an expense, **Then** they can choose Leisure or Savings and not Fixed
+3. *Parts on screen*: **When** the user sees the plan, **Then** the three parts are called Fixed, Leisure and Savings
 
 ---
 
@@ -100,28 +96,27 @@ Whoever already has a plan keeps it after updating, and can split their total in
 
 ### User Story 6 - See the plan apart from changing it (Priority: P2)
 
-The plan is shown as a ring with its three parts, with nothing to change. Editing happens from Home.
+The plan is shown as a ring with its three parts. Editing is one button at the end of that screen.
 
 **Why this priority**: The developer found one screen with everything hard to read.
 
-**Independent Test**: Open the plan and confirm it has no fields or edit actions, then open the editor from Home.
+**Independent Test**: Open the plan and confirm it has no fields, then open the editor from its button.
 
 **Acceptance Scenarios**:
 
-1. *The plan is shown with nothing to change*: **When** the user opens the plan, **Then** it shows the income and each part with its share and amount, and offers no way to change it
-2. *Changing it happens on another screen*: **When** the user taps Edit plan on Home, **Then** a separate screen opens to edit the plan
-3. *Saving goes back to Home*: **When** the user saves, **Then** they return to Home
+1. *The plan is shown with only a way to edit it*: **When** the user opens the plan, **Then** it shows the income and each part with its share and amount, with nothing to type
+2. *Changing it happens on other screens*: **When** the user taps Edit plan or Edit fixed expenses at the end of the plan, **Then** a separate screen opens to edit that part
+3. *Saving goes back to the plan*: **When** the user saves, **Then** they return to the plan
 
 ---
 
 ### Edge Cases
 
-- **Income below the list in one month**: the existing shortfall warning applies and wants and savings are 0,00 € that month.
+- **Income below the list in one month**: the existing shortfall warning applies and leisure and savings are 0,00 € that month.
 - **Two items with the same name**: allowed.
 - **Plan with no fixed expenses when updating**: the list is empty.
 - **Leaving the plan without saving**: nothing changes, like any other plan edit.
 - **Saving the list twice in the same month**: the latest list replaces that month's list and no past month changes.
-- **Suggestions when little is left**: a suggestion is never higher than what is left.
 - **List cannot be read**: the screen says some data could not be read and nothing is changed.
 
 ## Requirements *(mandatory)*
@@ -131,26 +126,26 @@ The plan is shown as a ring with its three parts, with nothing to change. Editin
 - **FR-001**: Users MUST be able to add, change and remove fixed expense items, each with a name of 1 to 40 characters and an amount in EUR greater than zero with cent precision.
 - **FR-002**: The system MUST show the list total while editing, and use it as the plan's fixed expenses.
 - **FR-003**: The fixed expenses MUST always be in euros. Entering them as a percentage MUST no longer be possible.
-- **FR-004**: The plan MUST be presented in this order: fixed expenses list, monthly income, then the split of what is left between savings and wants.
-- **FR-005**: The system MUST show what is left after the fixed expenses, and MUST NOT save a plan whose list, plus the savings or wants amount the user entered, is above the income; it MUST show by how much.
-- **FR-006**: The fixed total MUST NOT change when the recurring income or one month's income changes.
+- **FR-004**: The first setup MUST start with the fixed expenses list and continue to the split. Afterwards the list and the split are edited on separate screens, both reached from the plan.
+- **FR-005**: The split editor MUST say by how much the plan exceeds a trial income.
+- **FR-006**: The fixed total MUST NOT change when a month's income changes.
 - **FR-007**: The list MUST be saved together with the plan: it applies from the current month onwards until changed, every past month MUST keep the list that applied to it, and saving again in the same month MUST replace that month's list.
 - **FR-008**: Each month's fixed part MUST count as spent in full without the user recording anything, and MUST show neither an amount left nor an amount over.
-- **FR-009**: Tapping the fixed part on the home screen MUST show the items of the list that applies to the selected month.
-- **FR-010**: New expenses MUST be recorded only as wants or savings, each from its own button. An expense already recorded as fixed MUST be kept, stay listed in its month and keep its part when edited.
-- **FR-011**: The three parts MUST be shown as Fixed, Wants and Savings.
-- **FR-012**: Suggestions MUST be limited to savings (20 % of the income, never above what is left) and wants (the rest of what is left), and MUST NOT change any value.
+- **FR-009**: The fixed items MUST be listed and edited on their own screen, opened from a button at the end of the plan. The home screen includes their total in the month's spending and does not list them.
+- **FR-010**: New expenses MUST be recorded only as leisure or savings. An expense already recorded as fixed MUST be kept, stay listed in its month and keep its part when edited.
+- **FR-011**: The three parts MUST be shown as Fixed, Leisure and Savings.
+- **FR-012**: A new plan MUST start with savings at 20 %.
 - **FR-013**: When the app updates, each saved plan's fixed expenses MUST become one item named "Fixed expenses" with the same euro amount, a percentage being converted using that plan's income; a plan with no fixed expenses MUST get an empty list. No plan or expense MUST be lost.
 - **FR-014**: The list MUST be stored only on the device, and the system MUST say some data could not be read instead of showing figures when a stored item has the wrong format, without changing it.
 - **FR-015**: This feature MUST update the affected baseline specs, `001-expenses` and `002-income-plan`, in the same change.
-- **FR-016**: Savings and wants MUST be entered only as whole percentages of the total income, each showing its euro amount next to it. Entering them in euros MUST no longer be possible. Whichever of the two the user edits last is kept and the other shows the rest, so the three parts always add up to 100 % of the income; the part filled in automatically may show a decimal.
+- **FR-016**: Savings and leisure MUST be entered only as whole percentages of the total income, each showing its euro amount next to it. Entering them in euros MUST no longer be possible. Whichever of the two the user edits last is kept and the other shows the rest, so the three parts always add up to 100 % of the income; the part filled in automatically may show a decimal.
 - **FR-017**: Every month MUST use the same rule: the kept part is its percentage of that month's income, never above what is left after the fixed expenses, and the other part takes the rest. This also applies to months whose income was set individually, including months already saved. A part saved in euros by an older version keeps its euro amount until the plan is saved again.
-- **FR-018**: The system MUST show the current plan on a read-only screen, as a ring with the income and each part's share and amount, and MUST let the user change it on a separate screen reached from Home. Changing one month's income is reached from the editor until its place is decided.
+- **FR-018**: The system MUST show the current plan on its own screen, as a ring with the income and each part's share and amount, with nothing to type there, and MUST let the user open the editor from the end of that screen. Saving returns to it.
 - **FR-019**: The system MUST ask for confirmation, with one shared dialog, before deleting an expense, removing a filled fixed expense from the list, removing a month's own income, or leaving a form with unsaved changes. Cancelling MUST change nothing.
 - **FR-020**: The app MUST say what to do next where nothing else does: an empty month explains what to record, an empty part says so, and the plan editor says why Save is off and when this month keeps its own income. Saving a month's income returns to Home.
-- **FR-021**: The home screen MUST show the month in brief: the total spent (fixed expenses plus wants, never savings) against what the plan allows, and how much is left or over.
+- **FR-021**: The home screen MUST show the total spent this month (fixed expenses plus leisure, never savings) as its main figure.
 - **FR-022**: Expenses of any month with a plan MUST be editable; the five-day editable period is removed.
-- **FR-023**: The home screen MUST offer spending, saving and, in the current month, editing the plan as one group of actions, and MUST show the day of each entry in the list.
+- **FR-023**: The home screen MUST offer one Add action beside the Activity title, with what is being added chosen in the form, and MUST show the day of each entry in the list.
 
 ### Key Entities
 
@@ -168,11 +163,11 @@ The plan is shown as a ring with its three parts, with nothing to change. Editin
 
 ## Assumptions
 
-- Percentages for savings and wants are a share of the total income, not of what is left (developer's decision). Plans already saved in euros keep their amounts for their months and open with the nearest percentage when edited.
+- Percentages for savings and leisure are a share of the total income, not of what is left (developer's decision). Plans already saved in euros keep their amounts for their months and open with the nearest percentage when edited.
 - Items are added within the plan, not on a separate menu, and are saved with the "Save plan" action.
 - Months that already have their own income are recalculated with the single rule (developer's decision); no stored data changes.
 - Variable costs such as the supermarket are entered as an estimated item; going over that amount is not tracked, and the user raises the item instead.
-- Depends on the redesign in commit 7c11349 (one card per part, plan bar, suggestions).
+- Depends on the redesign in commit 7c11349 (one card per part, plan bar).
 
 ## Out of Scope
 
@@ -180,4 +175,4 @@ The plan is shown as a ring with its three parts, with nothing to change. Editin
 - Changing the whole plan or the list for one month only.
 - Tracking actual spending per fixed item.
 - Payment dates, recurring schedules or reminders.
-- Categories inside wants.
+- Categories inside leisure.

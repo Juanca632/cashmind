@@ -177,7 +177,6 @@ describe("Updates never lose or break data (real list)", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "plan_version",
-        "month_income_override",
         "expense",
         "fixed_item",
       ]),
@@ -196,8 +195,7 @@ describe("Updates never lose or break data (real list)", () => {
     );
   });
 
-  const otherData = `
-    INSERT INTO month_income_override VALUES ('2026-11', 300000);
+  const entries = `
     INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'leisure', 1250, 'Cinema');
     INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'fixed', 90000, '');
   `;
@@ -205,21 +203,28 @@ describe("Updates never lose or break data (real list)", () => {
     1: `
       INSERT INTO plan_version VALUES ('2026-07', 200000, 'eur', 100000, 'savings', 'pct', 30);
       INSERT INTO plan_version VALUES ('2026-09', 250000, 'pct', 40, 'leisure', 'eur', 5000);
-      ${otherData}
+      INSERT INTO month_income_override VALUES ('2026-11', 300000);
+      ${entries}
     `,
     2: `
       INSERT INTO plan_version VALUES ('2026-07', 200000, 'savings', 'pct', 30);
       INSERT INTO plan_version VALUES ('2026-09', 250000, 'leisure', 'eur', 5000);
       INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES ('2026-07', 'House', 100000);
-      ${otherData}
+      INSERT INTO month_income_override VALUES ('2026-11', 300000);
+      ${entries}
+    `,
+    3: `
+      INSERT INTO plan_version VALUES ('2026-07', 'savings', 'pct', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 'leisure', 'eur', 5000);
+      INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES ('2026-07', 'House', 100000);
+      ${entries}
     `,
   };
   const dump = async (db: any) => [
     await db.getAllAsync(
-      "SELECT effective_month, income_cents, kept_bucket, kept_unit, kept_value FROM plan_version ORDER BY effective_month",
+      "SELECT effective_month, kept_bucket, kept_unit, kept_value FROM plan_version ORDER BY effective_month",
     ),
-    await db.getAllAsync("SELECT * FROM month_income_override ORDER BY month"),
-    await db.getAllAsync("SELECT * FROM expense ORDER BY id"),
+    await db.getAllAsync("SELECT * FROM expense WHERE bucket <> 'income' ORDER BY id"),
   ];
 
   it.each(Object.keys(RELEASED_SCHEMAS).map(Number))(
@@ -238,7 +243,7 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await structure(old)).toEqual(await structure(fresh));
       expect(await version(old)).toBe(MIGRATIONS.length);
       expect(await dump(old)).toEqual(dataBefore);
-      expect(dataBefore[2]).toHaveLength(2);
+      expect(dataBefore[1]).toHaveLength(2);
     },
   );
 
@@ -292,12 +297,84 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await db.getAllAsync("SELECT * FROM plan_version")).toHaveLength(1);
     });
 
+    describe("Income becomes recorded entries", () => {
+      beforeEach(() => {
+        jest.useFakeTimers({ doNotFake: ["nextTick", "setImmediate", "queueMicrotask"] });
+        jest.setSystemTime(new Date(2026, 10, 9, 12));
+      });
+      afterEach(() => jest.useRealTimers());
+
+      const incomes = (db: any) =>
+        db.getAllAsync("SELECT date, amount_cents, note FROM expense WHERE bucket = 'income' ORDER BY date");
+      const amounts = async (db: any) => (await incomes(db)).map((row: any) => [row.date, row.amount_cents]);
+
+      it("Plan income becomes entries", async () => {
+        const db = await upgradeFromV1(planRow("2026-07", 200000, "eur", 100000));
+        expect(await amounts(db)).toEqual([
+          ["2026-07-01", 200000],
+          ["2026-08-01", 200000],
+          ["2026-09-01", 200000],
+          ["2026-10-01", 200000],
+          ["2026-11-01", 200000],
+        ]);
+        expect((await incomes(db))[0].note).toBe("Monthly income");
+      });
+
+      it("One-month income", async () => {
+        const db = await upgradeFromV1(
+          planRow("2026-09", 200000, "eur", 100000) + "INSERT INTO month_income_override VALUES ('2026-09', 300000);",
+        );
+        expect((await amounts(db))[0]).toEqual(["2026-09-01", 300000]);
+        expect((await amounts(db))[1]).toEqual(["2026-10-01", 200000]);
+      });
+
+      it("Plan change", async () => {
+        const db = await upgradeFromV1(planRow("2026-07", 200000, "eur", 100000) + planRow("2026-10", 240000, "eur", 100000));
+        const rows = await amounts(db);
+        expect(rows[2]).toEqual(["2026-09-01", 200000]);
+        expect(rows[3]).toEqual(["2026-10-01", 240000]);
+      });
+
+      it("Crossing a year", async () => {
+        jest.setSystemTime(new Date(2027, 0, 15, 12));
+        const db = await upgradeFromV1(planRow("2026-12", 200000, "eur", 100000));
+        expect(await amounts(db)).toEqual([
+          ["2026-12-01", 200000],
+          ["2027-01-01", 200000],
+        ]);
+      });
+
+      it("An override outside the plan's months is kept", async () => {
+        const db = await upgradeFromV1(
+          planRow("2026-09", 200000, "eur", 100000) + "INSERT INTO month_income_override VALUES ('2026-05', 150000);",
+        );
+        expect((await amounts(db))[0]).toEqual(["2026-05-01", 150000]);
+      });
+
+      it("No plan, no income", async () => {
+        const db = await upgradeFromV1("");
+        expect(await incomes(db)).toEqual([]);
+      });
+
+      it("Everything else is unchanged and the override table is gone", async () => {
+        const db = await upgradeFromV1(
+          planRow("2026-07", 200000, "pct", 40) +
+            "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-07-05', 'leisure', 1250, 'Cinema');",
+        );
+        expect(await db.getAllAsync("SELECT effective_month, kept_bucket, kept_unit, kept_value FROM plan_version")).toEqual([
+          { effective_month: "2026-07", kept_bucket: "savings", kept_unit: "pct", kept_value: 20 },
+        ]);
+        expect(await db.getAllAsync("SELECT note FROM expense WHERE bucket = 'leisure'")).toEqual([{ note: "Cinema" }]);
+        expect(await db.getAllAsync("SELECT name FROM sqlite_master WHERE name = 'month_income_override'")).toEqual([]);
+      });
+    });
+
     it("Recorded fixed expenses stay", async () => {
       const db = await upgradeFromV1(
         planRow("2026-07", 200000, "eur", 100000) +
           "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-07-05', 'fixed', 90000, 'Rent');",
       );
-      expect(await db.getAllAsync("SELECT bucket, amount_cents, note FROM expense")).toEqual([
+      expect(await db.getAllAsync("SELECT bucket, amount_cents, note FROM expense WHERE bucket <> 'income'")).toEqual([
         { bucket: "fixed", amount_cents: 90000, note: "Rent" },
       ]);
     });

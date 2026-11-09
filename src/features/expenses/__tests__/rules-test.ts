@@ -73,7 +73,7 @@ describe('totals and progress', () => {
         { bucket: 'leisure', amountCents: 250 },
         { bucket: 'savings', amountCents: 60000 },
       ]),
-    ).toEqual({ fixed: 0, leisure: 1500, savings: 60000 });
+    ).toEqual({ fixed: 0, leisure: 1500, savings: 60000, income: 0 });
   });
 
   it('shows 300 € left to save after saving 600 € of 900 €', () => {

@@ -1,8 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import type { FlexibleBucket } from '@/shared/buckets';
-import { FontFamily, Radius, Spacing } from '@/shared/theme/theme';
-import { useTheme } from '@/shared/theme/use-theme';
+import { BUCKET_COLORS, BUCKET_TINTS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
 import { BucketBadge } from '@/shared/ui/bucket-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -11,90 +10,74 @@ type AmountFieldProps = {
   bucket: FlexibleBucket;
   value: string;
   onChangeText: (text: string) => void;
-  /** Small text at the right of the label, e.g. the suggested share. */
-  suggestion?: string;
-  /** Small text under the field, e.g. the value in euros. */
+  /** The value in euros. */
   hint?: string;
-  /** Highlights the field as filled in automatically. */
+  /** The part that takes the rest. */
   automatic?: boolean;
 };
 
-/** Percentage input for savings and wants: name and field on one line, euros and suggestion below. */
-export function AmountField({ label, bucket, value, onChangeText, suggestion, hint, automatic }: AmountFieldProps) {
-  const theme = useTheme();
+/** One row of the split, laid out like an Activity row: icon, name with its euros, and a colored percentage field. */
+export function AmountField({ label, bucket, value, onChangeText, hint, automatic }: AmountFieldProps) {
+  const color = BUCKET_COLORS[bucket];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <View style={styles.name}>
-          <BucketBadge bucket={bucket} size="small" />
-          <ThemedText type="smallBold">
-            {label}
-            {automatic ? ' · automatic' : ''}
-          </ThemedText>
-        </View>
-        <View
-          style={[
-            styles.inputRow,
-            { backgroundColor: theme.background },
-            automatic && { borderColor: theme.textSecondary, borderStyle: 'dashed', borderWidth: 1 },
-          ]}>
-          <TextInput
-            accessibilityLabel={label}
-            accessibilityHint={automatic ? 'Filled in automatically' : undefined}
-            keyboardType="number-pad"
-            maxLength={4}
-            placeholderTextColor={theme.textSecondary}
-            selectTextOnFocus
-            style={[styles.input, { color: automatic ? theme.textSecondary : theme.text }]}
-            value={value}
-            onChangeText={onChangeText}
-          />
-          <ThemedText themeColor="textSecondary">%</ThemedText>
-        </View>
-      </View>
-      <View style={styles.row}>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {hint ?? ''}
-        </ThemedText>
-        {suggestion ? (
+    <View style={styles.row}>
+      <BucketBadge bucket={bucket} />
+      <View style={styles.text}>
+        <ThemedText type="smallBold">{label}</ThemedText>
+        {hint ? (
           <ThemedText type="caption" themeColor="textSecondary">
-            {suggestion}
+            {hint}
           </ThemedText>
         ) : null}
+      </View>
+      <View style={[styles.field, { backgroundColor: BUCKET_TINTS[bucket] }]}>
+        <TextInput
+          accessibilityLabel={label}
+          accessibilityHint={automatic ? 'Filled in automatically' : undefined}
+          keyboardType="number-pad"
+          maxLength={4}
+          placeholder={automatic ? 'Rest' : undefined}
+          placeholderTextColor={color}
+          selectTextOnFocus
+          style={[styles.input, { color }]}
+          value={value}
+          onChangeText={onChangeText}
+        />
+        <ThemedText type="smallBold" style={{ color }}>
+          %
+        </ThemedText>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: Spacing.one,
-  },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: Spacing.two + Spacing.one,
+    minHeight: 68,
   },
-  name: {
-    alignItems: 'center',
+  text: {
     flex: 1,
-    flexDirection: 'row',
-    gap: Spacing.two,
   },
-  inputRow: {
+  field: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
     gap: Spacing.one,
-    minHeight: 52,
-    paddingHorizontal: Spacing.three,
-    width: 112,
+    minHeight: 48,
+    paddingHorizontal: Spacing.two + Spacing.one,
+    width: 96,
   },
   input: {
     flex: 1,
-    fontFamily: FontFamily.medium,
-    fontSize: 16,
+    fontFamily: FontFamily.bold,
+    fontSize: 17,
+    fontVariant: ['tabular-nums'],
+    minWidth: 0,
+    padding: 0,
     textAlign: 'right',
   },
 });

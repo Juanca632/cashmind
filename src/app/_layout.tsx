@@ -44,9 +44,9 @@ export default function RootLayout() {
               statusBarStyle: 'dark',
             }}>
             <Stack.Screen name="index" options={{ headerShown: false, title: 'cashmind' }} />
-            <Stack.Screen name="plan" options={{ title: 'Monthly plan' }} />
+            <Stack.Screen name="plan" options={{ title: 'My plan' }} />
             <Stack.Screen name="plan-edit" options={{ title: 'Edit plan' }} />
-            <Stack.Screen name="month-income" options={{ title: "This month's income" }} />
+            <Stack.Screen name="fixed-expenses" options={{ title: 'Fixed expenses' }} />
             <Stack.Screen name="month-picker" options={{ title: 'Pick a month' }} />
             <Stack.Screen name="expense" options={{ title: 'Expense' }} />
           </Stack>

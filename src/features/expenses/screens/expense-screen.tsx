@@ -16,7 +16,7 @@ import {
   type ExpenseInput,
 } from '@/features/expenses/rules';
 import { addExpense, deleteExpense, editExpense } from '@/features/expenses/service';
-import { BUCKETS, BUCKET_DESCRIPTIONS, BUCKET_LABELS, type Bucket } from '@/shared/buckets';
+import { BUCKET_DESCRIPTIONS, BUCKET_LABELS, ENTRY_BUCKETS, type EntryBucket } from '@/shared/buckets';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
@@ -48,7 +48,7 @@ export default function ExpenseScreen() {
   return (
     <ExpenseForm
       expense={expense}
-      defaultBucket={params.bucket === 'savings' ? 'savings' : 'leisure'}
+      defaultBucket={params.bucket === 'savings' || params.bucket === 'income' ? params.bucket : 'leisure'}
       defaultDate={defaultExpenseDate(params.month, today)}
       today={today}
     />
@@ -70,14 +70,14 @@ function ExpenseForm({
   today,
 }: {
   expense: Expense | null;
-  defaultBucket: Bucket;
+  defaultBucket: EntryBucket;
   defaultDate: string;
   today: Date;
 }) {
   const db = useSQLiteContext();
   const theme = useTheme();
   const [amountText, setAmountText] = useState(expense ? centsToInput(expense.amountCents) : '');
-  const [bucket, setBucket] = useState<Bucket>(expense?.bucket ?? defaultBucket);
+  const [bucket, setBucket] = useState<EntryBucket>(expense?.bucket ?? defaultBucket);
   const [note, setNote] = useState(expense?.note ?? '');
   const [date, setDate] = useState(expense?.date ?? defaultDate);
   const form = JSON.stringify({ amountText, bucket, note, date });
@@ -91,12 +91,12 @@ function ExpenseForm({
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
-  const newEntryTitle = bucket === 'savings' ? 'Add savings' : 'Add expense';
+  const newEntryTitle = bucket === 'savings' ? 'Add savings' : bucket === 'income' ? 'Add income' : 'Add expense';
   const input: ExpenseInput = { date, bucket, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim() };
   const errors = validateExpense(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
-  const newEntryLabel = bucket === 'savings' ? 'Add to savings' : 'Add expense';
+  const newEntryLabel = bucket === 'savings' ? 'Add to savings' : bucket === 'income' ? 'Add income' : 'Add expense';
   const submitLabel = expense ? 'Save changes' : newEntryLabel;
 
   function onSave() {
@@ -128,7 +128,7 @@ function ExpenseForm({
               keyboardType="decimal-pad"
               placeholder="0,00"
               placeholderTextColor={theme.textSecondary}
-              maxLength={12}
+              maxLength={10}
               autoFocus={!expense}
               value={amountText}
               onChangeText={setAmountText}
@@ -140,9 +140,9 @@ function ExpenseForm({
           </View>
           {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError)}</ErrorText> : null}
 
-          {expense ? (
+          {(
             <View style={styles.bucketRow}>
-              {BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
+              {ENTRY_BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
                 const selected = option === bucket;
                 return (
                   <Pressable
@@ -160,7 +160,7 @@ function ExpenseForm({
                 );
               })}
             </View>
-          ) : null}
+          )}
           <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
             {BUCKET_DESCRIPTIONS[bucket]}
           </ThemedText>
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   },
   amountInput: {
     fontFamily: FontFamily.bold,
-    fontSize: 48,
+    fontSize: 40,
     fontVariant: ['tabular-nums'],
     minWidth: 120,
     padding: 0,

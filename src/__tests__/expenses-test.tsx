@@ -1,9 +1,7 @@
 import { Alert } from 'react-native';
 import { fireEvent, screen, testRouter } from 'expo-router/testing-library';
 
-import type { IncomePlan } from '@/features/plan/rules';
-
-import { answerDialog, exactText, partialText, standardPlan, startApp } from '../test-support/app';
+import { answerDialog, exactText, standardPlan, startApp, type TestPlan } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 
@@ -24,7 +22,7 @@ async function openMonth(shortName: string) {
 describe('Record an expense', () => {
   it('Add a leisure expense', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('400 € left'))).toBeOnTheScreen();
 
     await press('Add expense');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '12,50');
@@ -35,7 +33,7 @@ describe('Record an expense', () => {
     expect(screen).toHavePathname('/');
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
     expect(screen.getByText(exactText('12,50 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('12,50 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('387,50 € left'))).toBeOnTheScreen();
   });
 
   it.each([
@@ -53,7 +51,7 @@ describe('Record an expense', () => {
 
     await testRouter.back();
     await answerDialog('Discard');
-    expect(screen.getByText('Record what you spend on wants and what you save. Fixed expenses are already counted.')).toBeOnTheScreen();
+    expect(screen).toHavePathname('/');
   });
 
   it('Empty amount', async () => {
@@ -67,26 +65,27 @@ describe('Record an expense', () => {
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeDisabled();
 
     await testRouter.back();
-    expect(screen.getByText('Record what you spend on wants and what you save. Fixed expenses are already counted.')).toBeOnTheScreen();
+    expect(screen).toHavePathname('/');
   });
 });
 
 describe('Savings entries count towards the savings goal', () => {
   it('Saving after payday', async () => {
-    const plan: IncomePlan = {
+    const plan: TestPlan = {
       incomeCents: 300000,
       fixedItems: [{ name: 'House', amountCents: 100000 }],
       kept: 'savings',
       keptAmount: { unit: 'eur', cents: 90000 },
     };
     await startApp({ today: [2026, 10, 7], plans: [[plan, '2026-07']] });
-    expect(screen.getByText(exactText('0 / 900'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('900 € to go'))).toBeOnTheScreen();
 
-    await press('Add savings');
+    await press('Add expense');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Savings' }));
     await fireEvent.changeText(screen.getByLabelText('Amount'), '600');
     await press('Add to savings');
 
-    expect(screen.getByText(exactText('600 / 900'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('300 € to go'))).toBeOnTheScreen();
   });
 });
 
@@ -101,7 +100,7 @@ describe('Edit and delete an expense', () => {
 
     expect(screen.getByText(exactText('15,00 €'))).toBeOnTheScreen();
     expect(screen.queryByText(exactText('12,50 €'))).not.toBeOnTheScreen();
-    expect(screen.getByText(exactText('15 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('385 € left'))).toBeOnTheScreen();
   });
 
   it('Delete an expense', async () => {
@@ -112,7 +111,7 @@ describe('Edit and delete an expense', () => {
 
     expect(screen).toHavePathname('/');
     expect(screen.queryByText('Cinema')).not.toBeOnTheScreen();
-    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('400 € left'))).toBeOnTheScreen();
   });
 });
 
@@ -126,7 +125,7 @@ describe('Past months can be corrected', () => {
     await press('Add expense');
 
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('20 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('380 € left'))).toBeOnTheScreen();
   });
 
   it('Any past month', async () => {
@@ -158,8 +157,7 @@ describe('Month progress against targets', () => {
         { date: '2026-11-03', bucket: 'leisure', amountCents: 15000, note: 'Dinner' },
       ],
     });
-    expect(screen.getByText(exactText('450 / 400'))).toBeOnTheScreen();
-    expect(screen.getByText(partialText('50 € over'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('50 € over'))).toBeOnTheScreen();
   });
 
   it('Within the limit', async () => {
@@ -168,12 +166,11 @@ describe('Month progress against targets', () => {
       plans: [[standardPlan, '2026-07']],
       expenses: [{ date: '2026-11-02', bucket: 'leisure', amountCents: 10000, note: 'Dinner' }],
     });
-    expect(screen.getByText(exactText('100 / 400'))).toBeOnTheScreen();
-    expect(screen.getByText(partialText('300 € left'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('300 € left'))).toBeOnTheScreen();
   });
 
   it('Progress percentage', async () => {
-    const plan: IncomePlan = {
+    const plan: TestPlan = {
       incomeCents: 200000,
       fixedItems: [{ name: 'House', amountCents: 70000 }],
       kept: 'savings',
@@ -187,8 +184,8 @@ describe('Month progress against targets', () => {
         { date: '2026-11-03', bucket: 'leisure', amountCents: 20000, note: 'Trip' },
       ],
     });
-    expect(screen.getByText(exactText('630 / 900'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('200 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('270 € to go'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('200 € left'))).toBeOnTheScreen();
   });
 });
 
@@ -223,8 +220,7 @@ describe('Month expense list', () => {
     expect(screen.getByText('Concert')).toBeOnTheScreen();
     expect(screen.getByText(exactText('80,00 €'))).toBeOnTheScreen();
     expect(screen.queryByText('Coffee')).not.toBeOnTheScreen();
-    expect(screen.getByText(exactText('80 / 400'))).toBeOnTheScreen();
-    expect(screen.getByText(partialText('320 € left'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('320 € left'))).toBeOnTheScreen();
   });
 });
 
@@ -241,7 +237,7 @@ describe('Look inside one part of the plan', () => {
     expect(screen.getByText('Payday')).toBeOnTheScreen();
     expect(screen.getByText('Dinner')).toBeOnTheScreen();
 
-    await press(/^Wants/);
+    await press(/^Leisure/);
     expect(screen.getByText('Dinner')).toBeOnTheScreen();
     expect(screen.queryByText('Payday')).not.toBeOnTheScreen();
 

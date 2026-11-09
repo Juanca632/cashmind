@@ -25,7 +25,6 @@ export const Hero = {
   text: '#FFFFFF',
   label: '#DFF7EF',
   control: 'rgba(255, 255, 255, 0.18)',
-  over: '#FFD2C8',
 } as const;
 
 /** One color per part of the plan, the same on every screen. Readable with white text on top. */
@@ -33,6 +32,7 @@ export const BUCKET_COLORS = {
   fixed: '#3730A3',
   leisure: '#9A3412',
   savings: '#065F46',
+  income: '#0F766E',
 } as const;
 
 /** The soft background of each part; its BUCKET_COLORS value reads on top of it. */
@@ -40,6 +40,7 @@ export const BUCKET_TINTS = {
   fixed: '#E7E5FF',
   leisure: '#FDEBDD',
   savings: '#D9F2E6',
+  income: '#D5F2EE',
 } as const;
 
 export const CARD_SHADOW = '0 2px 8px rgba(14, 17, 22, 0.06)';

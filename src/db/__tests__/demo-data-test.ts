@@ -20,6 +20,7 @@ describe('Demo data', () => {
   it('Demo mode opens its own database file', () => {
     process.env.EXPO_PUBLIC_DEMO = '1';
     jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       expect(require('@/db/database').DATABASE_NAME).toBe('cashmind-demo.db');
     });
     delete process.env.EXPO_PUBLIC_DEMO;

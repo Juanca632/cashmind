@@ -23,8 +23,9 @@ export function draftsToItems(drafts: readonly ItemDraft[]): FixedItem[] {
   return drafts.filter((draft) => !isBlankDraft(draft)).map(draftToItem);
 }
 
-/** A saved amount as the whole percentage shown in the form; euro amounts open at the nearest one. */
+/** A saved share as the whole percentage shown in the form; euro amounts open at the nearest one, if an income is known. */
 export function keptPercentText(amount: Amount, incomeCents: number): string {
+  if (amount.unit === 'eur' && incomeCents === 0) return '';
   return String(wholePercent(amount, incomeCents));
 }
 

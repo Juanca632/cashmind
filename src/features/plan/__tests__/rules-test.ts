@@ -1,4 +1,4 @@
-import { firstPlanMonth, incomeForMonth, wholePercent, suggestedSplit, fixedTotal, isValidFixedItem, planExcessCents, planTargets, resolveAmount, planForMonth, targetsFor, validatePlan, type IncomePlan, type PlanVersion } from '../rules';
+import { trialShortfallMessage, firstPlanMonth, wholePercent, fixedTotal, isValidFixedItem, resolveAmount, planForMonth, targetsFor, validatePlan, type IncomePlan, type PlanVersion } from '../rules';
 import { formatEuros, formatPercentOf, parseEurosToCents, parsePercent } from '@/shared/money';
 import { formatMonth, formatShortMonth, isPastMonth, isValidMonthKey, monthKey, monthsOfYear, monthStart, yearOf } from '@/shared/months';
 
@@ -7,7 +7,7 @@ const pct = (value: number) => ({ unit: 'pct', pct: value }) as const;
 const items = (cents: number) => (cents > 0 ? [{ name: 'House', amountCents: cents }] : []);
 
 /** 2000 € income, 1000 € fixed (50 %), savings 30 % kept → leisure automatic (20 %). */
-const plan: IncomePlan = { incomeCents: 200000, fixedItems: items(100000), kept: 'savings', keptAmount: pct(30) };
+const plan: IncomePlan = { fixedItems: items(100000), kept: 'savings', keptAmount: pct(30) };
 
 const normalizeSpaces = (text: string) => text.replace(/\s/g, ' ');
 
@@ -95,66 +95,32 @@ describe('fixed items', () => {
   });
 });
 
-describe('suggestedSplit', () => {
-  it('suggests 20 % savings and the rest for wants', () => {
-    expect(suggestedSplit(200000, 103000)).toEqual({ savings: 40000, leisure: 57000 });
-  });
-
-  it('never suggests more than what is left', () => {
-    expect(suggestedSplit(200000, 190000)).toEqual({ savings: 10000, leisure: 0 });
-    expect(suggestedSplit(200000, 210000)).toEqual({ savings: 0, leisure: 0 });
-  });
-});
-
-describe('planTargets', () => {
-  it('fills leisure automatically: 1000 € fixed + savings 30 % on 2000 € → leisure 400 €', () => {
-    expect(planTargets(plan)).toEqual({ fixed: 100000, leisure: 40000, savings: 60000 });
-  });
-
-  it('fills savings automatically when leisure is kept: leisure 500 € → savings 500 €', () => {
-    expect(planTargets({ ...plan, kept: 'leisure', keptAmount: eur(50000) })).toEqual({
-      fixed: 100000,
-      leisure: 50000,
-      savings: 50000,
-    });
-  });
-
-  it('keeps a percentage when the income changes: savings 30 % on 2500 € → 750 €', () => {
-    expect(planTargets({ ...plan, incomeCents: 250000 })).toMatchObject({ savings: 75000, leisure: 75000 });
-  });
-
-});
-
 describe('validatePlan', () => {
-  it('accepts 2000 € income, 1000 € fixed and savings 30 %', () => {
+  it('accepts a list and a percentage, with no income', () => {
     expect(validatePlan(plan)).toEqual([]);
+    expect(validatePlan({ ...plan, fixedItems: [] })).toEqual([]);
   });
 
-  it.each([0, -100])('rejects income %p', (incomeCents) => {
-    expect(validatePlan({ ...plan, incomeCents })).toContain('income-not-positive');
-  });
-
-  it('rejects fixed expenses above the income', () => {
-    expect(validatePlan({ ...plan, fixedItems: items(210000) })).toEqual(['fixed-over-income']);
-  });
-
-  it('accepts fixed expenses of 0 € and equal to the income', () => {
-    expect(validatePlan({ ...plan, fixedItems: items(0) })).toEqual([]);
-    expect(validatePlan({ ...plan, fixedItems: items(200000), keptAmount: pct(0) })).toEqual([]);
-  });
-
-  it('rejects savings 60 % with 1000 € fixed: 200 € over the income', () => {
-    const tooHigh = { ...plan, keptAmount: pct(60) };
-    expect(validatePlan(tooHigh)).toEqual(['over-income']);
-    expect(planExcessCents(tooHigh)).toBe(20000);
-    expect(validatePlan({ ...plan, keptAmount: pct(50) })).toEqual([]);
-  });
-
-  it('rejects invalid amounts', () => {
+  it('rejects invalid values', () => {
     expect(validatePlan({ ...plan, keptAmount: pct(12.5) })).toEqual(['kept-invalid']);
-    expect(validatePlan({ ...plan, keptAmount: eur(-1) })).toEqual(['kept-invalid']);
     expect(validatePlan({ ...plan, keptAmount: pct(Number.NaN) })).toEqual(['kept-invalid']);
     expect(validatePlan({ ...plan, fixedItems: [{ name: '', amountCents: 100 }] })).toEqual(['item-invalid']);
+  });
+});
+
+describe('trialShortfallMessage', () => {
+  const normalized = (text: string | null) => text?.replace(/\s/g, ' ');
+
+  it('is empty when the income covers the plan', () => {
+    expect(trialShortfallMessage(plan, 200000)).toBeNull();
+  });
+
+  it('says how far the fixed expenses go over', () => {
+    expect(normalized(trialShortfallMessage(plan, 80000))).toContain('200,00 € over this income');
+  });
+
+  it('says how far the fixed expenses and the kept share go over', () => {
+    expect(normalized(trialShortfallMessage({ ...plan, keptAmount: pct(60) }, 200000))).toContain('200,00 € over this income');
   });
 });
 
@@ -172,7 +138,7 @@ describe('targetsFor', () => {
     expect(targetsFor(plan, 250000)).toEqual({ fixed: 100000, leisure: 75000, savings: 75000, shortfall: 0 });
   });
 
-  it('applies the share when wants is the kept bucket', () => {
+  it('applies the share when leisure is the kept bucket', () => {
     const wantsKept: IncomePlan = { ...plan, kept: 'leisure', keptAmount: pct(20) };
     expect(targetsFor(wantsKept, 250000)).toEqual({ fixed: 100000, leisure: 50000, savings: 100000, shortfall: 0 });
   });
@@ -196,7 +162,7 @@ describe('targetsFor', () => {
   });
 
   it('always adds up exactly to the income (1000,01 €)', () => {
-    const odd: IncomePlan = { incomeCents: 100001, fixedItems: items(50000), kept: 'savings', keptAmount: pct(20) };
+    const odd: IncomePlan = { fixedItems: items(50000), kept: 'savings', keptAmount: pct(20) };
     const targets = targetsFor(odd, 100001);
     expect(targets.fixed + targets.leisure + targets.savings).toBe(100001);
   });
@@ -204,23 +170,6 @@ describe('targetsFor', () => {
   it('adds up exactly for an override with an awkward amount', () => {
     const targets = targetsFor(plan, 233333);
     expect(targets.fixed + targets.leisure + targets.savings).toBe(233333);
-  });
-});
-
-describe('incomeForMonth', () => {
-  it('uses the recurring income when the month has no override', () => {
-    expect(incomeForMonth(plan, {}, '2026-12')).toEqual({ incomeCents: 200000, isOverride: false });
-  });
-
-  it('uses the override only for its month', () => {
-    const overrides = { '2026-11': 250000 };
-    expect(incomeForMonth(plan, overrides, '2026-11')).toEqual({ incomeCents: 250000, isOverride: true });
-    expect(incomeForMonth(plan, overrides, '2026-12')).toEqual({ incomeCents: 200000, isOverride: false });
-  });
-
-  it('returns to the recurring income once the override is removed', () => {
-    const { '2026-11': _removed, ...overrides } = { '2026-11': 250000 };
-    expect(incomeForMonth(plan, overrides, '2026-11').incomeCents).toBe(200000);
   });
 });
 
@@ -233,14 +182,14 @@ describe('monthKey', () => {
 
 describe('plan history', () => {
   const july: PlanVersion = { ...plan, effectiveMonth: '2026-07' };
-  const december: PlanVersion = { ...plan, effectiveMonth: '2026-12', incomeCents: 240000 };
+  const december: PlanVersion = { ...plan, effectiveMonth: '2026-12', keptAmount: pct(40) };
   const versions = [december, july];
 
   it('changing the plan in December keeps July to November on the old plan', () => {
-    expect(planForMonth(versions, '2026-07')?.incomeCents).toBe(200000);
-    expect(planForMonth(versions, '2026-11')?.incomeCents).toBe(200000);
-    expect(planForMonth(versions, '2026-12')?.incomeCents).toBe(240000);
-    expect(planForMonth(versions, '2027-03')?.incomeCents).toBe(240000);
+    expect(planForMonth(versions, '2026-07')?.keptAmount).toEqual(pct(30));
+    expect(planForMonth(versions, '2026-11')?.keptAmount).toEqual(pct(30));
+    expect(planForMonth(versions, '2026-12')?.keptAmount).toEqual(pct(40));
+    expect(planForMonth(versions, '2027-03')?.keptAmount).toEqual(pct(40));
   });
 
   it('has no plan before the first version', () => {

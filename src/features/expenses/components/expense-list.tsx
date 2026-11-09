@@ -51,7 +51,10 @@ export function ExpenseList({ expenses, today, emptyText, onPress }: ExpenseList
               {dayTitle(expense.date, today)}
             </ThemedText>
           </View>
-          <ThemedText type="smallBold" style={expense.bucket === 'savings' ? { color: BUCKET_COLORS.savings } : undefined}>
+          <ThemedText
+            type="smallBold"
+            style={expense.bucket === 'savings' || expense.bucket === 'income' ? { color: BUCKET_COLORS[expense.bucket] } : undefined}>
+            {expense.bucket === 'income' ? '+' : ''}
             {formatEuros(expense.amountCents)}
           </ThemedText>
         </Pressable>
@@ -62,7 +65,7 @@ export function ExpenseList({ expenses, today, emptyText, onPress }: ExpenseList
 
 const styles = StyleSheet.create({
   empty: {
-    paddingBottom: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   row: {
     alignItems: 'center',

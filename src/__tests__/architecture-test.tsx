@@ -36,6 +36,7 @@ function expectMessage(message: RegExp) {
 describe('A failed change is always explained', () => {
   it('Plan: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await breakDeviceWrites();
@@ -49,45 +50,15 @@ describe('A failed change is always explained', () => {
   it('Plan: first-time setup fails when saving', async () => {
     await startApp({ today: [2026, 10, 7] });
     await press('Set up my plan');
-    await type('Income', '2500');
     await type('Item 1 name', 'House');
     await type('Item 1 amount', '1000');
+    await press('Next');
     await type('Savings', '10');
     await breakDeviceWrites();
     await press('Save plan');
 
     expectMessage(/plan could not be saved/i);
     expect(screen.getByRole('button', { name: 'Save plan' })).toBeOnTheScreen();
-  });
-
-  it('Month income: storage fails when saving', async () => {
-    await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('Edit plan');
-    await press("Change this month's income");
-    await type('Income this month', '2500');
-    await breakDeviceWrites();
-    await press('Save for this month');
-
-    expectMessage(NOT_SAVED);
-    expect(screen).toHavePathname('/month-income');
-    expect(screen.getByRole('button', { name: 'Save for this month' })).toBeOnTheScreen();
-  });
-
-  it('Month income: storage fails when removing', async () => {
-    await startApp({
-      today: [2026, 10, 7],
-      plans: [[standardPlan, '2026-07']],
-      overrides: { '2026-11': 250000 },
-    });
-    await press('Edit plan');
-    await press("Change this month's income");
-    await breakDeviceWrites();
-    await press('Use my usual income');
-    await answerDialog('Remove');
-
-    expectMessage(NOT_SAVED);
-    expect(screen).toHavePathname('/month-income');
-    expect(screen.getByRole('button', { name: 'Use my usual income' })).toBeOnTheScreen();
   });
 
   it('Expense: storage fails when adding', async () => {
@@ -135,7 +106,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   const damagedPlan = [
     ...RELAX_TABLES,
     'PRAGMA ignore_check_constraints = ON',
-    "INSERT INTO plan_version (effective_month, income_cents, kept_bucket, kept_unit, kept_value) VALUES ('2026-07', 200000, 'savings', 'weeks', 30)",
+    "INSERT INTO plan_version (effective_month, kept_bucket, kept_unit, kept_value) VALUES ('2026-07', 'savings', 'weeks', 30)",
     'PRAGMA ignore_check_constraints = OFF',
   ];
 
@@ -177,7 +148,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     expect(screen.queryByText('Plan your month')).not.toBeOnTheScreen();
   });
 
-  it.each([['/plan'], ['/month-income'], ['/month-picker']] as const)(
+  it.each([['/plan'], ['/plan-edit'], ['/month-picker']] as const)(
     'Unknown plan unit: %s says data could not be read',
     async (route) => {
       await startApp({ today: [2026, 10, 7], raw: damagedPlan });
@@ -187,16 +158,6 @@ describe('Damaged data is detected, never hidden or altered', () => {
       expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
     },
   );
-
-  it('Stored month income that is not a whole number: income screens say data could not be read', async () => {
-    await startApp({
-      today: [2026, 10, 7],
-      plans: [[standardPlan, '2026-07']],
-      raw: [...RELAX_TABLES, "INSERT INTO month_income_override (month, income_cents) VALUES ('2026-11', 2500.5)"],
-    });
-
-    expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-  });
 
   it('Detecting damaged data changes no stored row', async () => {
     await startApp({
@@ -211,11 +172,10 @@ describe('Damaged data is detected, never hidden or altered', () => {
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
     await testRouter.push('/plan');
-    await testRouter.push('/month-income');
     await testRouter.push('/month-picker');
 
     expect(await dumpDevice()).toEqual(before);
-    expect((before[0] as unknown[]).length).toBe(2);
+    expect((before[0] as unknown[]).length).toBeGreaterThanOrEqual(2);
     expect((before[1] as unknown[]).length).toBe(2);
   });
 

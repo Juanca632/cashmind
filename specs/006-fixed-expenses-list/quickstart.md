@@ -1,5 +1,7 @@
 # Quickstart: Fixed Expenses List
 
+> Written before 007-recorded-income. Income is now recorded per month, Wants is now called Leisure, and fixed expenses and the split are edited on separate screens. See `specs/007-recorded-income/quickstart.md` for the current flow.
+
 ## Automatic checks
 
 ```bash
