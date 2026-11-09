@@ -41,6 +41,7 @@ export function AmountField({ label, bucket, value, onChangeText, suggestion, hi
           ]}>
           <TextInput
             accessibilityLabel={label}
+            accessibilityHint={automatic ? 'Filled in automatically' : undefined}
             keyboardType="number-pad"
             maxLength={4}
             placeholderTextColor={theme.textSecondary}

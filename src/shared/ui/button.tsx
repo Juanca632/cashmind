@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/shared/ui/themed-text';
-import { CARD_SHADOW, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { CARD_SHADOW, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type ButtonProps = {
@@ -13,7 +13,7 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  /** `soft` is for buttons on a white card. */
+  /** `soft` is for a button on a white card. */
   variant?: 'primary' | 'secondary' | 'pill' | 'soft';
 };
 
@@ -31,13 +31,13 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
       style={({ pressed }) => [
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
-        primary && { backgroundColor: Hero.background },
+        primary && { backgroundColor: Accent.background },
         (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
         variant === 'soft' && { backgroundColor: theme.background },
         (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
       ]}>
-      {icon ? <Feather name={icon} size={16} color={primary ? Hero.text : theme.text} /> : null}
-      <ThemedText type="smallBold" style={[styles.label, { color: primary ? Hero.text : theme.text }]}>
+      {icon ? <Feather name={icon} size={16} color={primary ? Accent.text : theme.text} /> : null}
+      <ThemedText type="smallBold" style={[styles.label, { color: primary ? Accent.text : theme.text }]}>
         {label}
       </ThemedText>
     </Pressable>

@@ -5,7 +5,6 @@ import type { IncomePlan } from '@/features/plan/rules';
 import { answerDialog, exactText, partialText, reopenApp, standardPlan, startApp } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
-jest.mock('@/global.css', () => ({}));
 
 afterEach(() => {
   jest.useRealTimers();
@@ -29,12 +28,12 @@ describe('Recurring monthly income', () => {
     await typeFixed('1000');
     await press('Save plan');
 
-    expect(screen.getByText(exactText('0,00 € of 500,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 500'))).toBeOnTheScreen();
 
     // The following month, without an override, uses the same income.
     await reopenApp([2026, 11, 2]);
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 500,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 500'))).toBeOnTheScreen();
     expect(screen.queryByText(/this month only/i)).not.toBeOnTheScreen();
   });
 
@@ -75,7 +74,6 @@ describe('Live euro preview while editing', () => {
   it('Preview updates on change', async () => {
     const tenPercent: IncomePlan = { ...standardPlan, keptAmount: { unit: 'pct', pct: 10 } };
     await startApp({ today: [2026, 10, 7], plans: [[tenPercent, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     expect(screen.getByText('= 200,00 €')).toBeOnTheScreen();
     expect(screen.getByText('= 800,00 €')).toBeOnTheScreen();
@@ -89,29 +87,31 @@ describe('Live euro preview while editing', () => {
     // Nothing was saved: the home screen still shows the old targets.
     await testRouter.back();
     await answerDialog('Discard');
-    await testRouter.back();
-    expect(screen.getByText(exactText('0,00 € of 200,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 800,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 200'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 800'))).toBeOnTheScreen();
   });
 });
 
 describe('Per-month income override', () => {
   it('Month with a different income', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await press('Save for this month');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getAllByText(exactText('0,00 € of 750,00 €'))).toHaveLength(2);
-    expect(screen.getByText(partialText('1 000,00 € · 1 item'))).toBeOnTheScreen();
+    await press('My plan');
+    expect(screen.getByText(/this month only/i)).toBeOnTheScreen();
+    await testRouter.back();
+    expect(screen.getAllByText(exactText('0 / 750'))).toHaveLength(2);
+    expect(screen.getByText(exactText('1 000 €'))).toBeOnTheScreen();
     await press('My plan');
     expect(screen.getByText(/this month only/i)).toBeOnTheScreen();
 
     await reopenApp([2026, 11, 2]);
-    expect(screen.getByText(exactText('0,00 € of 400,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
   });
 
   it('Remove the override', async () => {
@@ -120,16 +120,15 @@ describe('Per-month income override', () => {
       plans: [[standardPlan, '2026-07']],
       overrides: { '2026-11': 250000 },
     });
-    expect(screen.getAllByText(exactText('0,00 € of 750,00 €'))).toHaveLength(2);
+    expect(screen.getAllByText(exactText('0 / 750'))).toHaveLength(2);
 
-    await press('My plan');
-
+    await press('Edit plan');
     await press("Change this month's income");
     await press('Use my usual income');
     await answerDialog('Remove');
 
-    expect(screen.getByText(exactText('0,00 € of 400,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
   });
 });
 
@@ -147,10 +146,10 @@ describe('Current month overview', () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
 
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText('Left to spend')).toBeOnTheScreen();
-    expect(screen.getByText(exactText('400,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(partialText('1 000,00 € · 1 item'))).toBeOnTheScreen();
+    expect(screen.getByText('Spent this month')).toBeOnTheScreen();
+    expect(screen.getByText(partialText('of 1 400 € · 400 € left'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 000 €'))).toBeOnTheScreen();
   });
 });
 
@@ -162,16 +161,15 @@ describe('On-device persistence', () => {
     await typeFixed('1000');
     await type('Savings', '30');
     await press('Save plan');
-    await press('My plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await press('Save for this month');
 
     await reopenApp();
 
-    expect(screen.getAllByText(exactText('0,00 € of 750,00 €'))).toHaveLength(2);
+    expect(screen.getAllByText(exactText('0 / 750'))).toHaveLength(2);
 
-    await press('My plan');
     await press('Edit plan');
     expect(screen.getByLabelText(INCOME)).toHaveDisplayValue('2000,00');
     expect(screen.getByLabelText(FIXED)).toHaveDisplayValue('1000,00');
@@ -197,7 +195,7 @@ describe('Fixed expenses as a list', () => {
 describe('Income below fixed expenses', () => {
   it('Month that does not cover fixed expenses', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '800');
     await press('Save for this month');
@@ -205,17 +203,15 @@ describe('Income below fixed expenses', () => {
     expect(screen.getByText(/short of your fixed expenses/)).toBeOnTheScreen();
     expect(screen.getByText(/This income is 200,00.€ short/)).toBeOnTheScreen();
     // Leisure and savings targets are 0,00 €.
-    expect(screen.getAllByText(exactText('0,00 € of 0,00 €'))).toHaveLength(2);
+    expect(screen.getAllByText(exactText('0 / 0'))).toHaveLength(2);
   });
 });
 
 describe('Plan changes apply from the current month onwards', () => {
   const savePlan = async (income: string) => {
-    await press('My plan');
     await press('Edit plan');
     await type(INCOME, income);
     await press('Save plan');
-    await testRouter.back();
   };
 
   async function monthIncome(shortName: string) {
@@ -234,18 +230,18 @@ describe('Plan changes apply from the current month onwards', () => {
     await savePlan('2400');
 
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 480,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 480'))).toBeOnTheScreen();
 
     for (const month of ['Jul', 'Aug', 'Sep', 'Oct', 'Nov']) {
       await monthIncome(month);
-      expect(screen.getByText(exactText('0,00 € of 400,00 €'))).toBeOnTheScreen();
+      expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
       await press('Back to current month');
     }
-    expect(screen.getByText(exactText('0,00 € of 480,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 480'))).toBeOnTheScreen();
 
     await reopenApp([2027, 1, 3]);
     expect(screen.getByText('February 2027', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 480,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 480'))).toBeOnTheScreen();
   });
 
   it('Saving twice in the same month', async () => {
@@ -253,11 +249,11 @@ describe('Plan changes apply from the current month onwards', () => {
     await savePlan('2400');
     await savePlan('2600');
 
-    expect(screen.getByText(exactText('0,00 € of 780,00 €'))).toBeOnTheScreen();
-    expect(screen.queryByText(exactText('0,00 € of 720,00 €'))).not.toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 780'))).toBeOnTheScreen();
+    expect(screen.queryByText(exactText('0 / 720'))).not.toBeOnTheScreen();
 
     await monthIncome('Oct');
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
   });
 });
 
@@ -274,7 +270,6 @@ describe('Savings and wants as a percentage of the income', () => {
 
   it('Income edited with a percentage bucket', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     expect(screen.getByText('= 600,00 €')).toBeOnTheScreen();
     expect(screen.getByLabelText('Wants')).toHaveDisplayValue('20');
@@ -302,7 +297,6 @@ describe('Last edited of leisure and savings is kept', () => {
 
   it('Switching which bucket is kept', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     expect(screen.getByLabelText('Wants')).toHaveDisplayValue('20');
 
@@ -334,16 +328,15 @@ describe('The plan at a glance', () => {
   it('Split shown on the home screen', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
     await press('My plan');
-    expect(screen.getByText(/^Fixed 50.%$/)).toBeOnTheScreen();
-    expect(screen.getByText(/^Wants 20.%$/)).toBeOnTheScreen();
-    expect(screen.getByText(/^Savings 30.%$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^50.%$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^20.%$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^30.%$/)).toBeOnTheScreen();
   });
 });
 
 describe('50/30/20 as a starting point', () => {
   it('Suggested amounts', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     expect(screen.getByText(/^Suggested 20.%$/)).toBeOnTheScreen();
     expect(screen.getByText(/^Suggested 30.%$/)).toBeOnTheScreen();

@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Bucket } from '@/shared/buckets';
-import { BUCKET_COLORS, Radius } from '@/shared/theme/theme';
+import { BUCKET_COLORS, BUCKET_TINTS, Radius } from '@/shared/theme/theme';
 
 export const BUCKET_ICONS: Record<Bucket, ComponentProps<typeof Feather>['name']> = {
   fixed: 'home',
@@ -20,7 +20,7 @@ export function BucketBadge({ bucket, size = 'regular' }: { bucket: Bucket; size
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.badge, { backgroundColor: `${BUCKET_COLORS[bucket]}24`, height: circle, width: circle }]}>
+      style={[styles.badge, { backgroundColor: BUCKET_TINTS[bucket], height: circle, width: circle }]}>
       <Feather name={BUCKET_ICONS[bucket]} size={icon} color={BUCKET_COLORS[bucket]} />
     </View>
   );

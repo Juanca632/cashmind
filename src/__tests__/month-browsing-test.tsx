@@ -6,7 +6,6 @@ import type { IncomePlan } from '@/features/plan/rules';
 import { answerDialog, exactText, standardPlan, startApp } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
-jest.mock('@/global.css', () => ({}));
 
 const alertSpy = jest.spyOn(Alert, 'alert');
 
@@ -29,15 +28,15 @@ describe('Month picker', () => {
         [threeThousand, '2026-10'],
       ],
     });
-    expect(screen.getByText(exactText('0,00 € of 900,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 900'))).toBeOnTheScreen();
 
     await openPicker();
     expect(screen.getByRole('button', { name: 'Nov' })).toBeSelected();
     await press('Sep');
 
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(exactText('400,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 400'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
   });
 });
 
@@ -73,7 +72,7 @@ describe('Months without a plan', () => {
   });
 });
 
-describe('Past months are read-only', () => {
+describe('The plan of a past month cannot be changed', () => {
   it('Viewing a past month', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
     await openPicker();
@@ -82,7 +81,6 @@ describe('Past months are read-only', () => {
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: "Change this month's income" })).not.toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: 'Add expense' })).not.toBeOnTheScreen();
 
     await press('Back to current month');
 
@@ -91,7 +89,7 @@ describe('Past months are read-only', () => {
     expect(screen.queryByRole('button', { name: 'Back to current month' })).not.toBeOnTheScreen();
   });
 
-  it('Previous month during the first days', async () => {
+  it('Expenses stay editable', async () => {
     await startApp({
       today: [2026, 11, 2],
       plans: [[standardPlan, '2026-07']],

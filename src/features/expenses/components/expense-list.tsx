@@ -1,64 +1,75 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { BUCKET_LABELS } from '@/shared/buckets';
-import { ThemedText } from '@/shared/ui/themed-text';
-import { ThemedView } from '@/shared/ui/themed-view';
-import { BucketBadge } from '@/shared/ui/bucket-badge';
-import { CARD_SHADOW, Radius, Spacing } from '@/shared/theme/theme';
 import { type Expense } from '@/features/expenses/rules';
-import { formatDay } from '@/shared/days';
+import { BUCKET_LABELS } from '@/shared/buckets';
+import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
+import { BUCKET_COLORS, Spacing } from '@/shared/theme/theme';
+import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { ThemedText } from '@/shared/ui/themed-text';
 
 type ExpenseListProps = {
   expenses: Expense[];
-  /** When given, tapping an expense calls it (only for editable months). */
-  onPress?: (expense: Expense) => void;
+  /** Today, to name the most recent days. */
+  today: Date;
+  /** Shown when there is nothing to list. */
+  emptyText: string;
+  /** Called when an expense is tapped. */
+  onPress: (expense: Expense) => void;
 };
 
-export function ExpenseList({ expenses, onPress }: ExpenseListProps) {
+function dayTitle(day: string, today: Date): string {
+  const todayKey = dayKey(today);
+  if (day === todayKey) return 'Today';
+  if (day === addDays(todayKey, -1)) return 'Yesterday';
+  return formatDay(day);
+}
+
+export function ExpenseList({ expenses, today, emptyText, onPress }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
-      <ThemedView type="backgroundElement" style={styles.card}>
-        <ThemedText themeColor="textSecondary">No expenses recorded this month.</ThemedText>
-      </ThemedView>
+      <ThemedText themeColor="textSecondary" style={styles.empty}>
+        {emptyText}
+      </ThemedText>
     );
   }
 
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <View>
       {expenses.map((expense) => (
         <Pressable
           key={expense.id}
-          accessibilityRole={onPress ? 'button' : undefined}
-          disabled={!onPress}
-          onPress={() => onPress?.(expense)}
+          accessibilityRole="button"
+          onPress={() => onPress(expense)}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
           <BucketBadge bucket={expense.bucket} />
           <View style={styles.text}>
-            <ThemedText numberOfLines={1}>{expense.note || BUCKET_LABELS[expense.bucket]}</ThemedText>
+            <ThemedText type="smallBold" numberOfLines={1}>
+              {expense.note || BUCKET_LABELS[expense.bucket]}
+            </ThemedText>
             <ThemedText type="caption" themeColor="textSecondary">
-              {formatDay(expense.date)} · {BUCKET_LABELS[expense.bucket]}
+              {dayTitle(expense.date, today)}
             </ThemedText>
           </View>
-          <ThemedText type="smallBold">{formatEuros(expense.amountCents)}</ThemedText>
+          <ThemedText type="smallBold" style={expense.bucket === 'savings' ? { color: BUCKET_COLORS.savings } : undefined}>
+            {formatEuros(expense.amountCents)}
+          </ThemedText>
         </Pressable>
       ))}
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.card,
-    boxShadow: CARD_SHADOW,
-    gap: Spacing.three,
-    padding: Spacing.three,
+  empty: {
+    paddingBottom: Spacing.three,
   },
   row: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.three,
     justifyContent: 'space-between',
+    minHeight: 62,
   },
   text: {
     flex: 1,

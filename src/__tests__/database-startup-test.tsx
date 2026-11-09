@@ -6,7 +6,6 @@ jest.mock(
   "expo-sqlite",
   () => jest.requireActual("../test-support/fake-sqlite").expoSqliteMock,
 );
-jest.mock("@/global.css", () => ({}));
 
 const FAILED = /could not update your data.*data is safe/i;
 const NEWER = /newer version/i;

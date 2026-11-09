@@ -1,10 +1,10 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { FontFamily, Fonts, ThemeColor } from '@/shared/theme/theme';
+import { FontFamily, ThemeColor } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'display' | 'heading' | 'caption' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?: 'default' | 'display' | 'heading' | 'caption' | 'small' | 'smallBold' | 'subtitle';
   themeColor?: ThemeColor;
 };
 
@@ -48,28 +48,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontFamily: FontFamily.medium,
   },
-  title: {
-    fontSize: 48,
-    fontFamily: FontFamily.semiBold,
-    lineHeight: 52,
-  },
   subtitle: {
     fontSize: 32,
     lineHeight: 44,
     fontFamily: FontFamily.semiBold,
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 14,
-  },
-  linkPrimary: {
-    lineHeight: 30,
-    fontSize: 14,
-    color: '#3c87f7',
-  },
-  code: {
-    fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
-    fontSize: 12,
   },
 });

@@ -110,6 +110,6 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: Spacing.three,
-    padding: Spacing.four,
+    padding: Spacing.three,
   },
 });

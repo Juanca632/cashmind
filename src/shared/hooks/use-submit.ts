@@ -18,15 +18,17 @@ export function useSubmit(beforeLeave?: () => void) {
     try {
       const result = await write();
       if (result.ok) {
+        // The form stays disabled while it leaves, so a second tap cannot save twice.
         beforeLeave?.();
-        router.back();
+        if (router.canGoBack()) router.back();
+        else router.replace('/');
+        return;
       }
-      else Alert.alert('Something went wrong', result.message);
+      Alert.alert('Something went wrong', result.message);
     } catch {
       Alert.alert('Something went wrong', UNEXPECTED);
-    } finally {
-      setSubmitting(false);
     }
+    setSubmitting(false);
   }
 
   return { submit, submitting };

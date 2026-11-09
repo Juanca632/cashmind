@@ -15,7 +15,7 @@ import {
 } from '@/shared/buckets';
 import { AMOUNT_TOO_LARGE, MAX_CENTS, formatEuros, isValidCents } from '@/shared/money';
 
-/** What the user typed for a bucket: euros (in cents) or a whole percentage of the income. */
+/** A kept share: a whole percentage of the income. Euros remain only in plans saved by older versions. */
 export type Amount = { unit: 'eur'; cents: number } | { unit: 'pct'; pct: number };
 
 export type FixedItem = { name: string; amountCents: number };

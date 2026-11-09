@@ -12,7 +12,6 @@ import {
 import { RELAX_TABLES } from '../test-support/damaged-data';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
-jest.mock('@/global.css', () => ({}));
 
 const alertSpy = jest.spyOn(Alert, 'alert');
 
@@ -37,7 +36,6 @@ function expectMessage(message: RegExp) {
 describe('A failed change is always explained', () => {
   it('Plan: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await breakDeviceWrites();
@@ -64,7 +62,7 @@ describe('A failed change is always explained', () => {
 
   it('Month income: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
-    await press('My plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await breakDeviceWrites();
@@ -81,7 +79,7 @@ describe('A failed change is always explained', () => {
       plans: [[standardPlan, '2026-07']],
       overrides: { '2026-11': 250000 },
     });
-    await press('My plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await breakDeviceWrites();
     await press('Use my usual income');
@@ -126,20 +124,6 @@ describe('A failed change is always explained', () => {
     expectMessage(NOT_SAVED);
     expect(screen).toHavePathname('/expense');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
-  });
-
-  it('Expense: saving after the editable period closed while the form was open is rejected with a message', async () => {
-    await startApp({ today: [2026, 10, 30], plans: [[standardPlan, '2026-07']] });
-    await press('Add expense');
-    await type('Amount', '12,50');
-    // The app stays open past the grace period: 6 December.
-    jest.setSystemTime(new Date(2026, 11, 6, 12));
-    await press('Add expense');
-    expectMessage(/pick a date/i);
-
-    expect(screen).toHavePathname('/expense');
-    expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
-    expect(await dumpDevice()).toEqual([[], [expect.anything()], [expect.anything()], []]);
   });
 });
 

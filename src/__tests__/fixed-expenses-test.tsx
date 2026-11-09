@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { AppState } from 'react-native';
 import { act, fireEvent, screen, testRouter } from 'expo-router/testing-library';
 
 import type { IncomePlan } from '@/features/plan/rules';
@@ -6,7 +7,6 @@ import type { IncomePlan } from '@/features/plan/rules';
 import { answerDialog, exactText, partialText, startApp } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
-jest.mock('@/global.css', () => ({}));
 
 afterEach(() => {
   jest.useRealTimers();
@@ -57,7 +57,6 @@ describe('List what I must pay every month', () => {
 
   it('Change an item', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Item 1 amount', '750');
 
@@ -66,7 +65,6 @@ describe('List what I must pay every month', () => {
 
   it('Remove an item', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await press('Remove item 3');
     await answerDialog('Remove');
@@ -97,7 +95,7 @@ describe('List what I must pay every month', () => {
     await press('Save plan');
 
     expect(screen.getByText('Fixed')).toBeOnTheScreen();
-    expect(screen.getByText(partialText('0,00 € · 0 items'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 €'))).toBeOnTheScreen();
   });
 });
 
@@ -112,8 +110,7 @@ describe('Split only what is left', () => {
   it('What is left', async () => {
     await openWithList();
 
-    expect(screen.getByText('Left to split')).toBeOnTheScreen();
-    expect(screen.getByText(exactText('970,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(partialText('970,00 € left after fixed expenses'))).toBeOnTheScreen();
   });
 
   it('Split what is left', async () => {
@@ -160,79 +157,74 @@ describe('Split only what is left', () => {
 });
 
 describe('See the plan apart from changing it', () => {
-  it('The plan shows each part in its own section', async () => {
+  it('The plan is shown with nothing to change', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
     await press('My plan');
 
-    expect(screen.getByText('Fixed expenses')).toBeOnTheScreen();
-    expect(screen.getAllByText(exactText('1 030,00 €'))).toHaveLength(2);
     expect(screen.getByText('Monthly income')).toBeOnTheScreen();
-    expect(screen.getByText('How it is split')).toBeOnTheScreen();
+    expect(screen.getByText(exactText('2 000 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
+    expect(screen.getByText(/^51,5.%$/)).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Edit plan' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: "Change this month's income" })).not.toBeOnTheScreen();
     expect(screen.queryByLabelText('Item 1 name')).not.toBeOnTheScreen();
   });
 
   it('Changing it happens on another screen', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
 
     expect(screen).toHavePathname('/plan-edit');
     expect(screen.getByLabelText('Item 1 name')).toHaveDisplayValue('House');
   });
 
-  it('Saving goes back to the plan', async () => {
+  it('Saving goes back to Home', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await press('Save plan');
 
-    expect(screen).toHavePathname('/plan');
-    expect(screen.getByText(exactText('2 500,00 €'))).toBeOnTheScreen();
+    expect(screen).toHavePathname('/');
   });
 });
 
 describe('Fixed expenses do not follow the income', () => {
   it('Higher income', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await press('Save plan');
-    await testRouter.back();
 
-    expect(screen.getByText(partialText('1 030,00 € · 4 items'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 500,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 970,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 500'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 970'))).toBeOnTheScreen();
   });
 
   it('One different month', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']], overrides: { '2026-11': 300000 } });
 
-    expect(screen.getByText(partialText('1 030,00 € · 4 items'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 600,00 €'))).toBeOnTheScreen();
-    expect(screen.getByText(exactText('0,00 € of 1 370,00 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 600'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('0 / 1 370'))).toBeOnTheScreen();
   });
 
   it('Changes apply onwards', async () => {
     await startApp({ today: [2026, 11, 8], plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Item 1 amount', '750');
     await press('Save plan');
-    await testRouter.back();
-    expect(screen.getByText(partialText('1 080,00 € · 4 items'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 080 €'))).toBeOnTheScreen();
 
     await press(/^Month:/);
     await press('Nov');
-    expect(screen.getByText(partialText('1 030,00 € · 4 items'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
   });
 
   it('Next month repeats', async () => {
     await startApp({ today: [2026, 11, 8], plans: [[fullPlan, '2026-11']] });
 
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByText(partialText('1 030,00 € · 4 items'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
   });
 });
 
@@ -240,7 +232,7 @@ describe('Fixed expenses count by themselves', () => {
   it('Nothing to record', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
 
-    expect(screen.getByText(partialText('1 030,00 € · 4 items'))).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030 €'))).toBeOnTheScreen();
     expect(screen.queryByText(exactText('1 030,00 € left'))).not.toBeOnTheScreen();
     expect(screen.queryByText(/over$/)).not.toBeOnTheScreen();
   });
@@ -268,11 +260,26 @@ describe('Fixed expenses count by themselves', () => {
     expect(screen.getByText(exactText('700,00 €'))).toBeOnTheScreen();
   });
 
-  it('Only two choices', async () => {
+  it('Saving is not spending', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
     await press('Add expense');
+    expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
 
-    expect(screen.getByRole('radio', { name: 'Wants' })).toBeOnTheScreen();
+    await testRouter.back();
+    await press('Add savings');
+    expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Add to savings' })).toBeOnTheScreen();
+  });
+
+  it('An existing entry can be moved between parts', async () => {
+    await startApp({
+      today: TODAY,
+      plans: [[fullPlan, '2026-07']],
+      expenses: [{ date: '2026-11-02', bucket: 'leisure', amountCents: 1500, note: 'Dinner' }],
+    });
+    await fireEvent.press(screen.getByText('Dinner'));
+
     expect(screen.getByRole('radio', { name: 'Savings' })).toBeOnTheScreen();
     expect(screen.queryByRole('radio', { name: 'Fixed' })).not.toBeOnTheScreen();
   });
@@ -299,7 +306,6 @@ describe('Fixed expenses count by themselves', () => {
 describe('Nothing is lost by a mistaken tap', () => {
   it('Removing an item asks first and can be cancelled', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await press('Remove item 3');
 
@@ -321,7 +327,6 @@ describe('Nothing is lost by a mistaken tap', () => {
 
   it('Leaving with changes asks first and can keep editing', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await act(async () => router.back());
@@ -335,35 +340,33 @@ describe('Nothing is lost by a mistaken tap', () => {
 
   it('Discarding leaves without saving', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await act(async () => router.back());
     await answerDialog('Discard');
 
-    expect(screen).toHavePathname('/plan');
-    expect(screen.getByText(exactText('2 000,00 €'))).toBeOnTheScreen();
+    expect(screen).toHavePathname('/');
+    await press('My plan');
+    expect(screen.getByText(exactText('2 000 €'))).toBeOnTheScreen();
   });
 
   it('Leaving without changes does not ask', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await act(async () => router.back());
 
     expect(screen.queryByTestId('confirm-dialog')).not.toBeOnTheScreen();
-    expect(screen).toHavePathname('/plan');
+    expect(screen).toHavePathname('/');
   });
 
   it('Saving does not ask', async () => {
     await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
-    await press('My plan');
     await press('Edit plan');
     await type('Income', '2500');
     await press('Save plan');
 
     expect(screen.queryByTestId('confirm-dialog')).not.toBeOnTheScreen();
-    expect(screen).toHavePathname('/plan');
+    expect(screen).toHavePathname('/');
   });
 
   it('Deleting an expense can be cancelled', async () => {
@@ -378,5 +381,132 @@ describe('Nothing is lost by a mistaken tap', () => {
 
     expect(screen).toHavePathname('/expense');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
+  });
+});
+
+describe('The app says what to do next', () => {
+  const withExpense = {
+    today: TODAY,
+    plans: [[fullPlan, '2026-07']] as [IncomePlan, string][],
+    expenses: [{ date: '2026-11-02', bucket: 'leisure', amountCents: 1500, note: 'Dinner' }] as const,
+  };
+
+  it('An empty month explains what to record', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
+
+    expect(screen.getByText(/Fixed expenses are already counted/)).toBeOnTheScreen();
+  });
+
+  it('An empty part says so', async () => {
+    await startApp({ ...withExpense, expenses: [...withExpense.expenses] });
+    await press('Savings');
+
+    expect(screen.getByText('Nothing in Savings this month.')).toBeOnTheScreen();
+  });
+
+  it('Edit plan is one tap from home', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
+    await press('Edit plan');
+
+    expect(screen).toHavePathname('/plan-edit');
+  });
+
+  it('Spending and saving are separate actions', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
+
+    expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Add savings' })).toBeOnTheScreen();
+  });
+
+  it('Past months have no way to edit the plan', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
+    await press(/^Month:/);
+    await press('Sep');
+
+    expect(screen.queryByRole('button', { name: 'Edit plan' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
+  });
+
+  it('Activity says the day of each entry', async () => {
+    await startApp({
+      today: TODAY,
+      plans: [[fullPlan, '2026-07']],
+      expenses: [
+        { date: '2026-11-07', bucket: 'leisure', amountCents: 1500, note: 'Dinner' },
+        { date: '2026-11-06', bucket: 'leisure', amountCents: 900, note: 'Lunch' },
+      ],
+    });
+
+    expect(screen.getByText('Today')).toBeOnTheScreen();
+    expect(screen.getByText('Yesterday')).toBeOnTheScreen();
+  });
+
+  it('Home shows the month in brief', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']], overrides: { '2026-11': 300000 } });
+
+    expect(screen.getByText('Spent this month')).toBeOnTheScreen();
+    expect(screen.getByText(exactText('1 030'))).toBeOnTheScreen();
+    expect(screen.getByText(partialText('of 2 400 € · 1 370 € left'))).toBeOnTheScreen();
+  });
+
+  it('Saving does not count as spending', async () => {
+    await startApp({
+      today: TODAY,
+      plans: [[fullPlan, '2026-07']],
+      expenses: [{ date: '2026-11-02', bucket: 'savings', amountCents: 20000, note: 'Saved' }],
+    });
+
+    expect(screen.getByText(exactText('1 030'))).toBeOnTheScreen();
+  });
+
+  it('The shortfall is explained when the income does not cover the fixed expenses', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']], overrides: { '2026-11': 80000 } });
+
+    expect(screen.getByText(/short of your fixed expenses/)).toBeOnTheScreen();
+  });
+
+  it('Save says why it is off', async () => {
+    await startApp({ today: TODAY });
+    await press('Set up my plan');
+
+    expect(screen.getByText('Enter your income to save.')).toBeOnTheScreen();
+    expectSaveDisabled();
+  });
+
+  it('The editor says when this month has its own income', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']], overrides: { '2026-11': 300000 } });
+    await press('Edit plan');
+
+    expect(screen.getByText(partialText('This month stays at 3 000,00 €'))).toBeOnTheScreen();
+  });
+
+  it('Saving a month income returns to Home', async () => {
+    await startApp({ today: TODAY, plans: [[fullPlan, '2026-07']] });
+    await press('Edit plan');
+    await press("Change this month's income");
+    await type('Income this month', '3000');
+    await press('Save for this month');
+
+    expect(screen).toHavePathname('/');
+    await press('My plan');
+    expect(screen.getByText(/This month only/)).toBeOnTheScreen();
+  });
+});
+
+describe('A new month is never missed', () => {
+  it('Returning to the app in a new month shows that month', async () => {
+    const listeners: ((state: string) => void)[] = [];
+    const spy = jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
+      listeners.push(listener as (state: string) => void);
+      return { remove: jest.fn() } as never;
+    });
+    await startApp({ today: [2026, 10, 30], plans: [[fullPlan, '2026-07']] });
+    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+
+    jest.setSystemTime(new Date(2026, 11, 1, 12));
+    await act(async () => listeners.forEach((listener) => listener('active')));
+
+    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    spy.mockRestore();
   });
 });

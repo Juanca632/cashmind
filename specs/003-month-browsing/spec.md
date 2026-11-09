@@ -46,14 +46,14 @@ Lets the user pick any past or current month from a calendar and see how that mo
 
 ---
 
-### User Story 4 - Past months are read-only
+### User Story 4 - The plan of a past month cannot be changed
 
 **Implements**: FR-004
 
 **Acceptance Scenarios**:
 
-1. *Viewing a past month*: **When** the user is viewing September 2026 and the current month is November 2026, **Then** no edit actions are shown, **And** a "back to current month" action returns the home screen to November 2026
-2. *Previous month during the first days*: **Given** today is 2 December 2026, **When** the user views November 2026, **Then** the plan and income cannot be edited, but expenses can be added, edited or deleted
+1. *Viewing a past month*: **When** the user is viewing September 2026 and the current month is November 2026, **Then** the plan and income cannot be edited, **And** a "back to current month" action returns the home screen to November 2026
+2. *Expenses stay editable*: **Given** today is 6 December 2026, **When** the user views November 2026, **Then** expenses can be added, edited or deleted
 
 ---
 
@@ -64,7 +64,7 @@ Lets the user pick any past or current month from a calendar and see how that mo
 - **FR-001** (Month picker): The system SHALL let the user open a month picker from the home screen showing a year with buttons to go to the previous and next year, and the twelve months of that year. Selecting a month SHALL show that month on the home screen. The current month SHALL be highlighted.
 - **FR-002** (No future months): The system SHALL NOT let the user select a month after the current month, and SHALL NOT let the user go to a year after the current year.
 - **FR-003** (Months without a plan): The system SHALL let the user go back to the year of the first saved plan and no earlier. A month before the first saved plan SHALL show that there was no plan for that month.
-- **FR-004** (Past months are read-only): The system SHALL show past months without any option to edit the plan or the month's income, and SHALL offer a way to go back to the current month. Expense changes in past months follow the expenses editable period: only the previous month during the first 5 days of the current month.
+- **FR-004** (Past months keep their plan): The system SHALL show past months without any option to edit the plan or the month's income, and SHALL offer a way to go back to the current month. Expenses of past months can be changed (see 001 FR-004).
 
 ## Success Criteria *(mandatory)*
 

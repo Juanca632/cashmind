@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
@@ -7,6 +8,7 @@ import { FixedItemsEditor } from '@/features/plan/components/fixed-items-editor'
 import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
 import { draftsToItems, itemDrafts, keptPercentText, parsePercentField, shareText } from '@/features/plan/plan-form';
 import {
+  ITEM_INVALID,
   fixedTotal,
   incomeErrorMessage,
   isValidMonthIncome,
@@ -43,10 +45,24 @@ export default function PlanEditScreen() {
   if (state.status === 'error') return <DataError />;
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
   const currentMonth = monthKey(new Date());
-  return <PlanForm initialPlan={planForMonth(state.data.versions, currentMonth)} currentMonth={currentMonth} />;
+  return (
+    <PlanForm
+      initialPlan={planForMonth(state.data.versions, currentMonth)}
+      currentMonth={currentMonth}
+      monthIncomeCents={state.data.overrides[currentMonth]}
+    />
+  );
 }
 
-function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | null; currentMonth: string }) {
+function PlanForm({
+  initialPlan,
+  currentMonth,
+  monthIncomeCents,
+}: {
+  initialPlan: IncomePlan | null;
+  currentMonth: string;
+  monthIncomeCents: number | undefined;
+}) {
   const db = useSQLiteContext();
   const [drafts, setDrafts] = useState(() => itemDrafts(initialPlan?.fixedItems ?? []));
   const [incomeText, setIncomeText] = useState(initialPlan ? centsToInput(initialPlan.incomeCents) : '');
@@ -73,6 +89,11 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
   const targets = errors.length === 0 ? planTargets(plan) : null;
   const total = fixedTotal(plan.fixedItems);
   const suggested = validIncome ? suggestedSplit(validIncome, total) : null;
+  // Says why Save is off when no section already explains it.
+  let saveHint: string | null = null;
+  if (errors.includes('item-invalid')) saveHint = ITEM_INVALID;
+  else if (incomeText.trim() === '') saveHint = 'Enter your income to save.';
+  else if (keptText.trim() === '') saveHint = 'Enter a percentage to save.';
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
@@ -97,9 +118,19 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
             />
             {incomeText.trim() !== '' && !validIncome ? <ErrorText>{incomeErrorMessage(incomeCents ?? 0)}</ErrorText> : null}
             {errors.includes('fixed-over-income') ? <ErrorText>{planErrorMessage('fixed-over-income', plan)}</ErrorText> : null}
+            {monthIncomeCents !== undefined ? (
+              <ThemedText type="caption" themeColor="textSecondary">
+                This month stays at {formatEuros(monthIncomeCents)}
+              </ThemedText>
+            ) : null}
           </SectionCard>
 
-          <SectionCard title="Left to split" value={validIncome && total <= validIncome ? formatEuros(validIncome - total) : undefined}>
+          <SectionCard title="Savings and wants">
+            <ThemedText type="caption" themeColor="textSecondary">
+              {validIncome && total <= validIncome
+                ? `${formatEuros(validIncome - total)} left after fixed expenses · % of your income`
+                : '% of your income'}
+            </ThemedText>
             {targets ? <PlanBar targets={targets} /> : null}
             {(['savings', 'leisure'] as const).map((bucket) => (
               <AmountField
@@ -123,6 +154,12 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
             {errors.includes('over-income') ? <ErrorText>{planErrorMessage('over-income', plan)}</ErrorText> : null}
           </SectionCard>
 
+          {saveHint ? (
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.centered}>
+              {saveHint}
+            </ThemedText>
+          ) : null}
+
           <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
             Applies from {formatMonth(currentMonth)} onwards
           </ThemedText>
@@ -132,6 +169,13 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
             disabled={errors.length > 0 || submitting}
             onPress={() => submit(() => savePlan(db, plan, new Date()))}
           />
+          {initialPlan ? (
+            <Button
+              label="Change this month's income"
+              variant="secondary"
+              onPress={() => router.replace('/month-income')}
+            />
+          ) : null}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>

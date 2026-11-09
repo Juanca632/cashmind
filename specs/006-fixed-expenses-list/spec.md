@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Before splitting money, the user first needs to say what they must pay every month. A simple list of named amounts (House, Transport, Supermarket...) is the base of the plan; it stays the same every month until the user changes it, even when the income goes up."
 
@@ -100,17 +100,17 @@ Whoever already has a plan keeps it after updating, and can split their total in
 
 ### User Story 6 - See the plan apart from changing it (Priority: P2)
 
-The plan is shown as it stands, one section per part. Changing it happens on another screen.
+The plan is shown as a ring with its three parts, with nothing to change. Editing happens from Home.
 
 **Why this priority**: The developer found one screen with everything hard to read.
 
-**Independent Test**: Open the plan and confirm it shows sections with no fields, then open the editor.
+**Independent Test**: Open the plan and confirm it has no fields or edit actions, then open the editor from Home.
 
 **Acceptance Scenarios**:
 
-1. *The plan shows each part in its own section*: **When** the user opens the plan, **Then** it shows the fixed total, the monthly income and how the usual income is split, each in its own section, with nothing to type
-2. *Changing it happens on another screen*: **When** the user taps Edit plan, **Then** a separate screen opens with the same three sections to edit
-3. *Saving goes back to the plan*: **When** the user saves, **Then** they return to the plan with the new values
+1. *The plan is shown with nothing to change*: **When** the user opens the plan, **Then** it shows the income and each part with its share and amount, and offers no way to change it
+2. *Changing it happens on another screen*: **When** the user taps Edit plan on Home, **Then** a separate screen opens to edit the plan
+3. *Saving goes back to Home*: **When** the user saves, **Then** they return to Home
 
 ---
 
@@ -137,16 +137,20 @@ The plan is shown as it stands, one section per part. Changing it happens on ano
 - **FR-007**: The list MUST be saved together with the plan: it applies from the current month onwards until changed, every past month MUST keep the list that applied to it, and saving again in the same month MUST replace that month's list.
 - **FR-008**: Each month's fixed part MUST count as spent in full without the user recording anything, and MUST show neither an amount left nor an amount over.
 - **FR-009**: Tapping the fixed part on the home screen MUST show the items of the list that applies to the selected month.
-- **FR-010**: New expenses MUST be recorded only as wants or savings. An expense already recorded as fixed MUST be kept, stay listed in its month and keep its part when edited.
-- **FR-011**: The three parts MUST be shown as Fixed, Wants and Savings. The home screen shows wants as what is left to spend.
+- **FR-010**: New expenses MUST be recorded only as wants or savings, each from its own button. An expense already recorded as fixed MUST be kept, stay listed in its month and keep its part when edited.
+- **FR-011**: The three parts MUST be shown as Fixed, Wants and Savings.
 - **FR-012**: Suggestions MUST be limited to savings (20 % of the income, never above what is left) and wants (the rest of what is left), and MUST NOT change any value.
 - **FR-013**: When the app updates, each saved plan's fixed expenses MUST become one item named "Fixed expenses" with the same euro amount, a percentage being converted using that plan's income; a plan with no fixed expenses MUST get an empty list. No plan or expense MUST be lost.
 - **FR-014**: The list MUST be stored only on the device, and the system MUST say some data could not be read instead of showing figures when a stored item has the wrong format, without changing it.
 - **FR-015**: This feature MUST update the affected baseline specs, `001-expenses` and `002-income-plan`, in the same change.
 - **FR-016**: Savings and wants MUST be entered only as whole percentages of the total income, each showing its euro amount next to it. Entering them in euros MUST no longer be possible. Whichever of the two the user edits last is kept and the other shows the rest, so the three parts always add up to 100 % of the income; the part filled in automatically may show a decimal.
 - **FR-017**: Every month MUST use the same rule: the kept part is its percentage of that month's income, never above what is left after the fixed expenses, and the other part takes the rest. This also applies to months whose income was set individually, including months already saved. A part saved in euros by an older version keeps its euro amount until the plan is saved again.
-- **FR-018**: The system MUST show the current plan on a read-only screen with one section each for the fixed total, the monthly income and the split of the usual income, and MUST let the user change it on a separate screen with the same sections. Changing one month's income MUST be reachable from the income section.
+- **FR-018**: The system MUST show the current plan on a read-only screen, as a ring with the income and each part's share and amount, and MUST let the user change it on a separate screen reached from Home. Changing one month's income is reached from the editor until its place is decided.
 - **FR-019**: The system MUST ask for confirmation, with one shared dialog, before deleting an expense, removing a filled fixed expense from the list, removing a month's own income, or leaving a form with unsaved changes. Cancelling MUST change nothing.
+- **FR-020**: The app MUST say what to do next where nothing else does: an empty month explains what to record, an empty part says so, and the plan editor says why Save is off and when this month keeps its own income. Saving a month's income returns to Home.
+- **FR-021**: The home screen MUST show the month in brief: the total spent (fixed expenses plus wants, never savings) against what the plan allows, and how much is left or over.
+- **FR-022**: Expenses of any month with a plan MUST be editable; the five-day editable period is removed.
+- **FR-023**: The home screen MUST offer spending, saving and, in the current month, editing the plan as one group of actions, and MUST show the day of each entry in the list.
 
 ### Key Entities
 

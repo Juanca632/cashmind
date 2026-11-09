@@ -1,36 +1,33 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useState, type ComponentProps } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExpenseList } from '@/features/expenses/components/expense-list';
 import { useMonthExpenses } from '@/features/expenses/hooks/use-month-expenses';
-import { isExpenseMonthEditable, totalsByBucket } from '@/features/expenses/rules';
+import { totalsByBucket } from '@/features/expenses/rules';
 import { FixedItemsList } from '@/features/plan/components/fixed-items-list';
 import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
 import { incomeForMonth, planForMonth, targetsFor } from '@/features/plan/rules';
 import { BUCKET_LABELS, bucketProgress, type Bucket } from '@/shared/buckets';
-import { formatEuros } from '@/shared/money';
+import { IS_DEMO } from '@/shared/demo';
+import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { BUCKET_COLORS, BUCKET_COLORS_ON_HERO, CARD_SHADOW, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
-import { useTheme } from '@/shared/theme/use-theme';
-import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { Accent, BUCKET_COLORS, BUCKET_TINTS, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { useToday } from '@/shared/hooks/use-today';
+import { BUCKET_ICONS } from '@/shared/ui/bucket-badge';
 import { ShortfallWarning } from '@/shared/ui/bucket-rows';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
-/** The over-budget color, light enough to read on the Hero background. */
-const OVER_ON_HERO = '#FF9A8C';
-
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
   const state = useIncomePlan();
   const params = useLocalSearchParams<{ month?: string }>();
-  const today = new Date();
+  const today = useToday();
   const currentMonth = monthKey(today);
   // Ignore invalid or future months in the URL and fall back to the current month.
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
@@ -57,7 +54,6 @@ export default function HomeScreen() {
   }
 
   const isPast = isPastMonth(month, currentMonth);
-  const canEditExpenses = isExpenseMonthEditable(month, today);
   const plan = planForMonth(versions, month);
   const income = plan ? incomeForMonth(plan, overrides, month) : null;
   const targets = plan && income ? targetsFor(plan, income.incomeCents) : null;
@@ -71,66 +67,79 @@ export default function HomeScreen() {
           styles.content,
           { paddingBottom: Spacing.five + insets.bottom, paddingTop: Spacing.two + insets.top },
         ]}>
-        <View style={styles.topRow}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Month: ${formatMonth(month)}`}
-            accessibilityHint="Opens the month picker"
-            onPress={() => router.push({ pathname: '/month-picker', params: { month } })}
-            style={({ pressed }) => [styles.month, pressed && styles.pressed]}>
-            <ThemedText type="smallBold">{formatMonth(month)}</ThemedText>
-            <Feather name="chevron-down" size={16} color={theme.text} />
-          </Pressable>
-          {isPast ? null : <Button label="My plan" variant="pill" onPress={() => router.push('/plan')} />}
+        <View style={styles.monthCard}>
+          <View style={styles.topRow}>
+            <CardPill
+              label={formatMonth(month)}
+              accessibilityLabel={`Month: ${formatMonth(month)}`}
+              onPress={() => router.push({ pathname: '/month-picker', params: { month } })}
+            />
+            {IS_DEMO ? (
+              <ThemedText type="caption" style={{ color: Hero.label }}>
+                Demo data
+              </ThemedText>
+            ) : null}
+            {isPast ? null : <CardPill label="My plan" onPress={() => router.push('/plan')} />}
+          </View>
+
+          {targets && plan ? (
+            <>
+              <MonthBrief spent={targets.fixed + spent.leisure} budget={targets.fixed + targets.leisure} />
+              <View style={styles.actions}>
+                <RoundAction
+                  icon="plus"
+                  label="Spend"
+                  accessibilityLabel="Add expense"
+                  onPress={() => router.push({ pathname: '/expense', params: { month } })}
+                />
+                <RoundAction
+                  icon="trending-up"
+                  label="Save"
+                  accessibilityLabel="Add savings"
+                  onPress={() => router.push({ pathname: '/expense', params: { month, bucket: 'savings' } })}
+                />
+                {isPast ? null : (
+                  <RoundAction icon="edit-2" label="Edit plan" accessibilityLabel="Edit plan" onPress={() => router.push('/plan-edit')} />
+                )}
+              </View>
+            </>
+          ) : (
+            <ThemedText style={[styles.centeredText, styles.noPlan, { color: Hero.label }]}>
+              There was no plan in {formatMonth(month)}.
+            </ThemedText>
+          )}
         </View>
 
         {targets && plan ? (
           <>
-            <LeftToSpendCard
-              spent={spent.leisure}
-              target={targets.leisure}
-              onPress={() => toggle('leisure')}
-            />
             <ShortfallWarning shortfall={targets.shortfall} />
-            <View style={styles.parts}>
-              <PartRow bucket="savings" selected={selected} onSelect={toggle}>
-                <SavingsProgress saved={spent.savings} target={targets.savings} />
-              </PartRow>
-              <PartRow bucket="fixed" selected={selected} onSelect={toggle}>
-                <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                  {formatEuros(targets.fixed)} · {plan.fixedItems.length === 1 ? '1 item' : `${plan.fixedItems.length} items`}
-                </ThemedText>
-              </PartRow>
+            <View style={styles.tiles}>
+              <PartTile
+                bucket="leisure"
+                value={`${amountOnly(spent.leisure)} / ${amountOnly(targets.leisure)}`}
+                selected={selected}
+                onSelect={toggle}
+              />
+              <PartTile
+                bucket="savings"
+                value={`${amountOnly(spent.savings)} / ${amountOnly(targets.savings)}`}
+                selected={selected}
+                onSelect={toggle}
+              />
+              <PartTile bucket="fixed" value={formatEurosCompact(targets.fixed)} selected={selected} onSelect={toggle} />
             </View>
           </>
-        ) : (
-          <View style={styles.planCard}>
-            <ThemedText style={[styles.centeredText, { color: Hero.label }]}>
-              There was no plan in {formatMonth(month)}.
-            </ThemedText>
-          </View>
-        )}
+        ) : null}
 
-        <View style={styles.section}>
+        <ThemedView type="backgroundElement" style={styles.section}>
           <View style={styles.sectionTitle}>
-            <View style={styles.titleGroup}>
-              <ThemedText type="heading">{selected ? BUCKET_LABELS[selected] : 'Expenses'}</ThemedText>
-              {selected ? (
-                <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Show all
-                  </ThemedText>
-                </Pressable>
-              ) : null}
-            </View>
-            {canEditExpenses ? (
-              <Button
-                label="Add"
-                icon="plus"
-                accessibilityLabel="Add expense"
-                variant="pill"
-                onPress={() => router.push({ pathname: '/expense', params: { month } })}
-              />
+            <ThemedText type="heading">{selected ? BUCKET_LABELS[selected] : 'Activity'}</ThemedText>
+            {selected ? (
+              <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
+                <ThemedText type="small" style={{ color: Accent.background }}>
+                  Show all
+                </ThemedText>
+              </Pressable>
             ) : null}
           </View>
           {selected === 'fixed' && plan ? (
@@ -138,14 +147,12 @@ export default function HomeScreen() {
           ) : (
             <ExpenseList
               expenses={selected ? monthExpenses.filter((expense) => expense.bucket === selected) : monthExpenses}
-              onPress={
-                canEditExpenses
-                  ? (expense) => router.push({ pathname: '/expense', params: { id: String(expense.id) } })
-                  : undefined
-              }
+              today={today}
+              emptyText={emptyListText(selected, isPast)}
+              onPress={(expense) => router.push({ pathname: '/expense', params: { id: String(expense.id) } })}
             />
           )}
-        </View>
+        </ThemedView>
 
         {isPast ? (
           <Button label="Back to current month" variant="secondary" onPress={() => router.setParams({ month: currentMonth })} />
@@ -155,49 +162,93 @@ export default function HomeScreen() {
   );
 }
 
-/** The screen's focal point: how much of the wants budget is still available. */
-function LeftToSpendCard({ spent, target, onPress }: { spent: number; target: number; onPress: () => void }) {
-  const { left, over } = bucketProgress(spent, target);
-  const isOver = over > 0;
+/** '150' or '12,50': the amount without the euro sign, for the compact 'x / y' of a tile. */
+function amountOnly(cents: number): string {
+  return formatEurosCompact(cents).replace(/[\s\u00a0\u202f]€$/, '');
+}
+
+function CardPill({ label, accessibilityLabel, onPress }: { label: string; accessibilityLabel?: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Wants, ${isOver ? `${formatEuros(over)} over` : `${formatEuros(left)} left to spend`}`}
+      accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      style={({ pressed }) => [styles.planCard, pressed && styles.pressed]}>
-      <ThemedText type="small" style={{ color: Hero.label }}>
-        Left to spend
-      </ThemedText>
-      <ThemedText
-        type="display"
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        style={{ color: isOver ? OVER_ON_HERO : Hero.text }}>
-        {isOver ? `${formatEuros(over)} over` : formatEuros(left)}
-      </ThemedText>
-      <ProgressBar
-        spent={spent}
-        target={target}
-        fill={isOver ? OVER_ON_HERO : BUCKET_COLORS_ON_HERO.leisure}
-        track="rgba(255, 255, 255, 0.2)"
-      />
-      <ThemedText type="small" style={{ color: Hero.label }}>
-        {formatEuros(spent)} of {formatEuros(target)}
+      style={({ pressed }) => [styles.cardPill, pressed && styles.pressed]}>
+      <ThemedText type="smallBold" style={{ color: Hero.text }}>
+        {label}
       </ThemedText>
     </Pressable>
   );
 }
 
-type PartRowProps = {
+function emptyListText(selected: Bucket | null, isPast: boolean): string {
+  if (selected) return `Nothing in ${BUCKET_LABELS[selected]} this month.`;
+  if (isPast) return 'Nothing was recorded this month.';
+  return 'Record what you spend on wants and what you save. Fixed expenses are already counted.';
+}
+
+/** The month in brief: everything spent so far against what the plan allows. Savings is not spending. */
+function MonthBrief({ spent, budget }: { spent: number; budget: number }) {
+  const { left, over } = bucketProgress(spent, budget);
+  const isOver = over > 0;
+  const [whole, decimals] = formatEuros(spent).split(',');
+  return (
+    <View style={styles.brief}>
+      <ThemedText type="small" style={{ color: Hero.label }}>
+        Spent this month
+      </ThemedText>
+      <View style={styles.figure}>
+        <ThemedText type="display" numberOfLines={1} style={{ color: Hero.text }}>
+          {whole}
+        </ThemedText>
+        <ThemedText type="heading" style={{ color: Hero.label }}>
+          ,{decimals}
+        </ThemedText>
+      </View>
+      <ThemedText type="small" style={{ color: isOver ? Hero.over : Hero.label }}>
+        of {formatEurosCompact(budget)} · {isOver ? `${formatEurosCompact(over)} over` : `${formatEurosCompact(left)} left`}
+      </ThemedText>
+    </View>
+  );
+}
+
+function RoundAction({
+  icon,
+  label,
+  accessibilityLabel,
+  onPress,
+}: {
+  icon: ComponentProps<typeof Feather>['name'];
+  label: string;
+  accessibilityLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}>
+      <View style={styles.actionCircle}>
+        <Feather name={icon} size={22} color={Hero.text} />
+      </View>
+      <ThemedText type="small" style={{ color: Hero.text }}>
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+type PartTileProps = {
   bucket: Bucket;
+  value: string;
   selected: Bucket | null;
   onSelect: (bucket: Bucket) => void;
-  children: ReactNode;
 };
 
-/** One compact line per part below the main card. Tapping it shows what is inside. */
-function PartRow({ bucket, selected, onSelect, children }: PartRowProps) {
-  const theme = useTheme();
+/** One colored tile per part below the card. Tapping it shows what is inside. */
+function PartTile({ bucket, value, selected, onSelect }: PartTileProps) {
+  const color = BUCKET_COLORS[bucket];
   return (
     <Pressable
       accessibilityRole="button"
@@ -205,40 +256,18 @@ function PartRow({ bucket, selected, onSelect, children }: PartRowProps) {
       accessibilityState={{ selected: bucket === selected }}
       onPress={() => onSelect(bucket)}
       style={({ pressed }) => [
-        styles.part,
-        { backgroundColor: theme.backgroundElement, borderColor: bucket === selected ? BUCKET_COLORS[bucket] : 'transparent' },
+        styles.tile,
+        { backgroundColor: BUCKET_TINTS[bucket], borderColor: bucket === selected ? color : 'transparent' },
         pressed && styles.pressed,
       ]}>
-      <BucketBadge bucket={bucket} />
-      <View style={styles.partText}>
-        <ThemedText type="smallBold">{BUCKET_LABELS[bucket]}</ThemedText>
-        {children}
-      </View>
-      <Feather name="chevron-right" size={18} color={theme.textSecondary} />
-    </Pressable>
-  );
-}
-
-function SavingsProgress({ saved, target }: { saved: number; target: number }) {
-  const theme = useTheme();
-  const goalReached = saved > 0 && bucketProgress(saved, target).left === 0;
-  return (
-    <View style={styles.savings}>
-      <ProgressBar spent={saved} target={target} fill={BUCKET_COLORS.savings} track={theme.backgroundSelected} />
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-        {goalReached ? 'Goal reached · ' : ''}
-        {formatEuros(saved)} of {formatEuros(target)}
+      <Feather name={BUCKET_ICONS[bucket]} size={22} color={color} />
+      <ThemedText type="smallBold" style={[styles.tileValue, { color }]}>
+        {value}
       </ThemedText>
-    </View>
-  );
-}
-
-function ProgressBar({ spent, target, fill, track }: { spent: number; target: number; fill: string; track: string }) {
-  const ratio = target > 0 ? Math.min(spent / target, 1) : spent > 0 ? 1 : 0;
-  return (
-    <View style={[styles.track, { backgroundColor: track }]}>
-      <View style={[styles.fill, { backgroundColor: fill, width: `${ratio * 100}%` }]} />
-    </View>
+      <ThemedText type="caption" style={{ color }}>
+        {BUCKET_LABELS[bucket]}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -256,68 +285,80 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   content: {
+    gap: Spacing.two + Spacing.one,
+    paddingHorizontal: Spacing.two + Spacing.one,
+  },
+  monthCard: {
+    backgroundColor: Hero.background,
+    borderRadius: Radius.hero,
+    experimental_backgroundImage: Hero.gradient,
     gap: Spacing.three,
-    paddingHorizontal: Spacing.three,
+    padding: Spacing.three,
   },
   topRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  month: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.one,
+  cardPill: {
+    backgroundColor: Hero.control,
+    borderRadius: Radius.full,
+    justifyContent: 'center',
     minHeight: MIN_TOUCH,
-    paddingRight: Spacing.three,
+    paddingHorizontal: Spacing.three,
   },
-  planCard: {
-    backgroundColor: Hero.background,
-    borderRadius: Radius.hero,
-    gap: Spacing.two,
-    padding: Spacing.four,
+  noPlan: {
+    paddingVertical: Spacing.five,
   },
-  parts: {
-    gap: Spacing.two,
-  },
-  part: {
+  brief: {
     alignItems: 'center',
+    gap: Spacing.one,
+  },
+  figure: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+  },
+  action: {
+    alignItems: 'center',
+    gap: Spacing.one,
+    minWidth: 88,
+  },
+  actionCircle: {
+    alignItems: 'center',
+    backgroundColor: Hero.control,
+    borderRadius: Radius.full,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  tile: {
     borderRadius: Radius.card,
     borderWidth: 1.5,
-    boxShadow: CARD_SHADOW,
-    flexDirection: 'row',
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  partText: {
     flex: 1,
-    gap: Spacing.one,
+    gap: Spacing.two,
+    padding: Spacing.two + Spacing.one,
   },
-  savings: {
-    gap: Spacing.one,
-  },
-  track: {
-    borderRadius: Spacing.one,
-    height: 8,
-    overflow: 'hidden',
-  },
-  fill: {
-    borderRadius: Spacing.one,
-    height: '100%',
+  tileValue: {
+    fontSize: 16,
   },
   section: {
-    gap: Spacing.two,
-    paddingTop: Spacing.three,
+    borderRadius: Radius.card,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
   },
   sectionTitle: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  titleGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.three,
+    minHeight: MIN_TOUCH,
   },
   showAll: {
     justifyContent: 'center',

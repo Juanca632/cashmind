@@ -1,4 +1,4 @@
-import { firstEditableDay, isExpenseMonthEditable, totalsByBucket, validateExpense, type ExpenseInput } from '../rules';
+import { defaultExpenseDate, lastDayOfMonth, totalsByBucket, validateExpense, type ExpenseInput } from '../rules';
 import { bucketProgress } from '@/shared/buckets';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { previousMonth } from '@/shared/months';
@@ -23,28 +23,17 @@ describe('day helpers', () => {
   });
 });
 
-describe('editable period', () => {
-  it('always allows the current month', () => {
-    expect(isExpenseMonthEditable('2026-12', dec6)).toBe(true);
+describe('dates of an expense', () => {
+  it('finds the last day of a month, including February and the year end', () => {
+    expect(lastDayOfMonth('2026-11')).toBe('2026-11-30');
+    expect(lastDayOfMonth('2028-02')).toBe('2028-02-29');
+    expect(lastDayOfMonth('2026-12')).toBe('2026-12-31');
   });
 
-  it('allows the previous month only during the first 5 days', () => {
-    expect(isExpenseMonthEditable('2026-11', dec3)).toBe(true);
-    expect(isExpenseMonthEditable('2026-11', new Date(2026, 11, 5))).toBe(true);
-    expect(isExpenseMonthEditable('2026-11', dec6)).toBe(false);
-  });
-
-  it('never allows older months', () => {
-    expect(isExpenseMonthEditable('2026-10', dec3)).toBe(false);
-  });
-
-  it('handles the year change', () => {
-    expect(isExpenseMonthEditable('2026-12', new Date(2027, 0, 2))).toBe(true);
-  });
-
-  it('gives the first day an expense can be dated', () => {
-    expect(firstEditableDay(dec3)).toBe('2026-11-01');
-    expect(firstEditableDay(dec6)).toBe('2026-12-01');
+  it('defaults to today in the current month and to the last day in a past month', () => {
+    expect(defaultExpenseDate('2026-12', dec6)).toBe('2026-12-06');
+    expect(defaultExpenseDate(undefined, dec6)).toBe('2026-12-06');
+    expect(defaultExpenseDate('2026-09', dec6)).toBe('2026-09-30');
   });
 });
 
@@ -65,14 +54,14 @@ describe('validateExpense', () => {
     expect(validateExpense({ ...cinema, date: '2026-11-30' }, dec3)).toEqual([]);
   });
 
-  it('rejects the previous month once the grace period is over', () => {
-    expect(validateExpense({ ...cinema, date: '2026-11-30' }, dec6)).toEqual(['date-not-editable']);
+  it('accepts any past month', () => {
+    expect(validateExpense({ ...cinema, date: '2026-09-30' }, dec6)).toEqual([]);
   });
 
   it('rejects future dates and malformed dates', () => {
-    expect(validateExpense({ ...cinema, date: '2026-11-08' }, nov7)).toEqual(['date-not-editable']);
-    expect(validateExpense({ ...cinema, date: '7/11/2026' }, nov7)).toEqual(['date-not-editable']);
-    expect(validateExpense({ ...cinema, date: '2026-11-31' }, dec3)).toEqual(['date-not-editable']);
+    expect(validateExpense({ ...cinema, date: '2026-11-08' }, nov7)).toEqual(['date-invalid']);
+    expect(validateExpense({ ...cinema, date: '7/11/2026' }, nov7)).toEqual(['date-invalid']);
+    expect(validateExpense({ ...cinema, date: '2026-11-31' }, dec3)).toEqual(['date-invalid']);
   });
 });
 

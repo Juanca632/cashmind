@@ -1,12 +1,11 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import { draftToItem, isBlankDraft, type ItemDraft } from '@/features/plan/plan-form';
-import { ITEM_INVALID, MAX_ITEM_NAME_LENGTH, isValidFixedItem } from '@/features/plan/rules';
-import { FontFamily, Hero, MIN_TOUCH, Spacing } from '@/shared/theme/theme';
+import { isBlankDraft, type ItemDraft } from '@/features/plan/plan-form';
+import { MAX_ITEM_NAME_LENGTH } from '@/features/plan/rules';
+import { FontFamily, Accent, MIN_TOUCH, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
-import { ErrorText } from '@/shared/ui/error-text';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 type FixedItemsEditorProps = {
@@ -47,7 +46,6 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
     <View>
       {dialog}
       {drafts.map((draft, index) => {
-        const invalid = !isBlankDraft(draft) && !isValidFixedItem(draftToItem(draft));
         const position = index + 1;
         return (
           <View key={draft.key} style={[styles.item, { borderBottomColor: theme.backgroundSelected }]}>
@@ -79,10 +77,9 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
                 accessibilityLabel={`Remove item ${position}`}
                 onPress={() => remove(draft)}
                 style={({ pressed }) => [styles.remove, pressed && styles.pressed]}>
-                <Feather name="trash-2" size={16} color={theme.textSecondary} />
+                <Feather name="trash-2" size={20} color={theme.textSecondary} />
               </Pressable>
             </View>
-            {invalid ? <ErrorText>{ITEM_INVALID}</ErrorText> : null}
           </View>
         );
       })}
@@ -92,11 +89,14 @@ export function FixedItemsEditor({ drafts, onChange }: FixedItemsEditorProps) {
         accessibilityLabel="Add fixed expense"
         onPress={add}
         style={({ pressed }) => [styles.add, pressed && styles.pressed]}>
-        <Feather name="plus" size={18} color={Hero.background} />
-        <ThemedText type="smallBold" style={{ color: Hero.background }}>
+        <Feather name="plus" size={18} color={Accent.background} />
+        <ThemedText type="smallBold" style={{ color: Accent.background }}>
           Add expense
         </ThemedText>
       </Pressable>
+      <ThemedText type="caption" themeColor="textSecondary">
+        Use your usual amount. Divide yearly bills by 12.
+      </ThemedText>
     </View>
   );
 }
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: MIN_TOUCH,
     justifyContent: 'center',
-    width: 40,
+    width: MIN_TOUCH,
   },
   add: {
     alignItems: 'center',

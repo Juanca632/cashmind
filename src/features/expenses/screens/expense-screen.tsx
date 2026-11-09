@@ -1,18 +1,16 @@
 import { Feather } from '@react-native-vector-icons/feather';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState, type ComponentProps } from 'react';
+import { useState } from 'react';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useExpense } from '@/features/expenses/hooks/use-expense';
 import {
   EXPENSE_MISSING,
-  MONTH_LOCKED,
   canUseBucket,
   defaultExpenseDate,
   expenseErrorMessage,
-  firstEditableDay,
-  isExpenseMonthEditable,
+  lastDayOfMonth,
   validateExpense,
   type Expense,
   type ExpenseInput,
@@ -24,10 +22,11 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { BUCKET_COLORS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { BUCKET_COLORS, FontFamily, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { BUCKET_ICONS } from '@/shared/ui/bucket-badge';
 import { Button } from '@/shared/ui/button';
+import { IconButton } from '@/shared/ui/icon-button';
 import { DataError } from '@/shared/ui/data-error';
 import { ErrorText } from '@/shared/ui/error-text';
 import { TextField } from '@/shared/ui/text-field';
@@ -35,7 +34,7 @@ import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
 export default function ExpenseScreen() {
-  const params = useLocalSearchParams<{ id?: string; month?: string }>();
+  const params = useLocalSearchParams<{ id?: string; month?: string; bucket?: string }>();
   const id = params.id ? Number(params.id) : null;
   const loaded = useExpense(id);
 
@@ -45,9 +44,15 @@ export default function ExpenseScreen() {
   if (id !== null && !expense) return <Message text={EXPENSE_MISSING} />;
 
   const today = new Date();
-  if (expense && !isExpenseMonthEditable(expense.date.slice(0, 7), today)) return <Message text={MONTH_LOCKED} />;
 
-  return <ExpenseForm expense={expense} defaultDate={defaultExpenseDate(params.month, today)} today={today} />;
+  return (
+    <ExpenseForm
+      expense={expense}
+      defaultBucket={params.bucket === 'savings' ? 'savings' : 'leisure'}
+      defaultDate={defaultExpenseDate(params.month, today)}
+      today={today}
+    />
+  );
 }
 
 function Message({ text }: { text: string }) {
@@ -58,11 +63,21 @@ function Message({ text }: { text: string }) {
   );
 }
 
-function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null; defaultDate: string; today: Date }) {
+function ExpenseForm({
+  expense,
+  defaultBucket,
+  defaultDate,
+  today,
+}: {
+  expense: Expense | null;
+  defaultBucket: Bucket;
+  defaultDate: string;
+  today: Date;
+}) {
   const db = useSQLiteContext();
   const theme = useTheme();
   const [amountText, setAmountText] = useState(expense ? centsToInput(expense.amountCents) : '');
-  const [bucket, setBucket] = useState<Bucket>(expense?.bucket ?? 'leisure');
+  const [bucket, setBucket] = useState<Bucket>(expense?.bucket ?? defaultBucket);
   const [note, setNote] = useState(expense?.note ?? '');
   const [date, setDate] = useState(expense?.date ?? defaultDate);
   const form = JSON.stringify({ amountText, bucket, note, date });
@@ -71,8 +86,12 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
   const { dialog: confirmDialog, ask } = useConfirm();
   const { submit, submitting } = useSubmit(allowLeave);
 
-  const firstDay = firstEditableDay(today);
-  const lastDay = dayKey(today);
+  // An expense stays in its month; the date moves within it, up to today.
+  const formMonth = (expense?.date ?? defaultDate).slice(0, 7);
+  const firstDay = `${formMonth}-01`;
+  const todayKey = dayKey(today);
+  const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
+  const newEntryTitle = bucket === 'savings' ? 'Add savings' : 'Add expense';
   const input: ExpenseInput = { date, bucket, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim() };
   const errors = validateExpense(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
@@ -88,17 +107,18 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
   function onDelete() {
     if (!expense) return;
     ask({
-      title: 'Delete expense?',
+      title: 'Delete this entry?',
       message: 'This cannot be undone.',
       cancel: 'Cancel',
       confirm: 'Delete',
-      onConfirm: () => submit(() => deleteExpense(db, expense.id, new Date())),
+      onConfirm: () => submit(() => deleteExpense(db, expense.id)),
     });
   }
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
+        <Stack.Screen options={{ title: expense ? 'Edit entry' : newEntryTitle }} />
         {discardDialog}
         {confirmDialog}
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -118,27 +138,29 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
               €
             </ThemedText>
           </View>
-          {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError, today)}</ErrorText> : null}
+          {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError)}</ErrorText> : null}
 
-          <View style={styles.bucketRow}>
-            {BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
-              const selected = option === bucket;
-              return (
-                <Pressable
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityLabel={BUCKET_LABELS[option]}
-                  accessibilityState={{ selected }}
-                  onPress={() => setBucket(option)}
-                  style={[styles.bucket, { backgroundColor: selected ? BUCKET_COLORS[option] : theme.backgroundElement }]}>
-                  <Feather name={BUCKET_ICONS[option]} size={18} color={selected ? Hero.text : BUCKET_COLORS[option]} />
-                  <ThemedText type="smallBold" style={selected ? { color: Hero.text } : undefined}>
-                    {BUCKET_LABELS[option]}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+          {expense ? (
+            <View style={styles.bucketRow}>
+              {BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
+                const selected = option === bucket;
+                return (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="radio"
+                    accessibilityLabel={BUCKET_LABELS[option]}
+                    accessibilityState={{ selected }}
+                    onPress={() => setBucket(option)}
+                    style={[styles.bucket, { backgroundColor: selected ? BUCKET_COLORS[option] : theme.backgroundElement }]}>
+                    <Feather name={BUCKET_ICONS[option]} size={18} color={selected ? Accent.text : BUCKET_COLORS[option]} />
+                    <ThemedText type="smallBold" style={selected ? { color: Accent.text } : undefined}>
+                      {BUCKET_LABELS[option]}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
           <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
             {BUCKET_DESCRIPTIONS[bucket]}
           </ThemedText>
@@ -146,21 +168,21 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
           <TextField label="Note (optional)" placeholder="Cinema" value={note} onChangeText={setNote} maxLength={80} />
 
           <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
-            <DayButton
+            <IconButton
               icon="chevron-left"
               accessibilityLabel="Previous day"
               disabled={date <= firstDay}
               onPress={() => setDate(addDays(date, -1))}
             />
-            <ThemedText type="smallBold">{date === lastDay ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
-            <DayButton
+            <ThemedText type="smallBold">{date === todayKey ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
+            <IconButton
               icon="chevron-right"
               accessibilityLabel="Next day"
               disabled={date >= lastDay}
               onPress={() => setDate(addDays(date, 1))}
             />
           </View>
-          {errors.includes('date-not-editable') ? <ErrorText>{expenseErrorMessage('date-not-editable', today)}</ErrorText> : null}
+          {errors.includes('date-invalid') ? <ErrorText>{expenseErrorMessage('date-invalid')}</ErrorText> : null}
 
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
           {expense ? <Button label="Delete" variant="secondary" disabled={submitting} onPress={onDelete} /> : null}
@@ -170,39 +192,13 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
   );
 }
 
-function DayButton({
-  icon,
-  accessibilityLabel,
-  disabled,
-  onPress,
-}: {
-  icon: ComponentProps<typeof Feather>['name'];
-  accessibilityLabel: string;
-  disabled: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      hitSlop={Spacing.three}
-      onPress={onPress}
-      style={({ pressed }) => [styles.dayButton, disabled && styles.disabled, pressed && styles.pressed]}>
-      <Feather name={icon} size={24} color={theme.text} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
   content: {
     gap: Spacing.three,
-    padding: Spacing.four,
+    padding: Spacing.three,
   },
   amount: {
     alignItems: 'center',
@@ -240,14 +236,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     minHeight: MIN_TOUCH + Spacing.one,
-  },
-  dayButton: {
-    paddingHorizontal: Spacing.three,
-  },
-  disabled: {
-    opacity: 0.3,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

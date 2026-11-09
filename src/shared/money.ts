@@ -8,6 +8,13 @@ export function formatEuros(cents: number): string {
   return euroFormatter.format(cents / 100);
 }
 
+const wholeEuroFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+
+/** Like formatEuros, without the decimals of a whole amount: '3 000 €', '12,50 €'. */
+export function formatEurosCompact(cents: number): string {
+  return cents % 100 === 0 ? wholeEuroFormatter.format(cents / 100) : formatEuros(cents);
+}
+
 /**
  * Largest amount the app accepts: 900 000,00 €. Keeps every value and calculation within exact
  * integer arithmetic, so what is saved can always be read back.

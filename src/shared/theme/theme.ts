@@ -1,40 +1,45 @@
 /** Design tokens. The app is light mode only for now. */
 
-import '@/global.css';
-
-import { Platform } from 'react-native';
-
-export const ERROR_COLOR = '#B3362A';
+export const ERROR_COLOR = '#C92A2A';
 
 export const Colors = {
-  text: '#0E1116',
-  background: '#F2F3F7',
+  text: '#111318',
+  background: '#F3F4F6',
   backgroundElement: '#FFFFFF',
-  backgroundSelected: '#E9ECF2',
-  textSecondary: '#5B6472',
+  backgroundSelected: '#E5E7EB',
+  textSecondary: '#5F6673',
 } as const;
 
 export type ThemeColor = keyof typeof Colors;
 
-/** The one vivid element on a screen: the plan card and the main action. */
-export const Hero = {
-  background: '#1E2E73',
+/** The main action on a screen. */
+export const Accent = {
+  background: '#065F52',
   text: '#FFFFFF',
-  label: '#E7EAFF',
 } as const;
 
-/** One color per part of the plan, the same on every screen. */
+/** The month card at the top of Home. */
+export const Hero = {
+  background: '#065F52',
+  gradient: 'linear-gradient(145deg, #065F52 0%, #0A7A66 60%, #0B8A6F 100%)',
+  text: '#FFFFFF',
+  label: '#DFF7EF',
+  control: 'rgba(255, 255, 255, 0.18)',
+  over: '#FFD2C8',
+} as const;
+
+/** One color per part of the plan, the same on every screen. Readable with white text on top. */
 export const BUCKET_COLORS = {
-  fixed: '#2F5BEA',
-  leisure: '#C2410C',
-  savings: '#0B6B5E',
+  fixed: '#3730A3',
+  leisure: '#9A3412',
+  savings: '#065F46',
 } as const;
 
-/** The same three hues, light enough to read on the Hero background. */
-export const BUCKET_COLORS_ON_HERO = {
-  fixed: '#8FA6FF',
-  leisure: '#FFB066',
-  savings: '#45D3A8',
+/** The soft background of each part; its BUCKET_COLORS value reads on top of it. */
+export const BUCKET_TINTS = {
+  fixed: '#E7E5FF',
+  leisure: '#FDEBDD',
+  savings: '#D9F2E6',
 } as const;
 
 export const CARD_SHADOW = '0 2px 8px rgba(14, 17, 22, 0.06)';
@@ -57,31 +62,6 @@ export const FontFamily = {
   bold: 'Manrope_700Bold',
 } as const;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
 export const Spacing = {
   half: 2,
   one: 4,
@@ -89,7 +69,4 @@ export const Spacing = {
   three: 16,
   four: 24,
   five: 32,
-  six: 64,
 } as const;
-
-export const MaxContentWidth = 800;

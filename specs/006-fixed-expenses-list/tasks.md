@@ -71,6 +71,16 @@
 - [X] T032 [US6] Focus the home screen on what is left to spend in `src/features/home/screens/home-screen.tsx`
 - [X] T033 Run the `code-reviewer` subagent again before the commit
 
+## Phase 9: Audit follow-up
+
+- [X] T034 Fix the findings of the design, architecture, new-user and app comparison reviews in `src/features` and `src/shared`
+- [X] T035 Show the month's calculation in `src/features/home/screens/home-screen.tsx`
+- [X] T036 Give savings its own add button in `src/features/home/screens/home-screen.tsx` and `src/features/expenses/screens/expense-screen.tsx`
+- [X] T037 Remove the editable period in `src/features/expenses/rules.ts` and `src/features/expenses/service.ts`, updating baseline specs 001 and 003
+
+- [X] T038 Rebuild `src/features/home/screens/home-screen.tsx` with a full-width header, round actions, tiles and a list grouped by day
+- [X] T039 Add demo data in `src/db/demo-data.ts`, run with `npm run demo` on a separate database
+
 ## Dependencies
 
 - Phase 1 blocks everything. T001 precedes T002, T003 and T017. T004 precedes T005 to T008.
