@@ -11,7 +11,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-const FIXED = 'Fixed expenses (rent, bills, subscriptions…)';
+const FIXED = 'Needs';
 
 const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
@@ -89,6 +89,7 @@ describe('Live euro preview while editing', () => {
 describe('Per-month income override', () => {
   it('Month with a different income', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await press('Save for this month');
@@ -114,6 +115,8 @@ describe('Per-month income override', () => {
     });
     expect(screen.getByText(exactText('2 500,00 €'))).toBeOnTheScreen();
 
+    await press('Edit plan');
+
     await press("Change this month's income");
     await press('Use my usual income');
 
@@ -131,7 +134,7 @@ describe('Current month overview', () => {
     expect(screen.getByText('Plan your month')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Set up my plan' })).toBeOnTheScreen();
     expect(screen.queryByText('Monthly income')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Leisure')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Wants')).not.toBeOnTheScreen();
   });
 
   it('Plan exists', async () => {
@@ -141,8 +144,8 @@ describe('Current month overview', () => {
     expect(screen.getByText(exactText('2 000,00 €'))).toBeOnTheScreen();
     expect(screen.getByText('Monthly income')).toBeOnTheScreen();
     for (const [bucket, amount] of [
-      ['Fixed expenses', '1 000,00 €'],
-      ['Leisure', '400,00 €'],
+      ['Needs', '1 000,00 €'],
+      ['Wants', '400,00 €'],
       ['Savings', '600,00 €'],
     ]) {
       expect(screen.getByText(bucket)).toBeOnTheScreen();
@@ -159,6 +162,7 @@ describe('On-device persistence', () => {
     await type(FIXED, '1000');
     await type('Savings', '30');
     await press('Save plan');
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await press('Save for this month');
@@ -202,11 +206,12 @@ describe('Fixed expenses as an amount', () => {
 describe('Income below fixed expenses', () => {
   it('Month that does not cover fixed expenses', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '800');
     await press('Save for this month');
 
-    expect(screen.getByText(/short of your fixed expenses/)).toBeOnTheScreen();
+    expect(screen.getByText(/short of your needs/)).toBeOnTheScreen();
     expect(screen.getByText(/This income is 200,00.€ short/)).toBeOnTheScreen();
     // Leisure and savings targets are 0,00 €.
     expect(screen.getAllByText(exactText('0,00 €'))).toHaveLength(2);
@@ -223,7 +228,7 @@ describe('Plan changes apply from the current month onwards', () => {
   };
 
   async function monthIncome(shortName: string) {
-    await press(/▾/);
+    await press(/Your plan for/);
     await press(shortName);
   }
 
@@ -281,15 +286,15 @@ describe('Buckets in euros or percent', () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
     await press('Edit plan');
     expect(screen.getByText('= 600,00 €')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Leisure')).toHaveDisplayValue('400,00');
+    expect(screen.getByLabelText('Wants')).toHaveDisplayValue('400,00');
 
     await type('Monthly income', '2500');
 
     expect(screen.getByLabelText('Savings')).toHaveDisplayValue('30');
     expect(screen.getByText('= 750,00 €')).toBeOnTheScreen();
     // Leisure is recomputed from what is left after the fixed expenses and savings.
-    expect(screen.getByLabelText('Leisure')).not.toHaveDisplayValue('400,00');
-    expect(screen.getByLabelText('Leisure')).toHaveDisplayValue('750,00');
+    expect(screen.getByLabelText('Wants')).not.toHaveDisplayValue('400,00');
+    expect(screen.getByLabelText('Wants')).toHaveDisplayValue('750,00');
   });
 });
 
@@ -301,20 +306,20 @@ describe('Last edited of leisure and savings is kept', () => {
     await type(FIXED, '1000');
     await type('Savings', '30');
 
-    expect(screen.getByLabelText('Leisure')).toHaveDisplayValue('400,00');
+    expect(screen.getByLabelText('Wants')).toHaveDisplayValue('400,00');
     expect(screen.getByText(/automatic/)).toBeOnTheScreen();
   });
 
   it('Switching which bucket is kept', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
     await press('Edit plan');
-    expect(screen.getByLabelText('Leisure')).toHaveDisplayValue('400,00');
+    expect(screen.getByLabelText('Wants')).toHaveDisplayValue('400,00');
 
-    await type('Leisure', '500');
+    await type('Wants', '500');
 
     expect(screen.getByText('Savings · automatic')).toBeOnTheScreen();
     expect(screen.getByText(exactText("What's left: 500,00 € · 25 %"))).toBeOnTheScreen();
-    expect(screen.queryByText('Leisure · automatic')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Wants · automatic')).not.toBeOnTheScreen();
   });
 });
 
@@ -330,5 +335,25 @@ describe('Plan must fit in the income', () => {
     expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled();
     await testRouter.back();
     expect(screen.getByText('Plan your month')).toBeOnTheScreen();
+  });
+});
+
+describe('The plan at a glance', () => {
+  it('Split shown on the home screen', async () => {
+    await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    expect(screen.getByText(/^Needs 50.%$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Wants 20.%$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Savings 30.%$/)).toBeOnTheScreen();
+  });
+});
+
+describe('50/30/20 as a starting point', () => {
+  it('Suggested amounts', async () => {
+    await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('Edit plan');
+    expect(screen.getByText(/^Suggested 1.000,00.€$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Suggested 600,00.€$/)).toBeOnTheScreen();
+    expect(screen.getByText(/^Suggested 400,00.€$/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(FIXED)).toHaveDisplayValue('1000,00');
   });
 });

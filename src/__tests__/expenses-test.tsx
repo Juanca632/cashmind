@@ -18,7 +18,7 @@ afterEach(() => {
 const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 
 async function openMonth(shortName: string) {
-  await press(/▾/);
+  await press(/Your plan for/);
   await press(shortName);
 }
 
@@ -29,7 +29,7 @@ describe('Record an expense', () => {
 
     await press('Add expense');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '12,50');
-    await fireEvent.press(screen.getByRole('radio', { name: 'Leisure' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Wants' }));
     await fireEvent.changeText(screen.getByLabelText('Note (optional)'), 'Cinema');
     expect(screen.getByText(/Today/)).toBeOnTheScreen();
     await press('Add expense');
@@ -86,7 +86,7 @@ describe('Savings entries count towards the savings goal', () => {
     await press('Add expense');
     await fireEvent.changeText(screen.getByLabelText('Amount'), '600');
     await fireEvent.press(screen.getByRole('radio', { name: 'Savings' }));
-    await press('Add expense');
+    await press('Add to savings');
 
     expect(screen.getByText(partialText('saved · 600,00 €'))).toBeOnTheScreen();
     expect(screen.getByText(exactText('300,00 € left to save'))).toBeOnTheScreen();
@@ -230,5 +230,27 @@ describe('Month expense list', () => {
     expect(screen.queryByText('Coffee')).not.toBeOnTheScreen();
     expect(screen.getByText(partialText('spent · 80,00 €'))).toBeOnTheScreen();
     expect(screen.getByText(exactText('320,00 € left'))).toBeOnTheScreen();
+  });
+});
+
+describe('Look inside one part of the plan', () => {
+  it('Tapping a part lists only its expenses', async () => {
+    await startApp({
+      today: [2026, 10, 7],
+      plans: [[standardPlan, '2026-07']],
+      expenses: [
+        { date: '2026-11-02', bucket: 'fixed', amountCents: 70000, note: 'Rent' },
+        { date: '2026-11-03', bucket: 'leisure', amountCents: 1500, note: 'Dinner' },
+      ],
+    });
+    expect(screen.getByText('Rent')).toBeOnTheScreen();
+    expect(screen.getByText('Dinner')).toBeOnTheScreen();
+
+    await press(/^Needs/);
+    expect(screen.getByText('Rent')).toBeOnTheScreen();
+    expect(screen.queryByText('Dinner')).not.toBeOnTheScreen();
+
+    await press('Show all');
+    expect(screen.getByText('Dinner')).toBeOnTheScreen();
   });
 });

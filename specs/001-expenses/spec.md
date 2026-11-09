@@ -93,11 +93,21 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 
 ---
 
+### User Story 8 - Look inside one part of the plan
+
+**Implements**: FR-009
+
+**Acceptance Scenarios**:
+
+1. *Tapping a part lists only its expenses*: **Given** a month with expenses in several buckets, **When** the user taps one bucket on the home screen, **Then** the list shows only that bucket's expenses, **And** "Show all" brings back the full list
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001** (Record an expense): The system SHALL let the user record an expense with an amount in EUR greater than zero (cent precision), one bucket (fixed expenses, leisure or savings), an optional note and a date. The date SHALL default to today and SHALL be within an editable month and not after today.
+- **FR-001** (Record an expense): The system SHALL let the user record an expense with an amount in EUR greater than zero (cent precision), one bucket (fixed expenses, leisure or savings, shown as Needs, Wants and Savings), an optional note and a date. The date SHALL default to today and SHALL be within an editable month and not after today.
 - **FR-002** (Savings entries count towards the savings goal): The system SHALL treat expenses in the savings bucket as money set aside, and SHALL show them as progress towards the month's savings target.
 - **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an expense or delete it, as long as both its current date and its new date are in an editable month.
 - **FR-004** (Editable period for expenses): The system SHALL allow expense changes in the current month, and in the previous month only during days 1 to 5 of the current month. Expenses of any other past month SHALL be read-only.
@@ -105,6 +115,7 @@ Lets the user record what they spend or save in each bucket and see, for any mon
 - **FR-006** (Month expense list): The system SHALL list the selected month's expenses, newest date first, showing date, bucket, note and amount.
 - **FR-007** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
 - **FR-008** (Unreadable data): The system SHALL check the format of the expenses it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
+- **FR-009** (Look inside one part of the plan): The system SHALL let the user tap a bucket on the home screen to list only that bucket's expenses for the selected month, and SHALL let the user return to the full list.
 
 ## Success Criteria *(mandatory)*
 

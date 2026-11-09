@@ -50,7 +50,7 @@ describe('A failed change is always explained', () => {
     await startApp({ today: [2026, 10, 7] });
     await press('Set up my plan');
     await type('Monthly income', '2500');
-    await type('Fixed expenses (rent, bills, subscriptions…)', '1000');
+    await type('Needs', '1000');
     await type('Savings', '10');
     await breakDeviceWrites();
     await press('Save plan');
@@ -61,6 +61,7 @@ describe('A failed change is always explained', () => {
 
   it('Month income: storage fails when saving', async () => {
     await startApp({ today: [2026, 10, 7], plans: [[standardPlan, '2026-07']] });
+    await press('Edit plan');
     await press("Change this month's income");
     await type('Income this month', '2500');
     await breakDeviceWrites();
@@ -77,6 +78,7 @@ describe('A failed change is always explained', () => {
       plans: [[standardPlan, '2026-07']],
       overrides: { '2026-11': 250000 },
     });
+    await press('Edit plan');
     await press("Change this month's income");
     await breakDeviceWrites();
     await press('Use my usual income');
@@ -176,7 +178,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
       plans: [[standardPlan, '2026-07']],
       raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-02-31', 'leisure', 500, 'Broken')"],
     });
-    await press(/▾/);
+    await press(/Your plan for/);
     await press('Feb');
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -237,7 +239,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
       plans: [[standardPlan, '2026-07']],
       expenses: [{ date: '2026-11-30', bucket: 'leisure', amountCents: 1250, note: 'Cinema' }],
     });
-    await press(/▾/);
+    await press(/Your plan for/);
     await press('Previous year');
     await press('Nov');
 

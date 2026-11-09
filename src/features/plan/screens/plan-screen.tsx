@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
@@ -23,7 +24,14 @@ import {
   type IncomePlan,
 } from '@/features/plan/rules';
 import { savePlan } from '@/features/plan/service';
-import { BUCKET_LABELS, otherFlexible, type FlexibleBucket } from '@/shared/buckets';
+import {
+  BUCKET_DESCRIPTIONS,
+  BUCKET_LABELS,
+  SUGGESTED_PERCENT,
+  otherFlexible,
+  type Bucket,
+  type FlexibleBucket,
+} from '@/shared/buckets';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { formatEuros, formatPercentOf, parseEurosToCents } from '@/shared/money';
 import { formatMonth, monthKey } from '@/shared/months';
@@ -31,6 +39,7 @@ import { Spacing } from '@/shared/theme/theme';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ErrorText } from '@/shared/ui/error-text';
+import { PlanBar } from '@/shared/ui/plan-bar';
 import { TextField } from '@/shared/ui/text-field';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
@@ -84,6 +93,11 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
     ? `What's left: ${formatEuros(targets[auto])} · ${formatPercentOf(targets[auto], plan.incomeCents)}`
     : "What's left after the other buckets";
 
+  function suggestion(bucket: Bucket) {
+    if (!validIncome) return undefined;
+    return `Suggested ${formatEuros(Math.round((validIncome * SUGGESTED_PERCENT[bucket]) / 100))}`;
+  }
+
   function editFlexible(bucket: FlexibleBucket, text: string) {
     // Typing in a field makes it the kept one; the other becomes automatic.
     setKept(bucket);
@@ -107,11 +121,6 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <ThemedText type="small" themeColor="textSecondary">
-            Changes apply from {formatMonth(currentMonth)} onwards. Past months keep their plan. Of leisure and
-            savings, the one you edit last is kept and the other gets what&apos;s left.
-          </ThemedText>
-
           <TextField
             label="Monthly income"
             suffix="€"
@@ -123,8 +132,13 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
           />
           {incomeText.trim() !== '' && !validIncome ? <ErrorText>{incomeErrorMessage(incomeCents ?? 0)}</ErrorText> : null}
 
+          {targets ? <PlanBar targets={targets} /> : null}
+
           <AmountField
-            label="Fixed expenses (rent, bills, subscriptions…)"
+            label={BUCKET_LABELS.fixed}
+            bucket="fixed"
+            suggestion={suggestion('fixed')}
+            description={BUCKET_DESCRIPTIONS.fixed}
             unit={fixed.unit}
             value={fixed.text}
             onChangeText={(text) => setFixed({ unit: fixed.unit, text })}
@@ -141,6 +155,9 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
               <AmountField
                 key={bucket}
                 label={BUCKET_LABELS[bucket]}
+                bucket={bucket}
+                suggestion={suggestion(bucket)}
+                description={BUCKET_DESCRIPTIONS[bucket]}
                 unit={fields[bucket].unit}
                 value={isAuto ? autoText : fields[bucket].text}
                 automatic={isAuto}
@@ -155,11 +172,22 @@ function PlanForm({ initialPlan, currentMonth }: { initialPlan: IncomePlan | nul
           ) : null}
           {errors.includes('over-income') ? <ErrorText>{planErrorMessage('over-income', plan)}</ErrorText> : null}
 
+          <ThemedText type="caption" themeColor="textSecondary">
+            Applies from {formatMonth(currentMonth)} onwards
+          </ThemedText>
+
           <Button
             label="Save plan"
             disabled={errors.length > 0 || submitting}
             onPress={() => submit(() => savePlan(db, plan, new Date()))}
           />
+          {initialPlan ? (
+            <Button
+              label="Change this month's income"
+              variant="secondary"
+              onPress={() => router.replace('/month-income')}
+            />
+          ) : null}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>

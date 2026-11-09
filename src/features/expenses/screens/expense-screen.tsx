@@ -1,7 +1,8 @@
+import { Feather } from '@react-native-vector-icons/feather';
 import { useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState, type ComponentProps } from 'react';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useExpense } from '@/features/expenses/hooks/use-expense';
 import {
@@ -16,12 +17,13 @@ import {
   type ExpenseInput,
 } from '@/features/expenses/rules';
 import { addExpense, deleteExpense, editExpense } from '@/features/expenses/service';
-import { BUCKETS, BUCKET_LABELS, type Bucket } from '@/shared/buckets';
+import { BUCKETS, BUCKET_DESCRIPTIONS, BUCKET_LABELS, type Bucket } from '@/shared/buckets';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { Spacing } from '@/shared/theme/theme';
+import { BUCKET_COLORS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
+import { BUCKET_ICONS } from '@/shared/ui/bucket-badge';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ErrorText } from '@/shared/ui/error-text';
@@ -68,6 +70,9 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
   const errors = validateExpense(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
+  const newEntryLabel = bucket === 'savings' ? 'Add to savings' : 'Add expense';
+  const submitLabel = expense ? 'Save changes' : newEntryLabel;
+
   function onSave() {
     const now = new Date();
     submit(() => (expense ? editExpense(db, expense.id, input, now) : addExpense(db, input, now)));
@@ -85,16 +90,22 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TextField
-            label="Amount"
-            suffix="€"
-            keyboardType="decimal-pad"
-            placeholder="12,50"
-            maxLength={12}
-            autoFocus={!expense}
-            value={amountText}
-            onChangeText={setAmountText}
-          />
+          <View style={styles.amount}>
+            <TextInput
+              accessibilityLabel="Amount"
+              keyboardType="decimal-pad"
+              placeholder="0,00"
+              placeholderTextColor={theme.textSecondary}
+              maxLength={12}
+              autoFocus={!expense}
+              value={amountText}
+              onChangeText={setAmountText}
+              style={[styles.amountInput, { color: theme.text }]}
+            />
+            <ThemedText type="heading" themeColor="textSecondary">
+              €
+            </ThemedText>
+          </View>
           {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError, today)}</ErrorText> : null}
 
           <View style={styles.bucketRow}>
@@ -104,29 +115,34 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
                 <Pressable
                   key={option}
                   accessibilityRole="radio"
+                  accessibilityLabel={BUCKET_LABELS[option]}
                   accessibilityState={{ selected }}
                   onPress={() => setBucket(option)}
-                  style={[styles.bucket, { backgroundColor: selected ? theme.text : theme.backgroundElement }]}>
-                  <ThemedText type="smallBold" style={selected ? { color: theme.background } : undefined}>
+                  style={[styles.bucket, { backgroundColor: selected ? BUCKET_COLORS[option] : theme.backgroundElement }]}>
+                  <Feather name={BUCKET_ICONS[option]} size={18} color={selected ? Hero.text : BUCKET_COLORS[option]} />
+                  <ThemedText type="smallBold" style={selected ? { color: Hero.text } : undefined}>
                     {BUCKET_LABELS[option]}
                   </ThemedText>
                 </Pressable>
               );
             })}
           </View>
+          <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
+            {BUCKET_DESCRIPTIONS[bucket]}
+          </ThemedText>
 
-          <TextField label="Note (optional)" placeholder="Carrefour" value={note} onChangeText={setNote} maxLength={80} />
+          <TextField label="Note (optional)" placeholder="Cinema" value={note} onChangeText={setNote} maxLength={80} />
 
-          <View style={styles.dateRow}>
+          <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
             <DayButton
-              label="‹"
+              icon="chevron-left"
               accessibilityLabel="Previous day"
               disabled={date <= firstDay}
               onPress={() => setDate(addDays(date, -1))}
             />
             <ThemedText type="smallBold">{date === lastDay ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
             <DayButton
-              label="›"
+              icon="chevron-right"
               accessibilityLabel="Next day"
               disabled={date >= lastDay}
               onPress={() => setDate(addDays(date, 1))}
@@ -134,7 +150,7 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
           </View>
           {errors.includes('date-not-editable') ? <ErrorText>{expenseErrorMessage('date-not-editable', today)}</ErrorText> : null}
 
-          <Button label={expense ? 'Save changes' : 'Add expense'} disabled={errors.length > 0 || submitting} onPress={onSave} />
+          <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
           {expense ? <Button label="Delete" variant="secondary" disabled={submitting} onPress={onDelete} /> : null}
         </ScrollView>
       </ThemedView>
@@ -143,16 +159,17 @@ function ExpenseForm({ expense, defaultDate, today }: { expense: Expense | null;
 }
 
 function DayButton({
-  label,
+  icon,
   accessibilityLabel,
   disabled,
   onPress,
 }: {
-  label: string;
+  icon: ComponentProps<typeof Feather>['name'];
   accessibilityLabel: string;
   disabled: boolean;
   onPress: () => void;
 }) {
+  const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -162,7 +179,7 @@ function DayButton({
       hitSlop={Spacing.three}
       onPress={onPress}
       style={({ pressed }) => [styles.dayButton, disabled && styles.disabled, pressed && styles.pressed]}>
-      <ThemedText type="subtitle">{label}</ThemedText>
+      <Feather name={icon} size={24} color={theme.text} />
     </Pressable>
   );
 }
@@ -175,20 +192,42 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     padding: Spacing.four,
   },
+  amount: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'center',
+    paddingVertical: Spacing.three,
+  },
+  amountInput: {
+    fontFamily: FontFamily.bold,
+    fontSize: 48,
+    fontVariant: ['tabular-nums'],
+    minWidth: 120,
+    padding: 0,
+    textAlign: 'center',
+  },
+  centered: {
+    textAlign: 'center',
+  },
   bucketRow: {
     flexDirection: 'row',
     gap: Spacing.two,
   },
   bucket: {
     alignItems: 'center',
-    borderRadius: Spacing.three,
+    borderRadius: Radius.field,
     flex: 1,
-    paddingVertical: Spacing.three,
+    gap: Spacing.one,
+    justifyContent: 'center',
+    minHeight: 72,
   },
   dateRow: {
     alignItems: 'center',
+    borderRadius: Radius.field,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    minHeight: MIN_TOUCH + Spacing.one,
   },
   dayButton: {
     paddingHorizontal: Spacing.three,

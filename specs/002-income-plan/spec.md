@@ -12,7 +12,7 @@ This is a baseline spec: it describes the current behavior of the app and is kep
 
 ## Purpose
 
-Lets the user define how their monthly income is split between fixed expenses, leisure and savings, and gives the euro target for each bucket in any month.
+Lets the user define how their monthly income is split between fixed expenses, leisure and savings, and gives the euro target for each bucket in any month. The buckets are shown to the user as Needs (fixed expenses), Wants (leisure) and Savings.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -166,6 +166,26 @@ Lets the user define how their monthly income is split between fixed expenses, l
 
 ---
 
+### User Story 15 - The plan at a glance
+
+**Implements**: FR-016
+
+**Acceptance Scenarios**:
+
+1. *Split shown on the home screen*: **Given** an income of 2000,00 € with needs of 1000,00 €, wants of 400,00 € and savings of 600,00 €, **When** the user opens the home screen, **Then** it shows the split as Needs 50 %, Wants 20 % and Savings 30 %
+
+---
+
+### User Story 16 - 50/30/20 as a starting point
+
+**Implements**: FR-017
+
+**Acceptance Scenarios**:
+
+1. *Suggested amounts*: **Given** an income of 2000,00 €, **When** the user edits the plan, **Then** needs suggests 1000,00 €, wants 600,00 € and savings 400,00 €, **And** no value is filled in or changed by the suggestion
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -173,7 +193,7 @@ Lets the user define how their monthly income is split between fixed expenses, l
 - **FR-001** (Recurring monthly income): The system SHALL let the user set a recurring monthly income in EUR, with cent precision, that applies to every month without an override from the month the plan is saved until the plan is changed. The income MUST be greater than zero.
 - **FR-002** (Live euro preview while editing): The system SHALL show, while the user edits the income or any bucket, the euro amount and percentage of income of each bucket, including the automatic one, updated on every change and before saving.
 - **FR-003** (Bucket amounts always add up to the income): The system SHALL compute each bucket's euro target rounded to the cent so that, whenever the month's income covers the fixed expenses, the three targets add up exactly to that income.
-- **FR-004** (Per-month income override): The system SHALL let the user set a different income for the current month. That month SHALL keep the plan's fixed expenses, and the money left after them SHALL be shared between leisure and savings in the same proportion as in the plan. Other months keep using the recurring income. The user SHALL be able to remove the override to return that month to the recurring income. Overrides of past months are kept and shown but cannot be changed.
+- **FR-004** (Per-month income override): The system SHALL let the user set a different income for the current month. That month SHALL keep the plan's fixed expenses, and the money left after them SHALL be shared between leisure and savings in the same proportion as in the plan. Other months keep using the recurring income. The user SHALL be able to remove the override to return that month to the recurring income. Overrides of past months are kept and shown but cannot be changed. The user reaches this from the plan editor.
 - **FR-005** (Current month overview): The system SHALL show, on the home screen, the selected month (the current month by default), its income (marking whether it is an override) and, for each bucket, its euro target, using the plan that applied to that month. When the income is below the fixed expenses it SHALL show the shortfall warning. When no plan exists yet, the home screen SHALL invite the user to create one.
 - **FR-006** (On-device persistence): The system SHALL store the plan and month overrides only on the device, keep them across app restarts, and never send them over the network.
 - **FR-007** (Fixed expenses as an amount): The system SHALL let the user set the monthly fixed expenses in EUR or as a percentage of the recurring income. The resulting amount SHALL stay the same in every month, including months with a different income. The amount MUST be zero or more and MUST NOT exceed the recurring income. The system SHALL show the value in the other unit.
@@ -185,6 +205,8 @@ Lets the user define how their monthly income is split between fixed expenses, l
 - **FR-013** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
 - **FR-014** (Unreadable data): The system SHALL check the format of the plan data it reads and, when it has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
 - **FR-015** (App updates keep the data): The system SHALL update the on-device database when a new version needs it, keep the existing data, and show a message saying the data is safe if the update cannot be applied.
+- **FR-016** (The plan at a glance): The system SHALL show the month's split between the three buckets as one bar with each bucket's share of the total, on the home screen, while editing the plan and while setting a month's income.
+- **FR-017** (50/30/20 as a starting point): The system SHALL show, once the income is valid, a suggested amount for each bucket based on 50 % needs, 30 % wants and 20 % savings. Suggestions SHALL NOT change any value.
 
 ## Success Criteria *(mandatory)*
 

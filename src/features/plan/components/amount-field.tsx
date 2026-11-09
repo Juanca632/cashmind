@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/shared/ui/themed-text';
-import { Spacing } from '@/shared/theme/theme';
+import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { FontFamily, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import type { Bucket } from '@/shared/buckets';
 import type { Amount } from '@/features/plan/rules';
 import { useTheme } from '@/shared/theme/use-theme';
 
@@ -9,10 +11,15 @@ type Unit = Amount['unit'];
 
 type AmountFieldProps = {
   label: string;
+  bucket: Bucket;
+  /** Small text at the right of the label, e.g. the suggested amount. */
+  suggestion?: string;
   unit: Unit;
   value: string;
   onChangeText: (text: string) => void;
   onChangeUnit: (unit: Unit) => void;
+  /** Small text under the label, explaining what the field is for. */
+  description?: string;
   /** Small text under the field, e.g. the value in the other unit. */
   hint?: string;
   /** Highlights the field as filled in automatically. */
@@ -20,15 +27,30 @@ type AmountFieldProps = {
 };
 
 /** Number input with a € / % switch, used for the plan buckets. */
-export function AmountField({ label, unit, value, onChangeText, onChangeUnit, hint, automatic }: AmountFieldProps) {
+export function AmountField({ label, bucket, suggestion, unit, value, onChangeText, onChangeUnit, description, hint, automatic }: AmountFieldProps) {
   const theme = useTheme();
 
   return (
     <View style={styles.container}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-        {automatic ? ' · automatic' : ''}
-      </ThemedText>
+      <View style={styles.labelRow}>
+        <View style={styles.name}>
+          <BucketBadge bucket={bucket} size="small" />
+          <ThemedText type="smallBold">
+            {label}
+            {automatic ? ' · automatic' : ''}
+          </ThemedText>
+        </View>
+        {suggestion ? (
+          <ThemedText type="caption" themeColor="textSecondary">
+            {suggestion}
+          </ThemedText>
+        ) : null}
+      </View>
+      {description ? (
+        <ThemedText type="caption" themeColor="textSecondary">
+          {description}
+        </ThemedText>
+      ) : null}
       <View
         style={[
           styles.inputRow,
@@ -65,7 +87,7 @@ export function AmountField({ label, unit, value, onChangeText, onChangeUnit, hi
         </View>
       </View>
       {hint ? (
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="caption" themeColor="textSecondary">
           {hint}
         </ThemedText>
       ) : null}
@@ -77,28 +99,42 @@ const styles = StyleSheet.create({
   container: {
     gap: Spacing.one,
   },
-  inputRow: {
+  labelRow: {
     alignItems: 'center',
-    borderRadius: Spacing.two,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  name: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: Spacing.two,
+  },
+  inputRow: {
+    alignItems: 'center',
+    borderRadius: Radius.field,
+    flexDirection: 'row',
+    gap: Spacing.two,
+    minHeight: 52,
     paddingLeft: Spacing.three,
     paddingRight: Spacing.one,
   },
   input: {
     flex: 1,
-    fontSize: 18,
+    fontFamily: FontFamily.medium,
+    fontSize: 16,
     paddingVertical: Spacing.two,
   },
   switch: {
-    borderRadius: Spacing.two,
+    borderRadius: Radius.field,
     flexDirection: 'row',
     padding: Spacing.half,
   },
   option: {
     alignItems: 'center',
-    borderRadius: Spacing.two,
-    minWidth: 36,
+    borderRadius: Radius.field,
+    justifyContent: 'center',
+    minHeight: MIN_TOUCH - Spacing.one * 2,
+    minWidth: MIN_TOUCH - Spacing.one,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },

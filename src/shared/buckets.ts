@@ -21,10 +21,19 @@ export function progressPercent(spentCents: number, targetCents: number): number
 }
 
 export const BUCKET_LABELS: Record<Bucket, string> = {
-  fixed: 'Fixed expenses',
-  leisure: 'Leisure',
+  fixed: 'Needs',
+  leisure: 'Wants',
   savings: 'Savings',
 };
+
+export const BUCKET_DESCRIPTIONS: Record<Bucket, string> = {
+  fixed: 'Rent, bills, groceries',
+  leisure: 'Going out, hobbies, treats',
+  savings: 'Money you set aside',
+};
+
+/** The 50/30/20 starting point, shown as a suggestion only. */
+export const SUGGESTED_PERCENT: Record<Bucket, number> = { fixed: 50, leisure: 30, savings: 20 };
 
 export type BucketProgress = {
   spent: number;

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { BucketRows } from '@/shared/ui/bucket-rows';
+import { PlanBar } from '@/shared/ui/plan-bar';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
@@ -47,8 +48,7 @@ function MonthIncomeForm({
     <ThemedView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <ThemedText themeColor="textSecondary">
-          Your usual income is {formatEuros(plan.incomeCents)}. Set a different amount for this month only: fixed expenses stay the same and leisure and savings
-          adjust in the same proportion. Next month goes back to the usual income.
+          Usual income: {formatEuros(plan.incomeCents)}. Only this month changes.
         </ThemedText>
 
         <TextField
@@ -62,7 +62,12 @@ function MonthIncomeForm({
         />
         {incomeText.trim() !== '' && !valid ? <ErrorText>{incomeErrorMessage(incomeCents ?? 0)}</ErrorText> : null}
 
-        {valid ? <BucketRows targets={targetsFor(plan, incomeCents)} /> : null}
+        {valid ? (
+          <>
+            <PlanBar targets={targetsFor(plan, incomeCents)} />
+            <BucketRows targets={targetsFor(plan, incomeCents)} />
+          </>
+        ) : null}
 
         <Button
           label="Save for this month"

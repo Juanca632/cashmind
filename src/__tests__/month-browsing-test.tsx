@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
-const openPicker = () => press(/▾/);
+const openPicker = () => press(/Your plan for/);
 
 const threeThousand: IncomePlan = { ...standardPlan, incomeCents: 300000 };
 
@@ -70,7 +70,7 @@ describe('Months without a plan', () => {
     // The picker does not go back before the year of the first plan.
     await openPicker();
     expect(screen.getByRole('button', { name: 'Previous year' })).toBeDisabled();
-    expect(screen.queryByText('Leisure')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Wants')).not.toBeOnTheScreen();
   });
 });
 

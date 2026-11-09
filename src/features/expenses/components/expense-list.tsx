@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { BUCKET_LABELS } from '@/shared/buckets';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Spacing } from '@/shared/theme/theme';
+import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { CARD_SHADOW, Radius, Spacing } from '@/shared/theme/theme';
 import { type Expense } from '@/features/expenses/rules';
 import { formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
@@ -16,7 +17,11 @@ type ExpenseListProps = {
 
 export function ExpenseList({ expenses, onPress }: ExpenseListProps) {
   if (expenses.length === 0) {
-    return <ThemedText themeColor="textSecondary">No expenses recorded this month.</ThemedText>;
+    return (
+      <ThemedView type="backgroundElement" style={styles.card}>
+        <ThemedText themeColor="textSecondary">No expenses recorded this month.</ThemedText>
+      </ThemedView>
+    );
   }
 
   return (
@@ -28,9 +33,10 @@ export function ExpenseList({ expenses, onPress }: ExpenseListProps) {
           disabled={!onPress}
           onPress={() => onPress?.(expense)}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+          <BucketBadge bucket={expense.bucket} />
           <View style={styles.text}>
             <ThemedText numberOfLines={1}>{expense.note || BUCKET_LABELS[expense.bucket]}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="caption" themeColor="textSecondary">
               {formatDay(expense.date)} · {BUCKET_LABELS[expense.bucket]}
             </ThemedText>
           </View>
@@ -43,7 +49,8 @@ export function ExpenseList({ expenses, onPress }: ExpenseListProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Spacing.three,
+    borderRadius: Radius.card,
+    boxShadow: CARD_SHADOW,
     gap: Spacing.three,
     padding: Spacing.three,
   },

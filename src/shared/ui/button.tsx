@@ -1,32 +1,40 @@
+import { Feather } from '@react-native-vector-icons/feather';
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/shared/ui/themed-text';
-import { Spacing } from '@/shared/theme/theme';
+import { CARD_SHADOW, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type ButtonProps = {
   label: string;
+  icon?: ComponentProps<typeof Feather>['name'];
+  /** What a screen reader says, when the visible label is shorter. */
+  accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'pill';
 };
 
-export function Button({ label, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
+export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
   const theme = useTheme();
   const primary = variant === 'primary';
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        { backgroundColor: primary ? theme.text : theme.backgroundElement },
+        variant === 'pill' ? styles.pill : styles.full,
+        primary ? { backgroundColor: Hero.background } : { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
         (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
       ]}>
-      <ThemedText type="smallBold" style={{ color: primary ? theme.background : theme.text }}>
+      {icon ? <Feather name={icon} size={16} color={primary ? Hero.text : theme.text} /> : null}
+      <ThemedText type="smallBold" style={[styles.label, { color: primary ? Hero.text : theme.text }]}>
         {label}
       </ThemedText>
     </Pressable>
@@ -36,8 +44,20 @@ export function Button({ label, onPress, disabled = false, variant = 'primary' }
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    borderRadius: Spacing.three,
-    paddingVertical: Spacing.three,
+    borderRadius: Radius.full,
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'center',
+  },
+  full: {
+    minHeight: 56,
     paddingHorizontal: Spacing.four,
+  },
+  pill: {
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: Spacing.three,
+  },
+  label: {
+    fontSize: 16,
   },
 });

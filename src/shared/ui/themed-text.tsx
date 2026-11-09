@@ -1,10 +1,10 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/shared/theme/theme';
+import { FontFamily, Fonts, ThemeColor } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?: 'default' | 'display' | 'heading' | 'caption' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
   themeColor?: ThemeColor;
 };
 
@@ -15,30 +15,48 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
+  display: {
+    fontSize: 48,
+    fontVariant: ['tabular-nums'],
+    fontFamily: FontFamily.bold,
+    letterSpacing: -1,
+    lineHeight: 56,
+  },
+  heading: {
+    fontSize: 22,
+    fontFamily: FontFamily.bold,
+    letterSpacing: -0.3,
+    lineHeight: 28,
+  },
+  caption: {
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
+    lineHeight: 18,
+  },
   small: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
+    fontFamily: FontFamily.medium,
   },
   smallBold: {
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
+    fontFamily: FontFamily.bold,
   },
   default: {
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+    fontFamily: FontFamily.medium,
   },
   title: {
     fontSize: 48,
-    fontWeight: 600,
+    fontFamily: FontFamily.semiBold,
     lineHeight: 52,
   },
   subtitle: {
     fontSize: 32,
     lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: FontFamily.semiBold,
   },
   link: {
     lineHeight: 30,

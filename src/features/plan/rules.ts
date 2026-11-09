@@ -80,11 +80,11 @@ export function planErrorMessage(error: PlanError, plan: IncomePlan): string {
     case 'income-too-large':
       return AMOUNT_TOO_LARGE;
     case 'fixed-invalid':
-      return 'Fixed expenses must be a valid amount and cannot exceed your income.';
+      return 'Needs must be a valid amount and cannot exceed your income.';
     case 'kept-invalid':
       return `${BUCKET_LABELS[plan.kept]} must be an amount in euros or a whole percentage from 0 to 100.`;
     case 'over-income':
-      return `Fixed expenses and ${BUCKET_LABELS[plan.kept].toLowerCase()} are ${formatEuros(planExcessCents(plan))} over your income.`;
+      return `Needs and ${BUCKET_LABELS[plan.kept].toLowerCase()} are ${formatEuros(planExcessCents(plan))} over your income.`;
   }
 }
 
