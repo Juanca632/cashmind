@@ -1,6 +1,6 @@
 {
   "name": "cashmind",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/manrope": "^0.4.3",
