@@ -16,7 +16,7 @@ All the documentation is **one page**: CashMind (`412c26e8-1a3b-81f5-ba1d-cae546
 3. **How a month is calculated:** a diagram with an example using invented numbers.
 4. **Architecture:** a diagram of the layers and features.
 5. **Database:** a diagram of the tables and migration steps.
-6. **How we work:** a table of the agents and what each one does.
+6. **How we work:** a table of the agents (test-writer, e2e-tester, code-reviewer, quality-auditor, ui-auditor, docs-keeper) and what each one does.
 7. **To validate:** the developer's checkboxes.
 
 Notion is a source of truth for how the app is **now**. It holds no decisions (taken or pending), no work in progress, no next steps and no history: those live in `specs/` and git. A status table, if any, shows only facts such as the app and database versions.

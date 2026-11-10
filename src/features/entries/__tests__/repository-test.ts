@@ -1,5 +1,5 @@
 import { migrateDbIfNeeded } from '@/db/database';
-import { getExpensesOfMonth, getFirstEntryMonth, getLatestIncomeBefore } from '@/features/expenses/repository';
+import { getEntriesOfMonth, getFirstEntryMonth, getLatestIncomeBefore } from '@/features/entries/repository';
 
 import { createFakeDb } from '../../../test-support/fake-sqlite';
 
@@ -9,8 +9,8 @@ async function newDb() {
   return db as any;
 }
 
-const add = (db: any, date: string, bucket: string, cents: number, note = '', createdAt = '2026-01-01 00:00:00') =>
-  db.runAsync('INSERT INTO expense (date, bucket, amount_cents, note, created_at) VALUES (?, ?, ?, ?, ?)', date, bucket, cents, note, createdAt);
+const add = (db: any, date: string, kind: string, cents: number, note = '', createdAt = '2026-01-01 00:00:00') =>
+  db.runAsync('INSERT INTO entry (date, kind, amount_cents, note, created_at) VALUES (?, ?, ?, ?, ?)', date, kind, cents, note, createdAt);
 
 describe('Most recent earlier income', () => {
   it('is null when no month before has income', async () => {
@@ -84,9 +84,9 @@ describe('Entries of a month', () => {
     await add(db, '2026-10-31', 'expense', 4, 'other month');
     await add(db, '2026-12-01', 'expense', 5, 'other month');
 
-    const entries = await getExpensesOfMonth(db, '2026-11');
+    const entries = await getEntriesOfMonth(db, '2026-11');
 
     expect(entries.map((entry) => entry.note)).toEqual(['next day', 'late', 'early']);
-    expect(entries[1]).toMatchObject({ date: '2026-11-05', bucket: 'expense', amountCents: 2 });
+    expect(entries[1]).toMatchObject({ date: '2026-11-05', kind: 'expense', amountCents: 2 });
   });
 });

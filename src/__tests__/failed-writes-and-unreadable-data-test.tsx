@@ -25,8 +25,8 @@ afterEach(() => {
 });
 
 const TODAY: [number, number, number] = [2026, 10, 7];
-const salary = { date: '2026-11-01', bucket: 'income', amountCents: 200000, note: 'Salary' } as const;
-const cinema = { date: '2026-11-05', bucket: 'expense', amountCents: 1250, note: 'Cinema' } as const;
+const salary = { date: '2026-11-01', kind: 'income', amountCents: 200000, note: 'Salary' } as const;
+const cinema = { date: '2026-11-05', kind: 'expense', amountCents: 1250, note: 'Cinema' } as const;
 const NOT_SAVED = 'The entry could not be saved. Please try again.';
 const NOT_DELETED = 'The entry could not be deleted. Please try again.';
 const UNREADABLE = /some of your data could not be read/i;
@@ -41,7 +41,7 @@ function expectMessage(message: RegExp | string) {
 
 describe('A failed change is always explained', () => {
   it('Plan: storage fails when saving', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('My plan');
     await type('Savings percentage', '30');
     await breakDeviceWrites();
@@ -53,38 +53,38 @@ describe('A failed change is always explained', () => {
   });
 
   it('Expense: storage fails when adding', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     await type('Amount', '12,50');
     await breakDeviceWrites();
     await press('Add expense');
 
     expectMessage(NOT_SAVED);
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
   });
 
   it('Expense: storage fails when editing', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await type('Amount', '15,00');
     await breakDeviceWrites();
     await press('Save changes');
 
     expectMessage(NOT_SAVED);
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeOnTheScreen();
   });
 
   it('Expense: storage fails when deleting', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await breakDeviceWrites();
     await press('Delete');
     await answerDialog('Delete');
 
     expectMessage(NOT_DELETED);
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
     expectNoDialog();
   });
@@ -93,7 +93,7 @@ describe('A failed change is always explained', () => {
 describe('Damaged data is detected, never hidden or altered', () => {
   const damagedExpense = [
     ...RELAX_TABLES,
-    "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'expense', 12.5, 'Broken')",
+    "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-06', 'expense', 12.5, 'Broken')",
   ];
   const damagedPlan = [
     ...RELAX_TABLES,
@@ -101,7 +101,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   ];
 
   it('Stored expense with a non-whole amount: the month says data could not be read', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema], raw: damagedExpense });
+    await startApp({ today: TODAY, entries: [salary, cinema], raw: damagedExpense });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
     expect(screen.queryByText('Broken')).not.toBeOnTheScreen();
@@ -112,7 +112,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   it('Stored expense with a text amount: the month says data could not be read', async () => {
     await startApp({
       today: TODAY,
-      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'expense', 'abc', 'Broken')"],
+      raw: [...RELAX_TABLES, "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-06', 'expense', 'abc', 'Broken')"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -121,7 +121,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   it('Stored expense of an unknown kind (an old "leisure" row left over): the month says data could not be read', async () => {
     await startApp({
       today: TODAY,
-      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'leisure', 500, 'Broken')"],
+      raw: [...RELAX_TABLES, "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-06', 'leisure', 500, 'Broken')"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -130,7 +130,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   it('Stored expense with an impossible date: the month says data could not be read', async () => {
     await startApp({
       today: TODAY,
-      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-31', 'expense', 500, 'Broken')"],
+      raw: [...RELAX_TABLES, "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-31', 'expense', 500, 'Broken')"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -139,8 +139,8 @@ describe('Damaged data is detected, never hidden or altered', () => {
   it('Unreadable date in the month picker: it says data could not be read and no data is changed', async () => {
     await startApp({
       today: TODAY,
-      expenses: [salary],
-      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2025/03/10', 'expense', 500, 'Broken')"],
+      entries: [salary],
+      raw: [...RELAX_TABLES, "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2025/03/10', 'expense', 500, 'Broken')"],
     });
     const before = await dumpDevice();
     await testRouter.push('/month-picker');
@@ -152,7 +152,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   });
 
   it('Unreadable plan: the home screen says data could not be read instead of figures', async () => {
-    await startApp({ today: TODAY, expenses: [salary], raw: damagedPlan });
+    await startApp({ today: TODAY, entries: [salary], raw: damagedPlan });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
     expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
@@ -183,22 +183,22 @@ describe('Damaged data is detected, never hidden or altered', () => {
   ])('An earlier month with an income that has %s: a month without income says data could not be read and changes nothing', async (_label, values) => {
     await startApp({
       today: TODAY,
-      expenses: [{ date: '2026-11-02', bucket: 'expense', amountCents: 500, note: 'Coffee' }],
-      raw: [...RELAX_TABLES, `INSERT INTO expense (date, bucket, amount_cents, note) VALUES (${values})`],
+      entries: [{ date: '2026-11-02', kind: 'expense', amountCents: 500, note: 'Coffee' }],
+      raw: [...RELAX_TABLES, `INSERT INTO entry (date, kind, amount_cents, note) VALUES (${values})`],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Repeat last income' })).not.toBeOnTheScreen();
     const [entries] = (await dumpDevice()) as [Record<string, unknown>[]];
     expect(entries).toHaveLength(2);
-    expect(entries[1]).toMatchObject({ bucket: 'income', note: 'Old pay' });
+    expect(entries[1]).toMatchObject({ kind: 'income', note: 'Old pay' });
   });
 
   it('Detecting damaged data changes no stored row', async () => {
     await startApp({
       today: TODAY,
       plans: [[30, '2026-06']],
-      expenses: [salary, cinema],
+      entries: [salary, cinema],
       raw: [...damagedExpense, "INSERT INTO plan_version (effective_month, savings_pct) VALUES ('2026-08', 'lots')"],
     });
     const before = await dumpDevice();
@@ -217,8 +217,8 @@ describe('Damaged data is detected, never hidden or altered', () => {
   ])('Stored expense with %s: the month says data could not be read and the row stays as it was', async (_label, values, kept) => {
     await startApp({
       today: TODAY,
-      expenses: [salary],
-      raw: [...RELAX_TABLES, `INSERT INTO expense (date, bucket, amount_cents, note) VALUES (${values})`],
+      entries: [salary],
+      raw: [...RELAX_TABLES, `INSERT INTO entry (date, kind, amount_cents, note) VALUES (${values})`],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -231,8 +231,8 @@ describe('Damaged data is detected, never hidden or altered', () => {
   it('Stored expense with a note that is not text: the month says data could not be read and the row stays', async () => {
     await startApp({
       today: TODAY,
-      expenses: [salary],
-      raw: [...RELAX_TABLES, "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'expense', 500, X'0102')"],
+      entries: [salary],
+      raw: [...RELAX_TABLES, "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-06', 'expense', 500, X'0102')"],
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
@@ -249,7 +249,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
   ])('Stored plan with a badly formatted month (%s): home says data could not be read and nothing changes', async (_label, month) => {
     await startApp({
       today: TODAY,
-      expenses: [salary],
+      entries: [salary],
       raw: [...RELAX_TABLES, `INSERT INTO plan_version (effective_month, savings_pct) VALUES ('${month}', 30)`],
     });
 
@@ -265,8 +265,8 @@ describe('Data that is not damaged is never reported as damaged', () => {
     await startApp({
       today: TODAY,
       raw: [
-        "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-01', 'income', 100000000, 'Big pay')",
-        "INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-03', 'expense', 500, 'Coffee')",
+        "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-01', 'income', 100000000, 'Big pay')",
+        "INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-03', 'expense', 500, 'Coffee')",
       ],
     });
 
@@ -279,8 +279,8 @@ describe('Data that is not damaged is never reported as damaged', () => {
   it('An entry dated after today is listed and counted, not reported as unreadable', async () => {
     await startApp({
       today: TODAY,
-      expenses: [salary],
-      raw: ["INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-20', 'expense', 2500, 'Booked ahead')"],
+      entries: [salary],
+      raw: ["INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-20', 'expense', 2500, 'Booked ahead')"],
     });
 
     expect(screen.queryByText(UNREADABLE)).not.toBeOnTheScreen();
@@ -291,7 +291,7 @@ describe('Data that is not damaged is never reported as damaged', () => {
   it('A past entry is still shown years later', async () => {
     await startApp({
       today: [2027, 2, 1],
-      expenses: [{ date: '2026-11-30', bucket: 'expense', amountCents: 1250, note: 'Cinema' }],
+      entries: [{ date: '2026-11-30', kind: 'expense', amountCents: 1250, note: 'Cinema' }],
     });
     await press(/^Month:/);
     await press('Previous year');

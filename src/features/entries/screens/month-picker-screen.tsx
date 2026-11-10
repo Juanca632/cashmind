@@ -8,7 +8,7 @@ import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 import { Accent, Radius, Spacing } from '@/shared/theme/theme';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
-import { useFirstEntryMonth } from '@/features/expenses/hooks/use-first-entry-month';
+import { useFirstEntryMonth } from '@/features/entries/hooks/use-first-entry-month';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export default function MonthPickerScreen() {

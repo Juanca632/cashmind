@@ -8,10 +8,10 @@ export const RELAX_TABLES: string[] = [
   "INSERT INTO plan_version_loose SELECT effective_month, savings_pct FROM plan_version",
   "DROP TABLE plan_version",
   "ALTER TABLE plan_version_loose RENAME TO plan_version",
-  `CREATE TABLE expense_loose (
-     id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, bucket TEXT NOT NULL, amount_cents INTEGER NOT NULL,
+  `CREATE TABLE entry_loose (
+     id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, kind TEXT NOT NULL, amount_cents INTEGER NOT NULL,
      note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
-  "INSERT INTO expense_loose SELECT id, date, bucket, amount_cents, note, created_at FROM expense",
-  "DROP TABLE expense",
-  "ALTER TABLE expense_loose RENAME TO expense",
+  "INSERT INTO entry_loose SELECT id, date, kind, amount_cents, note, created_at FROM entry",
+  "DROP TABLE entry",
+  "ALTER TABLE entry_loose RENAME TO entry",
 ];

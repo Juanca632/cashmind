@@ -1,21 +1,21 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { type Expense } from '@/features/expenses/rules';
-import { BUCKET_LABELS } from '@/shared/buckets';
+import { type Entry } from '@/features/entries/rules';
+import { KIND_LABELS } from '@/shared/kinds';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
-import { BUCKET_COLORS, Spacing } from '@/shared/theme/theme';
-import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { KIND_COLORS, Spacing } from '@/shared/theme/theme';
+import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
 
-type ExpenseListProps = {
-  expenses: Expense[];
+type EntryListProps = {
+  entries: Entry[];
   /** Today, to name the most recent days. */
   today: Date;
   /** Shown when there is nothing to list. */
   emptyText: string;
-  /** Called when an expense is tapped. */
-  onPress: (expense: Expense) => void;
+  /** Called when an entry is tapped. */
+  onPress: (entry: Entry) => void;
 };
 
 function dayTitle(day: string, today: Date): string {
@@ -25,8 +25,8 @@ function dayTitle(day: string, today: Date): string {
   return formatDay(day);
 }
 
-export function ExpenseList({ expenses, today, emptyText, onPress }: ExpenseListProps) {
-  if (expenses.length === 0) {
+export function EntryList({ entries, today, emptyText, onPress }: EntryListProps) {
+  if (entries.length === 0) {
     return (
       <ThemedText themeColor="textSecondary" style={styles.empty}>
         {emptyText}
@@ -36,26 +36,26 @@ export function ExpenseList({ expenses, today, emptyText, onPress }: ExpenseList
 
   return (
     <View>
-      {expenses.map((expense) => (
+      {entries.map((entry) => (
         <Pressable
-          key={expense.id}
+          key={entry.id}
           accessibilityRole="button"
-          onPress={() => onPress(expense)}
+          onPress={() => onPress(entry)}
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-          <BucketBadge bucket={expense.bucket} />
+          <KindBadge kind={entry.kind} />
           <View style={styles.text}>
             <ThemedText type="smallBold" numberOfLines={1}>
-              {expense.note || BUCKET_LABELS[expense.bucket]}
+              {entry.note || KIND_LABELS[entry.kind]}
             </ThemedText>
             <ThemedText type="caption" themeColor="textSecondary">
-              {dayTitle(expense.date, today)}
+              {dayTitle(entry.date, today)}
             </ThemedText>
           </View>
           <ThemedText
             type="smallBold"
-            style={expense.bucket === 'savings' || expense.bucket === 'income' ? { color: BUCKET_COLORS[expense.bucket] } : undefined}>
-            {expense.bucket === 'income' ? '+' : ''}
-            {formatEuros(expense.amountCents)}
+            style={entry.kind === 'savings' || entry.kind === 'income' ? { color: KIND_COLORS[entry.kind] } : undefined}>
+            {entry.kind === 'income' ? '+' : ''}
+            {formatEuros(entry.amountCents)}
           </ThemedText>
         </Pressable>
       ))}

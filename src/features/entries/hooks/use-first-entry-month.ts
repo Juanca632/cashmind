@@ -1,7 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
-import { getFirstEntryMonth } from '@/features/expenses/repository';
+import { getFirstEntryMonth } from '@/features/entries/repository';
 import { useFocusedData, type Loadable } from '@/shared/hooks/use-focused-data';
 
 /** Month of the oldest recorded entry ('YYYY-MM'), or null when nothing was recorded. */

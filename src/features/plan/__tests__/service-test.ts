@@ -33,7 +33,7 @@ describe('Saving the plan', () => {
 
     expect(await savePlan(db, 30, NOV_7)).toEqual({ ok: true });
     expect(await plans(db)).toEqual([{ effective_month: '2026-11', savings_pct: 30 }]);
-    expect(await db.getAllAsync('SELECT * FROM expense')).toEqual([]);
+    expect(await db.getAllAsync('SELECT * FROM entry')).toEqual([]);
   });
 
   it('Saving twice in the same month replaces that month only', async () => {

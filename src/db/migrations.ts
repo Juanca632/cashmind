@@ -176,4 +176,22 @@ export const MIGRATIONS: readonly Migration[] = [
         DROP TABLE fixed_item;
       `),
   },
+  {
+    // Renames expense to entry and bucket to kind: since step 4 the table holds every kind of entry.
+    version: 5,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE entry (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        ) STRICT;
+        INSERT INTO entry (id, date, kind, amount_cents, note, created_at)
+          SELECT id, date, bucket, amount_cents, note, created_at FROM expense;
+        DROP TABLE expense;
+      `),
+  },
 ];

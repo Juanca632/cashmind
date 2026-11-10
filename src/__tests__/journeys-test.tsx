@@ -26,7 +26,7 @@ describe('Journey: first use, recording income, savings and expenses, changing t
 
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     await press('Add income');
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('radio', { name: 'Income' })).toBeSelected();
     await type('Amount', '2000');
     await type('Note (optional)', 'Salary');
@@ -69,9 +69,9 @@ describe('Journey: a new month, repeating the last income and browsing back', ()
     await startApp({
       today: [2026, 11, 2],
       plans: [[25, '2026-07']],
-      expenses: [
-        { date: '2026-11-01', bucket: 'income', amountCents: 150000, note: 'November salary' },
-        { date: '2026-11-04', bucket: 'expense', amountCents: 30000, note: 'November trip' },
+      entries: [
+        { date: '2026-11-01', kind: 'income', amountCents: 150000, note: 'November salary' },
+        { date: '2026-11-04', kind: 'expense', amountCents: 30000, note: 'November trip' },
       ],
     });
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
@@ -104,9 +104,9 @@ describe('Journey: income edge cases', () => {
   it('Deleting the only income sends the month back to asking for income, keeping its spending', async () => {
     await startApp({
       today: [2026, 10, 7],
-      expenses: [
-        { date: '2026-11-01', bucket: 'income', amountCents: 200000, note: 'Pay' },
-        { date: '2026-11-03', bucket: 'expense', amountCents: 2500, note: 'Pizza' },
+      entries: [
+        { date: '2026-11-01', kind: 'income', amountCents: 200000, note: 'Pay' },
+        { date: '2026-11-03', kind: 'expense', amountCents: 2500, note: 'Pizza' },
       ],
     });
     expectLeftToSpend('1 575,00 €');
@@ -121,8 +121,8 @@ describe('Journey: income edge cases', () => {
   });
 
   it('A past month without income accepts one, and its figures appear there only', async () => {
-    await startApp({ today: [2026, 10, 7], plans: [[30, '2026-07']], expenses: [
-      { date: '2026-09-10', bucket: 'expense', amountCents: 10000, note: 'Gift' },
+    await startApp({ today: [2026, 10, 7], plans: [[30, '2026-07']], entries: [
+      { date: '2026-09-10', kind: 'expense', amountCents: 10000, note: 'Gift' },
     ] });
     await press(/^Month:/);
     await press('Sep');

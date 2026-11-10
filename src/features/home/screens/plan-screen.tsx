@@ -2,8 +2,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { useMonthExpenses } from '@/features/expenses/hooks/use-month-expenses';
-import { totalsByBucket } from '@/features/expenses/rules';
+import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { totalsByKind } from '@/features/entries/rules';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { PERCENT_INVALID, savingsGoal, savingsPercentFor } from '@/features/plan/rules';
 import { savePlan } from '@/features/plan/service';
@@ -11,7 +11,7 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { formatEurosCompact, parsePercent } from '@/shared/money';
 import { monthKey } from '@/shared/months';
-import { BUCKET_COLORS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
+import { KIND_COLORS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
@@ -23,14 +23,14 @@ import { ThemedView } from '@/shared/ui/themed-view';
 export default function PlanScreen() {
   const month = monthKey(new Date());
   const plan = usePlanVersions();
-  const expenses = useMonthExpenses(month);
-  if (plan.status === 'error' || expenses.status === 'error') return <DataError />;
-  if (plan.status === 'loading' || expenses.status === 'loading') return <ThemedView style={styles.screen} />;
+  const entries = useMonthEntries(month);
+  if (plan.status === 'error' || entries.status === 'error') return <DataError />;
+  if (plan.status === 'loading' || entries.status === 'loading') return <ThemedView style={styles.screen} />;
 
   return (
     <PlanForm
       initialPercent={savingsPercentFor(plan.data, month)}
-      incomeCents={totalsByBucket(expenses.data).income}
+      incomeCents={totalsByKind(entries.data).income}
     />
   );
 }
@@ -72,7 +72,7 @@ function PlanForm({ initialPercent, incomeCents }: { initialPercent: number; inc
                 %
               </ThemedText>
             </View>
-            <ThemedText type="smallBold" style={[styles.centered, { color: BUCKET_COLORS.savings }]}>
+            <ThemedText type="smallBold" style={[styles.centered, { color: KIND_COLORS.savings }]}>
               {percent === null
                 ? ' '
                 : incomeCents > 0

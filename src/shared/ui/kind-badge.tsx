@@ -2,23 +2,23 @@ import { Feather } from '@react-native-vector-icons/feather';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import type { EntryBucket } from '@/shared/buckets';
-import { BUCKET_COLORS, BUCKET_TINTS, Radius } from '@/shared/theme/theme';
+import type { EntryKind } from '@/shared/kinds';
+import { KIND_COLORS, KIND_TINTS, Radius } from '@/shared/theme/theme';
 
-export const BUCKET_ICONS: Record<EntryBucket, ComponentProps<typeof Feather>['name']> = {
+export const KIND_ICONS: Record<EntryKind, ComponentProps<typeof Feather>['name']> = {
   income: 'trending-up',
   savings: 'database',
   expense: 'shopping-bag',
 };
 
 /** The entry kind's icon on a soft tint of its color. Decorative: the name is always written next to it. */
-export function BucketBadge({ bucket }: { bucket: EntryBucket }) {
+export function KindBadge({ kind }: { kind: EntryKind }) {
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.badge, { backgroundColor: BUCKET_TINTS[bucket] }]}>
-      <Feather name={BUCKET_ICONS[bucket]} size={18} color={BUCKET_COLORS[bucket]} />
+      style={[styles.badge, { backgroundColor: KIND_TINTS[kind] }]}>
+      <Feather name={KIND_ICONS[kind]} size={18} color={KIND_COLORS[kind]} />
     </View>
   );
 }

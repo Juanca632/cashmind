@@ -11,8 +11,8 @@ async function newDb() {
 
 const plan = (month: string, pct: string) =>
   `INSERT INTO plan_version (effective_month, savings_pct) VALUES (${month}, ${pct})`;
-const entry = (date: string, bucket: string, cents: string) =>
-  `INSERT INTO expense (date, bucket, amount_cents, note) VALUES (${date}, ${bucket}, ${cents}, 'x')`;
+const entry = (date: string, kind: string, cents: string) =>
+  `INSERT INTO entry (date, kind, amount_cents, note) VALUES (${date}, ${kind}, ${cents}, 'x')`;
 
 describe("The database rejects invalid data", () => {
   it.each([
@@ -45,9 +45,9 @@ describe("The database rejects invalid data", () => {
     ["fixed", "'fixed'"],
     ["leisure", "'leisure'"],
     ["unknown kind", "'food'"],
-  ])("An entry of kind %s is refused: there are only income, savings and expense", async (_name, bucket) => {
+  ])("An entry of kind %s is refused: there are only income, savings and expense", async (_name, kind) => {
     const db = await newDb();
-    await expect(db.execAsync(entry("'2026-11-05'", bucket, "100"))).rejects.toThrow();
+    await expect(db.execAsync(entry("'2026-11-05'", kind, "100"))).rejects.toThrow();
   });
 
   it("Refused values leave nothing stored", async () => {
@@ -66,10 +66,10 @@ describe("The database rejects invalid data", () => {
     await db.execAsync(entry("'2026-11-07'", "'income'", "200000"));
 
     expect(await db.getAllAsync("SELECT * FROM plan_version")).toHaveLength(3);
-    expect(await db.getAllAsync("SELECT bucket, amount_cents FROM expense ORDER BY id")).toEqual([
-      { bucket: "expense", amount_cents: 90000001 },
-      { bucket: "savings", amount_cents: 1 },
-      { bucket: "income", amount_cents: 200000 },
+    expect(await db.getAllAsync("SELECT kind, amount_cents FROM entry ORDER BY id")).toEqual([
+      { kind: "expense", amount_cents: 90000001 },
+      { kind: "savings", amount_cents: 1 },
+      { kind: "income", amount_cents: 200000 },
     ]);
   });
 
@@ -78,7 +78,7 @@ describe("The database rejects invalid data", () => {
     const tables = await db.getAllAsync(
       "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     );
-    expect(tables.map((t: any) => t.name).sort()).toEqual(["expense", "plan_version"]);
+    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version"]);
     for (const t of tables) expect(t.sql).toMatch(/STRICT\s*$/i);
   });
 
@@ -86,6 +86,6 @@ describe("The database rejects invalid data", () => {
     const db = await newDb();
     const cols = async (t: string) => (await db.getAllAsync(`PRAGMA table_info(${t})`)).map((c: any) => c.name);
     expect(await cols("plan_version")).toEqual(["effective_month", "savings_pct"]);
-    expect(await cols("expense")).toEqual(["id", "date", "bucket", "amount_cents", "note", "created_at"]);
+    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at"]);
   });
 });

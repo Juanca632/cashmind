@@ -177,7 +177,7 @@ describe("Updates never lose or break data (real list)", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "plan_version",
-        "expense",
+        "entry",
       ]),
     );
   });
@@ -226,8 +226,15 @@ describe("Updates never lose or break data (real list)", () => {
       INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-05', 'expense', 1250, 'Cinema');
       INSERT INTO expense (date, bucket, amount_cents, note) VALUES ('2026-11-06', 'expense', 90000, '');
     `,
+    5: `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 20);
+      INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-10-01', 'income', 150000, 'Pay');
+      INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-05', 'expense', 1250, 'Cinema');
+      INSERT INTO entry (date, kind, amount_cents, note) VALUES ('2026-11-06', 'expense', 90000, '');
+    `,
   };
-  const monthly = (date: string, cents: number) => ({ date, bucket: "income", amount_cents: cents, note: "Monthly income" });
+  const monthly = (date: string, cents: number) => ({ date, kind: "income", amount_cents: cents, note: "Monthly income" });
   /** The entries every released version ends with, once the clock says it is 9 November 2026. */
   const expectedEntries: Record<number, unknown[]> = {
     // Versions 1 and 2 kept the income in the plan: one income entry per month since July.
@@ -245,15 +252,16 @@ describe("Updates never lose or break data (real list)", () => {
       monthly("2026-10-01", 250000),
       monthly("2026-11-01", 300000),
     ],
-    3: [{ date: "2026-10-01", bucket: "income", amount_cents: 150000, note: "Pay" }],
-    4: [{ date: "2026-10-01", bucket: "income", amount_cents: 150000, note: "Pay" }],
+    3: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay" }],
+    4: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay" }],
+    5: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay" }],
   };
   const expectedRest = [
-    { date: "2026-11-05", bucket: "expense", amount_cents: 1250, note: "Cinema" },
-    { date: "2026-11-06", bucket: "expense", amount_cents: 90000, note: "" },
+    { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema" },
+    { date: "2026-11-06", kind: "expense", amount_cents: 90000, note: "" },
   ];
   const entriesOf = (db: any) =>
-    db.getAllAsync("SELECT date, bucket, amount_cents, note FROM expense ORDER BY date, id");
+    db.getAllAsync("SELECT date, kind, amount_cents, note FROM entry ORDER BY date, id");
   const plansOf = (db: any) =>
     db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version ORDER BY effective_month");
 
@@ -304,11 +312,11 @@ describe("Updates never lose or break data (real list)", () => {
         INSERT INTO expense (id, date, bucket, amount_cents, note) VALUES (6, '2026-11-03', 'leisure', 1250, 'Cinema');
         INSERT INTO expense (id, date, bucket, amount_cents, note) VALUES (7, '2026-11-04', 'savings', 30000, '');
       `);
-      expect(await db.getAllAsync("SELECT id, bucket, amount_cents, note FROM expense ORDER BY id")).toEqual([
-        { id: 4, bucket: "income", amount_cents: 200000, note: "Salary" },
-        { id: 5, bucket: "expense", amount_cents: 90000, note: "Rent" },
-        { id: 6, bucket: "expense", amount_cents: 1250, note: "Cinema" },
-        { id: 7, bucket: "savings", amount_cents: 30000, note: "" },
+      expect(await db.getAllAsync("SELECT id, kind, amount_cents, note FROM entry ORDER BY id")).toEqual([
+        { id: 4, kind: "income", amount_cents: 200000, note: "Salary" },
+        { id: 5, kind: "expense", amount_cents: 90000, note: "Rent" },
+        { id: 6, kind: "expense", amount_cents: 1250, note: "Cinema" },
+        { id: 7, kind: "savings", amount_cents: 30000, note: "" },
       ]);
     });
 
@@ -330,7 +338,7 @@ describe("Updates never lose or break data (real list)", () => {
         INSERT INTO expense (id, date, bucket, amount_cents, note, created_at) VALUES (11, '2026-10-02', 'leisure', 1250, 'Cinema', '2026-10-02 08:00:00');
         INSERT INTO expense (id, date, bucket, amount_cents, note, created_at) VALUES (12, '2026-10-03', 'fixed', 90000, 'Rent', '2026-10-03 09:30:00');
       `);
-      expect(await db.getAllAsync("SELECT id, date, amount_cents, note, created_at FROM expense ORDER BY id")).toEqual([
+      expect(await db.getAllAsync("SELECT id, date, amount_cents, note, created_at FROM entry ORDER BY id")).toEqual([
         { id: 11, date: "2026-10-02", amount_cents: 1250, note: "Cinema", created_at: "2026-10-02 08:00:00" },
         { id: 12, date: "2026-10-03", amount_cents: 90000, note: "Rent", created_at: "2026-10-03 09:30:00" },
       ]);
@@ -347,17 +355,17 @@ describe("Updates never lose or break data (real list)", () => {
     it("A database with no data upgrades to empty tables", async () => {
       const db = await upgradeFromV3("");
       expect(await plansOf(db)).toEqual([]);
-      expect(await db.getAllAsync("SELECT * FROM expense")).toEqual([]);
+      expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
     });
 
     it("New entries after the upgrade continue the old ids and only accept the three kinds", async () => {
       const db = await upgradeFromV3(
         "INSERT INTO expense (id, date, bucket, amount_cents, note) VALUES (5, '2026-10-02', 'fixed', 100, '');",
       );
-      await db.runAsync("INSERT INTO expense (date, bucket, amount_cents) VALUES ('2026-10-03', 'income', 100)");
-      expect((await db.getAllAsync("SELECT id FROM expense ORDER BY id")).map((row: any) => row.id)).toEqual([5, 6]);
+      await db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-03', 'income', 100)");
+      expect((await db.getAllAsync("SELECT id FROM entry ORDER BY id")).map((row: any) => row.id)).toEqual([5, 6]);
       await expect(
-        db.runAsync("INSERT INTO expense (date, bucket, amount_cents) VALUES ('2026-10-03', 'leisure', 100)"),
+        db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-03', 'leisure', 100)"),
       ).rejects.toThrow();
     });
 
@@ -366,6 +374,63 @@ describe("Updates never lose or break data (real list)", () => {
         "INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES ('2026-07', 'House', 100000);",
       );
       expect(await db.getAllAsync("SELECT name FROM sqlite_master WHERE name = 'fixed_item'")).toEqual([]);
+    });
+  });
+
+  describe("Existing data is kept (step 5: expense becomes entry, bucket becomes kind)", () => {
+    const upgradeFromV4 = async (data: string) => {
+      const db = createFakeDb() as any;
+      await db.execAsync(RELEASED_SCHEMAS[4]);
+      await db.execAsync(data);
+      await db.execAsync("PRAGMA user_version = 4");
+      await runMigrations(db, MIGRATIONS);
+      return db;
+    };
+    const old = `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 0);
+      INSERT INTO expense (id, date, bucket, amount_cents, note, created_at) VALUES (3, '2026-10-01', 'income', 200000, 'Salary', '2026-10-01 07:00:00');
+      INSERT INTO expense (id, date, bucket, amount_cents, note, created_at) VALUES (8, '2026-10-02', 'expense', 1250, 'Cinema', '2026-10-02 08:15:00');
+      INSERT INTO expense (id, date, bucket, amount_cents, note, created_at) VALUES (9, '2026-10-03', 'savings', 30000, '', '2026-10-03 09:30:00');
+    `;
+
+    it("Every entry keeps its id, date, kind, amount, note and creation time, and every plan is kept", async () => {
+      const db = await upgradeFromV4(old);
+      expect(await db.getAllAsync("SELECT id, date, kind, amount_cents, note, created_at FROM entry ORDER BY id")).toEqual([
+        { id: 3, date: "2026-10-01", kind: "income", amount_cents: 200000, note: "Salary", created_at: "2026-10-01 07:00:00" },
+        { id: 8, date: "2026-10-02", kind: "expense", amount_cents: 1250, note: "Cinema", created_at: "2026-10-02 08:15:00" },
+        { id: 9, date: "2026-10-03", kind: "savings", amount_cents: 30000, note: "", created_at: "2026-10-03 09:30:00" },
+      ]);
+      expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version ORDER BY effective_month")).toEqual([
+        { effective_month: "2026-07", savings_pct: 30 },
+        { effective_month: "2026-09", savings_pct: 0 },
+      ]);
+      expect(await version(db)).toBe(5);
+    });
+
+    it("The old table is gone", async () => {
+      const db = await upgradeFromV4(old);
+      const names = (await structure(db)).map((r: any) => r.name);
+      expect(names).not.toContain("expense");
+      expect(names).toContain("entry");
+    });
+
+    it("New entries continue after the old ids", async () => {
+      const db = await upgradeFromV4(old);
+      await db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-04', 'expense', 100)");
+      expect((await db.getAllAsync("SELECT id FROM entry ORDER BY id")).map((r: any) => r.id)).toEqual([3, 8, 9, 10]);
+    });
+
+    it("The new rule refuses an unknown kind and the old column name", async () => {
+      const db = await upgradeFromV4(old);
+      await expect(db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-04', 'gifts', 100)")).rejects.toThrow();
+      await expect(db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-04', 'fixed', 100)")).rejects.toThrow();
+      await expect(db.runAsync("INSERT INTO entry (date, bucket, amount_cents) VALUES ('2026-10-04', 'expense', 100)")).rejects.toThrow();
+    });
+
+    it("A database with no data upgrades to an empty entry table", async () => {
+      const db = await upgradeFromV4("");
+      expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
     });
   });
 

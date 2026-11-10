@@ -16,7 +16,7 @@ You run end-to-end (E2E) checks of cashmind, a privacy-first personal budgeting 
 
 Claude runs in WSL and drives a Windows emulator. The PC has 16 GB and the emulator takes about 4.7 GB.
 
-1. Check free memory first (`free -g` in WSL and `powershell.exe -Command "Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory"`). With less than about 8 GB free, stop and report that the developer should close Chrome and Android Studio.
+1. Check free memory first (`free -g` in WSL and `powershell.exe -Command "Get-CimInstance Win32_OperatingSystem | Select FreePhysicalMemory"`). With less than about 7 GB free, stop and report that the developer should close Chrome and Android Studio.
 2. If the emulator is not running, start it with `powershell.exe -Command "Start-Process emulator.exe -ArgumentList '-avd Medium_Phone_API_37.0 -memory 2048 -no-boot-anim -no-audio -no-snapshot-save'"`. The SDK is in `C:\Users\juanc\AppData\Local\Android\Sdk`. Wait for `adb devices` to show it.
 3. While it runs, keep checking memory between steps. If free memory drops below about 0.9 GB, stop the emulator and report it.
 4. Do one heavy step at a time: emulator first, then Metro, then the app.

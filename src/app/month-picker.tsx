@@ -1,1 +1,1 @@
-export { default } from '@/features/expenses/screens/month-picker-screen';
+export { default } from '@/features/entries/screens/month-picker-screen';

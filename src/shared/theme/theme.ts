@@ -27,14 +27,14 @@ export const Hero = {
 } as const;
 
 /** One color per kind of entry, the same on every screen. Readable with white text on top. */
-export const BUCKET_COLORS = {
+export const KIND_COLORS = {
   expense: '#9A3412',
   savings: '#065F46',
   income: '#0F766E',
 } as const;
 
-/** The soft background of each kind; its BUCKET_COLORS value reads on top of it. */
-export const BUCKET_TINTS = {
+/** The soft background of each kind; its KIND_COLORS value reads on top of it. */
+export const KIND_TINTS = {
   expense: '#FDEBDD',
   savings: '#D9F2E6',
   income: '#D5F2EE',

@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 const openPicker = () => press(/^Month:/);
-const income = (month: string, cents: number) => ({ date: `${month}-01`, bucket: 'income', amountCents: cents, note: `Pay ${month}` }) as const;
+const income = (month: string, cents: number) => ({ date: `${month}-01`, kind: 'income', amountCents: cents, note: `Pay ${month}` }) as const;
 const tile = (name: string) => within(screen.getByRole('button', { name }));
 
 describe('Month picker', () => {
@@ -21,7 +21,7 @@ describe('Month picker', () => {
         [25, '2026-07'],
         [30, '2026-10'],
       ],
-      expenses: [income('2026-07', 200000), income('2026-09', 200000), income('2026-10', 200000), income('2026-11', 200000)],
+      entries: [income('2026-07', 200000), income('2026-09', 200000), income('2026-10', 200000), income('2026-11', 200000)],
     });
     expect(tile('Savings').getByText(exactText('of 600 €'))).toBeOnTheScreen();
 
@@ -56,7 +56,7 @@ describe('How far back', () => {
   it('First entry: with the first entry in March 2025 the picker goes back to 2025 and no earlier', async () => {
     await startApp({
       today: [2026, 10, 7],
-      expenses: [{ date: '2025-03-10', bucket: 'expense', amountCents: 1000, note: 'Old' }],
+      entries: [{ date: '2025-03-10', kind: 'expense', amountCents: 1000, note: 'Old' }],
     });
     await openPicker();
     expect(screen.getByRole('button', { name: 'Previous year' })).toBeEnabled();
@@ -84,7 +84,7 @@ describe('How far back', () => {
   });
 
   it('An entry only in the current year still allows the previous year and no earlier', async () => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-10', 100000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-10', 100000)] });
     await openPicker();
     await press('Previous year');
 
@@ -95,7 +95,7 @@ describe('How far back', () => {
   it('A first entry several years back lets the user go back to that year', async () => {
     await startApp({
       today: [2026, 10, 7],
-      expenses: [{ date: '2023-05-10', bucket: 'expense', amountCents: 1000, note: 'Old' }],
+      entries: [{ date: '2023-05-10', kind: 'expense', amountCents: 1000, note: 'Old' }],
     });
     await openPicker();
     for (const year of ['2025', '2024', '2023']) {
@@ -108,9 +108,9 @@ describe('How far back', () => {
   it('Next year returns towards the current year, and a month of an earlier year can be picked', async () => {
     await startApp({
       today: [2026, 10, 7],
-      expenses: [
-        { date: '2025-03-01', bucket: 'income', amountCents: 100000, note: 'Pay 2025' },
-        { date: '2025-03-10', bucket: 'expense', amountCents: 2500, note: 'Old lunch' },
+      entries: [
+        { date: '2025-03-01', kind: 'income', amountCents: 100000, note: 'Pay 2025' },
+        { date: '2025-03-10', kind: 'expense', amountCents: 2500, note: 'Old lunch' },
       ],
     });
     await openPicker();
@@ -132,7 +132,7 @@ describe('How far back', () => {
     await startApp({
       today: [2026, 10, 7],
       plans: [[40, '2026-10']],
-      expenses: [income('2026-03', 100000), income('2026-10', 100000)],
+      entries: [income('2026-03', 100000), income('2026-10', 100000)],
     });
     await openPicker();
     await press('Mar');
@@ -143,7 +143,7 @@ describe('How far back', () => {
 
 describe('The plan of a past month cannot be changed', () => {
   it('Viewing a past month: My plan is not offered and "Back to current month" returns to November 2026', async () => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-09', 200000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-09', 200000)] });
     expect(screen.getByRole('button', { name: 'My plan' })).toBeOnTheScreen();
     await openPicker();
     await press('Sep');
@@ -161,7 +161,7 @@ describe('The plan of a past month cannot be changed', () => {
   it('Expenses stay editable: on 6 December 2026 November entries, including income, can be added, edited or deleted', async () => {
     await startApp({
       today: [2026, 11, 6],
-      expenses: [income('2026-11', 200000), { date: '2026-11-05', bucket: 'expense', amountCents: 1250, note: 'Cinema' }],
+      entries: [income('2026-11', 200000), { date: '2026-11-05', kind: 'expense', amountCents: 1250, note: 'Cinema' }],
     });
     await openPicker();
     await press('Nov');
@@ -169,13 +169,13 @@ describe('The plan of a past month cannot be changed', () => {
     expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeOnTheScreen();
     await press(/Pay 2026-11/);
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
   });
 
   it('A past month with no income offers to add one or to repeat the most recent earlier income', async () => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-09', 200000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-09', 200000)] });
     await openPicker();
     await press('Oct');
 
@@ -189,11 +189,11 @@ describe('Past months can be corrected: income', () => {
   const today: [number, number, number] = [2026, 11, 6];
   const nov = [
     income('2026-11', 200000),
-    { date: '2026-11-05', bucket: 'expense', amountCents: 50000, note: 'Cinema' },
+    { date: '2026-11-05', kind: 'expense', amountCents: 50000, note: 'Cinema' },
   ] as const;
 
   it('An income of a past month can be edited and the month figures follow', async () => {
-    await startApp({ today, expenses: [...nov] });
+    await startApp({ today, entries: [...nov] });
     await openPicker();
     await press('Nov');
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
@@ -209,7 +209,7 @@ describe('Past months can be corrected: income', () => {
   });
 
   it('An income of a past month can be deleted after confirming, and the month asks for income again', async () => {
-    await startApp({ today, expenses: [...nov] });
+    await startApp({ today, entries: [...nov] });
     await openPicker();
     await press('Nov');
 
@@ -227,7 +227,7 @@ describe('Past months can be corrected: income', () => {
 
 describe('Going to a month by address', () => {
   it.each([['2099-01'], ['junk'], ['2026-13']])('/?month=%s falls back to the current month', async (month) => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-11', 100000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-11', 100000)] });
     await testRouter.navigate(`/?month=${month}`);
 
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
@@ -235,7 +235,7 @@ describe('Going to a month by address', () => {
   });
 
   it('/?month=2026-09 shows that past month', async () => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-09', 100000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-09', 100000)] });
     await testRouter.navigate('/?month=2026-09');
 
     expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
@@ -245,7 +245,7 @@ describe('Going to a month by address', () => {
 
 describe('Removed screens', () => {
   it.each([['/plan-edit'], ['/fixed-expenses']])('%s no longer exists', async (route) => {
-    await startApp({ today: [2026, 10, 7], expenses: [income('2026-11', 100000)] });
+    await startApp({ today: [2026, 10, 7], entries: [income('2026-11', 100000)] });
     await testRouter.navigate(route);
 
     expect(screen.getByText('Page could not be found.')).toBeOnTheScreen();
@@ -257,7 +257,7 @@ describe('Removed screens', () => {
 describe('Today follows the clock', () => {
   it('When the app returns to the foreground after midnight into a new month, home shows the new month', async () => {
     const listen = jest.spyOn(AppState, 'addEventListener');
-    await startApp({ today: [2026, 10, 30], expenses: [income('2026-11', 100000)] });
+    await startApp({ today: [2026, 10, 30], entries: [income('2026-11', 100000)] });
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
 
     jest.setSystemTime(new Date(2026, 11, 1, 9));

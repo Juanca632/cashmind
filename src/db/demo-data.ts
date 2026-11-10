@@ -6,7 +6,7 @@ function monthAt(today: Date, offset: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-type Entry = [day: number, bucket: 'income' | 'savings' | 'expense', cents: number, note: string];
+type Entry = [day: number, kind: 'income' | 'savings' | 'expense', cents: number, note: string];
 
 /** Bills every month has, recorded as ordinary expenses. */
 const BILLS: Entry[] = [
@@ -31,7 +31,7 @@ const MONTHS: Entry[][] = [
  */
 export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM expense; DELETE FROM plan_version;');
+    await db.execAsync('DELETE FROM entry; DELETE FROM plan_version;');
 
     const plans: [string, number][] = [
       [monthAt(today, -5), 20],
@@ -44,13 +44,13 @@ export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<voi
     for (const [index, entries] of MONTHS.entries()) {
       const offset = index - (MONTHS.length - 1);
       const month = monthAt(today, offset);
-      for (const [day, bucket, cents, note] of [...BILLS, ...entries]) {
+      for (const [day, kind, cents, note] of [...BILLS, ...entries]) {
         // The current month only goes up to today, so nothing is dated in the future.
         const safeDay = offset === 0 ? Math.min(day, today.getDate()) : day;
         await db.runAsync(
-          'INSERT INTO expense (date, bucket, amount_cents, note) VALUES (?, ?, ?, ?)',
+          'INSERT INTO entry (date, kind, amount_cents, note) VALUES (?, ?, ?, ?)',
           `${month}-${String(safeDay).padStart(2, '0')}`,
-          bucket,
+          kind,
           cents,
           note,
         );

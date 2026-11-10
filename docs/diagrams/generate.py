@@ -79,7 +79,7 @@ b = box(50, 270, 280, 210, BLUE_L, BLUE, [
 first_level = [
     (115, "My plan", "plan.tsx", "One savings percentage", "My plan"),
     (395, "Month picker", "month-picker.tsx", "Go to past months", "Tap month"),
-    (565, "Entry", "expense.tsx", "Add, edit or delete", "Add or tap"),
+    (565, "Entry", "entry.tsx", "Add, edit or delete", "Add or tap"),
 ]
 for y, t, f, d, l in first_level:
     b += box(560, y, 340, 140, TEAL_L, TEAL, [(t, 28, 700, TEAL), (f, 19, 400, MUTED, MONO), (d, 20, 400, INK)])
@@ -127,7 +127,7 @@ b += box(70, 620, 680, 150, AMBER_L, AMBER, [
     ("Repositories", 28, 700, AMBER), ("features/*/repository.ts", 20, 400, MUTED, MONO),
     ("The only place with SQL", 22, 400, INK), ("Check the format of what they read", 20, 400, INK)])
 b += box(70, 870, 680, 110, SLATE_L, SLATE, [
-    ("SQLite: cashmind.db", 28, 700, SLATE), ("plan_version · expense", 20, 400, INK, MONO)])
+    ("SQLite: cashmind.db", 28, 700, SLATE), ("plan_version · entry", 20, 400, INK, MONO)])
 b += box(800, 100, 250, 670, PURPLE_L, PURPLE, [
     ("Rules", 30, 700, PURPLE), ("features/*/rules.ts", 18, 400, MUTED, MONO), (" ", 16, 400, INK),
     ("Pure rules", 23, 700, INK), ("no database", 20, 400, INK), ("no screens", 20, 400, INK), (" ", 16, 400, INK),
@@ -177,8 +177,8 @@ b = box(30, 24, 330, 92, SLATE_L, SLATE, [("STRICT tables", 25, 700, SLATE), ("w
 b += box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Everything links by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
 t1, h1 = table(200, 200, 430, "plan_version", "One row per plan change", BLUE, BLUE_L, [
     ("effective_month", "TEXT · PK", True), ("savings_pct", "INTEGER 0 to 100", False)])
-t3, h3 = table(760, 200, 340, "expense", "Each expense, saving or income", AMBER, AMBER_L, [
-    ("id", "INTEGER · PK", True), ("date", "'YYYY-MM-DD'", True), ("bucket", "3 values", False),
+t3, h3 = table(760, 200, 340, "entry", "Each income, saving or expense", AMBER, AMBER_L, [
+    ("id", "INTEGER · PK", True), ("date", "'YYYY-MM-DD'", True), ("kind", "3 values", False),
     ("amount_cents", "INTEGER > 0", False), ("note", "TEXT", False), ("created_at", "TEXT", False)])
 b += t1 + t3
 b += arrow([(500, 116), (425, 196)], BLUE, "b", dash="8 6")
@@ -187,25 +187,25 @@ b += text(1060, 160, "first 7 chars of date", 17, 500, AMBER)
 b += text(415, 450, "A month with no row uses the latest", 18, 500, BLUE)
 b += text(415, 476, "earlier one, else 20 %", 18, 500, BLUE)
 b += rect(30, 640, 1340, 140, SLATE_L, SLATE_L, 12, 0)
-for i, s_ in enumerate(["Money is integer cents: 12,50 € is stored as 1250. bucket: expense, savings or income.",
+for i, s_ in enumerate(["Money is integer cents: 12,50 € is stored as 1250. kind: expense, savings or income.",
                         "A month's income is the sum of its income rows. No foreign keys: the month is the link.",
                         "Only what you type is stored: the goal and what is left to spend are computed."]):
     b += text(60, 680 + i * 40, s_, 22, 500, INK, "start")
 # Migration steps
 b += text(30, 850, "Migration steps (src/db/migrations.ts): each runs once, in order, in its own transaction", 23, 700, SLATE, "start")
 y0 = 935
-b += f'<line x1="170" y1="{y0}" x2="1160" y2="{y0}" stroke="{LINE}" stroke-width="4"/>'
-nodes = [("v1", "Starting point", "first structure"), ("v2", "Fixed expenses list", "fixed_item table"),
-         ("v3", "Income as entries", "income rows in expense"), ("v4", "Simple plan", "savings_pct, 3 kinds")]
+b += f'<line x1="170" y1="{y0}" x2="1170" y2="{y0}" stroke="{LINE}" stroke-width="4"/>'
+nodes = [("v1", "Start", "first structure"), ("v2", "Fixed list", "fixed_item table"),
+         ("v3", "Income rows", "income in expense"), ("v4", "Simple plan", "savings_pct"), ("v5", "Rename", "expense to entry")]
 for i, (v, a_, c) in enumerate(nodes):
-    x = 170 + i * 330
-    now = i == 3
+    x = 170 + i * 250
+    now = i == 4
     b += f'<circle cx="{x}" cy="{y0}" r="44" fill="{TEAL_L if now else "#ffffff"}" stroke="{TEAL if now else LINE}" stroke-width="3"/>'
     b += text(x, y0 + 10, v, 28, 700, TEAL if now else MUTED)
     b += text(x, y0 + 85, a_, 24, 700, INK) + text(x, y0 + 119, c, 21, 400, INK)
-b += text(1160, y0 - 60, "CURRENT", 18, 700, TEAL)
+b += text(1170, y0 - 60, "CURRENT", 18, 700, TEAL)
 b += rect(30, 1100, 1340, 100, RED_L, RED_L, 12, 0)
-b += text(60, 1140, "v4: fixed and leisure entries became expenses; the plan kept a savings % or became 20 %; fixed_item dropped.", 20, 500, INK, "start")
+b += text(60, 1140, "v5: the expense table became entry and bucket became kind; every row kept.", 20, 500, INK, "start")
 b += text(60, 1178, "A failed step is rolled back and the app shows a message. A database newer than the app also shows one.", 20, 500, INK, "start")
 page("4-database", 1400, 1230, b)
 print(f"Diagrams written to {OUT}")

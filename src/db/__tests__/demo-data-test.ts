@@ -33,21 +33,21 @@ describe('Demo data', () => {
 
   it('Covers six months ending in the current one', async () => {
     const db = await seeded(new Date(2026, 10, 9, 12));
-    const months = await db.getAllAsync("SELECT DISTINCT substr(date, 1, 7) AS month FROM expense ORDER BY month");
+    const months = await db.getAllAsync("SELECT DISTINCT substr(date, 1, 7) AS month FROM entry ORDER BY month");
 
     expect(months.map((row: any) => row.month)).toEqual(['2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11']);
   });
 
   it('Never dates an expense in the future, even on the first of the month', async () => {
     const db = await seeded(new Date(2027, 0, 1, 12));
-    const [{ last }] = await db.getAllAsync('SELECT max(date) AS last FROM expense');
+    const [{ last }] = await db.getAllAsync('SELECT max(date) AS last FROM entry');
 
     expect(last).toBe('2027-01-01');
   });
 
   it('Seeding again replaces the previous data', async () => {
     const db = await seeded(new Date(2026, 10, 9, 12));
-    const count = async () => (await db.getAllAsync('SELECT count(*) AS n FROM expense'))[0].n;
+    const count = async () => (await db.getAllAsync('SELECT count(*) AS n FROM entry'))[0].n;
     const before = await count();
 
     await seedDemoData(db, new Date(2026, 10, 9, 12));
@@ -57,8 +57,8 @@ describe('Demo data', () => {
 
   it('The month two before the current one shows a negative left to spend', async () => {
     const db = await seeded(new Date(2026, 10, 9, 12));
-    const total = async (bucket: string) =>
-      (await db.getAllAsync("SELECT COALESCE(SUM(amount_cents), 0) AS n FROM expense WHERE substr(date, 1, 7) = '2026-09' AND bucket = ?", bucket))[0].n as number;
+    const total = async (kind: string) =>
+      (await db.getAllAsync("SELECT COALESCE(SUM(amount_cents), 0) AS n FROM entry WHERE substr(date, 1, 7) = '2026-09' AND kind = ?", kind))[0].n as number;
     const plan = await db.getAllAsync("SELECT savings_pct FROM plan_version WHERE effective_month <= '2026-09' ORDER BY effective_month DESC LIMIT 1");
     const percent = plan[0]?.savings_pct ?? 20;
     const income = await total('income');

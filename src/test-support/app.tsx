@@ -1,9 +1,9 @@
 import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
-import { insertExpense } from '@/features/expenses/repository';
+import { insertEntry } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
 import { savePlanFromMonth } from '@/features/plan/repository';
-import type { ExpenseInput } from '@/features/expenses/rules';
+import type { EntryInput } from '@/features/entries/rules';
 
 import { resetDevice, seedDevice } from './fake-sqlite';
 import { RELEASED_SCHEMAS } from './released-schemas';
@@ -14,20 +14,20 @@ type Setup = {
   /** Plans saved on the device: [savings percentage, month it applies from]. */
   plans?: [number, string][];
   /** Entries (income, savings and expenses) already recorded on the device. */
-  expenses?: ExpenseInput[];
+  entries?: EntryInput[];
   /** Raw SQL run last, to store rows the app itself would never write (damaged data). */
   raw?: string[];
 };
 
 /** Puts a fresh device in the given state, fixes the clock and opens the app on its home screen. */
-export async function startApp({ today, plans = [], expenses = [], raw = [] }: Setup) {
+export async function startApp({ today, plans = [], entries = [], raw = [] }: Setup) {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date(today[0], today[1], today[2], 12));
   resetDevice();
   await seedDevice(async (db) => {
     await migrateDbIfNeeded(db);
     for (const [percent, month] of plans) await savePlanFromMonth(db, percent, month);
-    for (const expense of expenses) await insertExpense(db, expense);
+    for (const entry of entries) await insertEntry(db, entry);
     for (const sql of raw) await db.execAsync(sql);
   });
   return renderRouter('./src/app');
@@ -144,7 +144,7 @@ export async function dumpDevice() {
   let rows: unknown[] = [];
   await seedDevice(async (db) => {
     rows = [
-      await db.getAllAsync('SELECT * FROM expense ORDER BY id'),
+      await db.getAllAsync('SELECT * FROM entry ORDER BY id'),
       await db.getAllAsync('SELECT * FROM plan_version ORDER BY effective_month'),
     ];
   });

@@ -1,7 +1,7 @@
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback } from 'react';
 
-import { getLatestIncomeBefore } from '@/features/expenses/repository';
+import { getLatestIncomeBefore } from '@/features/entries/repository';
 import { useFocusedData, type Loadable } from '@/shared/hooks/use-focused-data';
 
 /** The income of the most recent month before `month`, in cents, or null when there is none. */

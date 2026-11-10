@@ -27,17 +27,17 @@ afterEach(() => {
 });
 
 const TODAY: [number, number, number] = [2026, 10, 7];
-const salary = { date: '2026-11-01', bucket: 'income', amountCents: 200000, note: 'Salary' } as const;
-const cinema = { date: '2026-11-05', bucket: 'expense', amountCents: 1250, note: 'Cinema' } as const;
+const salary = { date: '2026-11-01', kind: 'income', amountCents: 200000, note: 'Salary' } as const;
+const cinema = { date: '2026-11-05', kind: 'expense', amountCents: 1250, note: 'Cinema' } as const;
 const tile = (name: string) => within(screen.getByRole('button', { name }));
 
 describe('Record an expense', () => {
   it('Add an expense: 12,50 € with the note "Cinema" and today\'s date appears in the list and counts as spending', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     expect(tile('Spent').getByText(exactText('0 €'))).toBeOnTheScreen();
 
     await press('Add expense');
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByText(/Today/)).toBeOnTheScreen();
     await type('Amount', '12,50');
     await type('Note (optional)', 'Cinema');
@@ -54,7 +54,7 @@ describe('Record an expense', () => {
     ['zero', '0'],
     ['negative', '-5'],
   ])('Invalid amount (%s): it is not saved and the form says it must be greater than zero', async (_label, amount) => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     await type('Amount', '5');
     await type('Amount', amount);
@@ -62,7 +62,7 @@ describe('Record an expense', () => {
     expect(screen.getByText(/greater than 0/)).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeDisabled();
     await press('Add expense');
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
 
     await testRouter.back();
     await answerDialog('Discard');
@@ -71,7 +71,7 @@ describe('Record an expense', () => {
   });
 
   it('Empty amount: the save action is disabled', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     expect(screen.getByRole('button', { name: 'Add expense' })).toBeDisabled();
 
@@ -86,14 +86,14 @@ describe('Record an expense', () => {
 
 describe('Three kinds of entry', () => {
   it('The form chooses: Income, Savings or Expense, and nothing else', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
 
     expect(screen.getAllByRole('radio').map((radio) => radio.props.accessibilityLabel)).toEqual(['Income', 'Savings', 'Expense']);
   });
 
   it('The submit button follows the kind chosen', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     await type('Amount', '5');
 
@@ -134,7 +134,7 @@ describe('Entry screen', () => {
     ['Savings', 'Add to savings'],
     ['Expense', 'Add expense'],
   ])('When adding, the title is the same as the button: %s gives "%s"', async (kind, label) => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     await choose(kind);
 
@@ -143,8 +143,8 @@ describe('Entry screen', () => {
   });
 
   it('An entry that no longer exists says so', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
-    await testRouter.navigate('/expense?id=999');
+    await startApp({ today: TODAY, entries: [salary] });
+    await testRouter.navigate('/entry?id=999');
 
     expect(screen.getByText('This entry no longer exists.')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Save changes' })).not.toBeOnTheScreen();
@@ -156,7 +156,7 @@ describe('Savings entries count towards the savings goal', () => {
     await startApp({
       today: TODAY,
       plans: [[30, '2026-07']],
-      expenses: [{ ...salary, amountCents: 300000 }],
+      entries: [{ ...salary, amountCents: 300000 }],
     });
     expect(tile('Savings').getByText(exactText('of 900 €'))).toBeOnTheScreen();
 
@@ -172,9 +172,9 @@ describe('Savings entries count towards the savings goal', () => {
 
 describe('Edit and delete an expense', () => {
   it('Correct an amount: 12,50 € becomes 15,00 € in the list and in the month spending', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     await type('Amount', '15,00');
     await press('Save changes');
 
@@ -184,7 +184,7 @@ describe('Edit and delete an expense', () => {
   });
 
   it('Delete an expense: after confirming it disappears and no longer counts', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await press('Delete');
     await answerDialog('Delete');
@@ -195,13 +195,13 @@ describe('Edit and delete an expense', () => {
   });
 
   it('Deleting an expense can be cancelled: nothing changes', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await press('Delete');
     expectDialog(DELETE_DIALOG);
     await answerDialog('Cancel');
     expectNoDialog();
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
 
     await testRouter.back();
     expectNoDialog();
@@ -210,7 +210,7 @@ describe('Edit and delete an expense', () => {
   });
 
   it('Leaving with changes: the app asks before discarding them', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await type('Amount', '99');
 
@@ -224,7 +224,7 @@ describe('Edit and delete an expense', () => {
   });
 
   it('Leaving with changes: "Keep editing" closes the question and keeps the form as typed', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await type('Amount', '99');
 
@@ -232,12 +232,12 @@ describe('Edit and delete an expense', () => {
     await answerDialog('Keep editing');
 
     expectNoDialog();
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue('99');
   });
 
   it('Leaving after a field was changed back to its original value does not ask', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await type('Amount', '99');
     await type('Amount', '12,50');
@@ -251,7 +251,7 @@ describe('Edit and delete an expense', () => {
   });
 
   it('Leaving with changes: tapping outside the question does not discard them', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await type('Amount', '99');
     await testRouter.back();
@@ -259,12 +259,12 @@ describe('Edit and delete an expense', () => {
 
     await fireEvent.press(screen.getByTestId('confirm-dialog-backdrop', { includeHiddenElements: true }));
 
-    expect(screen).toHavePathname('/expense');
+    expect(screen).toHavePathname('/entry');
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue('99');
   });
 
   it('Leaving a new entry that has been typed into asks, and one left empty does not', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
     await testRouter.back();
     expectNoDialog();
@@ -280,7 +280,7 @@ describe('Edit and delete an expense', () => {
   });
 
   it('An entry can change kind when edited', async () => {
-    await startApp({ today: TODAY, expenses: [salary, cinema] });
+    await startApp({ today: TODAY, entries: [salary, cinema] });
     await press(/Cinema/);
     await choose('Savings');
     await press('Save changes');
@@ -312,9 +312,9 @@ describe('Past months can be corrected', () => {
   it('Any past month: on 6 December the expenses of November can be added, edited or deleted', async () => {
     await startApp({
       today: [2026, 11, 6],
-      expenses: [
-        { date: '2026-11-05', bucket: 'expense', amountCents: 1250, note: 'Cinema' },
-        { date: '2026-11-06', bucket: 'expense', amountCents: 900, note: 'Lunch' },
+      entries: [
+        { date: '2026-11-05', kind: 'expense', amountCents: 1250, note: 'Cinema' },
+        { date: '2026-11-06', kind: 'expense', amountCents: 900, note: 'Lunch' },
       ],
     });
     await press(/^Month:/);
@@ -341,7 +341,7 @@ describe('Past months can be corrected', () => {
   });
 
   it('Entries cannot be dated after today', async () => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
 
     expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
@@ -352,11 +352,11 @@ describe('Month figures', () => {
   it('Spent: expenses of 900,00 € show 900 € spent; savings and income are not spending', async () => {
     await startApp({
       today: TODAY,
-      expenses: [
+      entries: [
         salary,
-        { date: '2026-11-02', bucket: 'savings', amountCents: 30000, note: 'Piggy bank' },
-        { date: '2026-11-03', bucket: 'expense', amountCents: 40000, note: 'Rent' },
-        { date: '2026-11-04', bucket: 'expense', amountCents: 50000, note: 'Shopping' },
+        { date: '2026-11-02', kind: 'savings', amountCents: 30000, note: 'Piggy bank' },
+        { date: '2026-11-03', kind: 'expense', amountCents: 40000, note: 'Rent' },
+        { date: '2026-11-04', kind: 'expense', amountCents: 50000, note: 'Shopping' },
       ],
     });
 
@@ -368,10 +368,10 @@ describe('Month expense list', () => {
   it('Lists the entries newest date first', async () => {
     await startApp({
       today: TODAY,
-      expenses: [
-        { date: '2026-11-02', bucket: 'expense', amountCents: 1000, note: 'Middle' },
-        { date: '2026-11-05', bucket: 'expense', amountCents: 2000, note: 'Newest' },
-        { date: '2026-11-01', bucket: 'savings', amountCents: 3000, note: 'Oldest' },
+      entries: [
+        { date: '2026-11-02', kind: 'expense', amountCents: 1000, note: 'Middle' },
+        { date: '2026-11-05', kind: 'expense', amountCents: 2000, note: 'Newest' },
+        { date: '2026-11-01', kind: 'savings', amountCents: 3000, note: 'Oldest' },
       ],
     });
 
@@ -383,10 +383,10 @@ describe('Month expense list', () => {
     await startApp({
       today: TODAY,
       raw: [
-        "INSERT INTO expense (date, bucket, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 2000, 'Recorded morning', '2026-11-05 08:00:00')",
-        "INSERT INTO expense (date, bucket, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 3000, 'Recorded noon', '2026-11-05 12:00:00')",
-        "INSERT INTO expense (date, bucket, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 1000, 'Recorded afternoon', '2026-11-05 15:00:00')",
-        "INSERT INTO expense (date, bucket, amount_cents, note, created_at) VALUES ('2026-11-06', 'expense', 4000, 'Dated later', '2026-11-06 09:00:00')",
+        "INSERT INTO entry (date, kind, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 2000, 'Recorded morning', '2026-11-05 08:00:00')",
+        "INSERT INTO entry (date, kind, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 3000, 'Recorded noon', '2026-11-05 12:00:00')",
+        "INSERT INTO entry (date, kind, amount_cents, note, created_at) VALUES ('2026-11-05', 'expense', 1000, 'Recorded afternoon', '2026-11-05 15:00:00')",
+        "INSERT INTO entry (date, kind, amount_cents, note, created_at) VALUES ('2026-11-06', 'expense', 4000, 'Dated later', '2026-11-06 09:00:00')",
       ],
     });
 
@@ -397,10 +397,10 @@ describe('Month expense list', () => {
   it('Without a note a row shows the name of its kind, with the date and amount', async () => {
     await startApp({
       today: TODAY,
-      expenses: [
-        { date: '2026-11-01', bucket: 'income', amountCents: 200000, note: '' },
-        { date: '2026-11-02', bucket: 'savings', amountCents: 15000, note: '' },
-        { date: '2026-11-03', bucket: 'expense', amountCents: 500, note: '' },
+      entries: [
+        { date: '2026-11-01', kind: 'income', amountCents: 200000, note: '' },
+        { date: '2026-11-02', kind: 'savings', amountCents: 15000, note: '' },
+        { date: '2026-11-03', kind: 'expense', amountCents: 500, note: '' },
       ],
     });
 
@@ -412,10 +412,10 @@ describe('Month expense list', () => {
   it('Viewing a past month: it shows that month entries and its figures, not the current ones', async () => {
     await startApp({
       today: TODAY,
-      expenses: [
-        { date: '2026-09-01', bucket: 'income', amountCents: 100000, note: 'Sep pay' },
-        { date: '2026-09-10', bucket: 'expense', amountCents: 8000, note: 'Concert' },
-        { date: '2026-11-02', bucket: 'expense', amountCents: 1000, note: 'Coffee' },
+      entries: [
+        { date: '2026-09-01', kind: 'income', amountCents: 100000, note: 'Sep pay' },
+        { date: '2026-09-10', kind: 'expense', amountCents: 8000, note: 'Concert' },
+        { date: '2026-11-02', kind: 'expense', amountCents: 1000, note: 'Coffee' },
       ],
     });
     await press(/^Month:/);
@@ -431,9 +431,9 @@ describe('Month expense list', () => {
 
 describe('Look inside one kind', () => {
   const everyKind = [
-    { date: '2026-11-01', bucket: 'income', amountCents: 200000, note: 'Pay' },
-    { date: '2026-11-02', bucket: 'savings', amountCents: 70000, note: 'Piggy bank' },
-    { date: '2026-11-03', bucket: 'expense', amountCents: 1500, note: 'Dinner' },
+    { date: '2026-11-01', kind: 'income', amountCents: 200000, note: 'Pay' },
+    { date: '2026-11-02', kind: 'savings', amountCents: 70000, note: 'Piggy bank' },
+    { date: '2026-11-03', kind: 'expense', amountCents: 1500, note: 'Dinner' },
   ] as const;
 
   it.each([
@@ -441,7 +441,7 @@ describe('Look inside one kind', () => {
     ['Savings', 'Piggy bank', ['Pay', 'Dinner']],
     ['Income', 'Pay', ['Piggy bank', 'Dinner']],
   ])('Tapping %s lists only %s, and "Show all" brings back the full list', async (name, shown, hidden) => {
-    await startApp({ today: TODAY, expenses: [...everyKind] });
+    await startApp({ today: TODAY, entries: [...everyKind] });
     expect(screen.getByText('Pay')).toBeOnTheScreen();
     expect(screen.getByText('Piggy bank')).toBeOnTheScreen();
     expect(screen.getByText('Dinner')).toBeOnTheScreen();
@@ -460,7 +460,7 @@ describe('Look inside one kind', () => {
     ['Savings', 'Add to savings', 'Savings'],
     ['Spent', 'Add expense', 'Expense'],
   ])('With %s selected the list is titled %s and Add adds that kind', async (name, addLabel, kind) => {
-    await startApp({ today: TODAY, expenses: [...everyKind] });
+    await startApp({ today: TODAY, entries: [...everyKind] });
     expect(screen.getAllByText(name)).toHaveLength(1);
 
     await press(name);
@@ -477,7 +477,7 @@ describe('Look inside one kind', () => {
   });
 
   it('With no tile selected Add adds an expense', async () => {
-    await startApp({ today: TODAY, expenses: [...everyKind] });
+    await startApp({ today: TODAY, entries: [...everyKind] });
     await press('Add expense');
 
     expect(screen.getByRole('radio', { name: 'Expense' })).toBeSelected();
@@ -487,14 +487,14 @@ describe('Look inside one kind', () => {
     ['Spent', 'No expenses this month.'],
     ['Savings', 'No savings this month.'],
   ])('An empty %s list says "%s"', async (name, message) => {
-    await startApp({ today: TODAY, expenses: [salary] });
+    await startApp({ today: TODAY, entries: [salary] });
     await press(name);
 
     expect(screen.getByText(message)).toBeOnTheScreen();
   });
 
   it('The filter keeps the figures of the whole month', async () => {
-    await startApp({ today: TODAY, expenses: [...everyKind] });
+    await startApp({ today: TODAY, entries: [...everyKind] });
     await press('Spent');
 
     expectLeftToSpend('1 285,00 €');

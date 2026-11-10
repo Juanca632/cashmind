@@ -5,21 +5,21 @@ import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExpenseList } from '@/features/expenses/components/expense-list';
-import { useMonthExpenses } from '@/features/expenses/hooks/use-month-expenses';
-import { usePreviousIncome } from '@/features/expenses/hooks/use-previous-income';
-import { defaultExpenseDate, totalsByBucket } from '@/features/expenses/rules';
-import { addExpense } from '@/features/expenses/service';
+import { EntryList } from '@/features/entries/components/entry-list';
+import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
+import { defaultEntryDate, totalsByKind } from '@/features/entries/rules';
+import { addEntry } from '@/features/entries/service';
 import { monthSummary } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
-import { ADD_LABELS, BUCKET_LABELS, type EntryBucket } from '@/shared/buckets';
+import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { Accent, BUCKET_COLORS, BUCKET_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { Accent, KIND_COLORS, KIND_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useToday } from '@/shared/hooks/use-today';
-import { BUCKET_ICONS } from '@/shared/ui/bucket-badge';
+import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -36,35 +36,35 @@ export default function HomeScreen() {
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
   // Reloads the month after a change made on this same screen.
   const [refresh, setRefresh] = useState(0);
-  const expenses = useMonthExpenses(month, refresh);
+  const entries = useMonthEntries(month, refresh);
   const previousIncome = usePreviousIncome(month, refresh);
   // Which kind of entry the list is showing; null shows all of them.
-  const [selected, setSelected] = useState<EntryBucket | null>(null);
+  const [selected, setSelected] = useState<EntryKind | null>(null);
   // A repeat is tied to the month and its income as loaded: once the reload shows the new income
   // (or the month changes) the key changes, so a tap made before the reload cannot record it twice.
-  const loadedIncome = expenses.status === 'ready' ? totalsByBucket(expenses.data).income : 0;
+  const loadedIncome = entries.status === 'ready' ? totalsByKind(entries.data).income : 0;
   const repeatKey = `${month}:${loadedIncome}`;
   // A ref, not state: two taps in the same frame must not record the income twice.
   const repeatedFor = useRef<string | null>(null);
   const [repeatedKey, setRepeatedKey] = useState<string | null>(null);
 
-  if (plan.status === 'error' || expenses.status === 'error' || previousIncome.status === 'error') return <DataError />;
-  if (plan.status === 'loading' || expenses.status === 'loading' || previousIncome.status === 'loading') {
+  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error') return <DataError />;
+  if (plan.status === 'loading' || entries.status === 'loading' || previousIncome.status === 'loading') {
     return <ThemedView style={styles.screen} />;
   }
 
-  const monthExpenses = expenses.data;
+  const monthEntries = entries.data;
   const isPast = isPastMonth(month, currentMonth);
   const percent = savingsPercentFor(plan.data, month);
-  const summary = monthSummary(totalsByBucket(monthExpenses), percent);
+  const summary = monthSummary(totalsByKind(monthEntries), percent);
   const hasIncome = summary.income > 0;
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
     repeatedFor.current = repeatKey;
     setRepeatedKey(repeatKey);
-    const entry = { date: defaultExpenseDate(month, today), bucket: 'income', amountCents, note: 'Monthly income' } as const;
-    const result = await addExpense(db, entry, new Date());
+    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income' } as const;
+    const result = await addEntry(db, entry, new Date());
     if (result.ok) {
       setRefresh((current) => current + 1);
       return;
@@ -73,8 +73,8 @@ export default function HomeScreen() {
     setRepeatedKey(null);
     Alert.alert('Something went wrong', result.message);
   }
-  const toggle = (bucket: EntryBucket) => setSelected(bucket === selected ? null : bucket);
-  const addEntry = (bucket?: EntryBucket) => router.push({ pathname: '/expense', params: { month, bucket } });
+  const toggle = (kind: EntryKind) => setSelected(kind === selected ? null : kind);
+  const openNewEntry = (kind?: EntryKind) => router.push({ pathname: '/entry', params: { month, kind } });
   const savingsDone = summary.goal > 0 && summary.saved >= summary.goal;
 
   return (
@@ -109,7 +109,7 @@ export default function HomeScreen() {
                 Add this month&apos;s income
               </ThemedText>
               <View style={styles.cardActions}>
-                <CardPill label="Add income" onPress={() => addEntry('income')} />
+                <CardPill label="Add income" onPress={() => openNewEntry('income')} />
                 {previousIncome.data !== null ? (
                   <CardPill
                     label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
@@ -125,10 +125,10 @@ export default function HomeScreen() {
 
         {hasIncome ? (
           <View style={styles.tiles}>
-            <KindTile bucket="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
-            <KindTile bucket="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
+            <KindTile kind="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
+            <KindTile kind="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
             <KindTile
-              bucket="savings"
+              kind="savings"
               value={formatEurosCompact(summary.saved)}
               detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
               selected={selected}
@@ -156,15 +156,15 @@ export default function HomeScreen() {
               icon="plus"
               accessibilityLabel={ADD_LABELS[selected ?? 'expense']}
               variant="pill"
-              onPress={() => addEntry(selected ?? undefined)}
+              onPress={() => openNewEntry(selected ?? undefined)}
             />
           </View>
           <ThemedView type="backgroundElement" style={styles.activity}>
-            <ExpenseList
-              expenses={selected ? monthExpenses.filter((expense) => expense.bucket === selected) : monthExpenses}
+            <EntryList
+              entries={selected ? monthEntries.filter((entry) => entry.kind === selected) : monthEntries}
               today={today}
               emptyText={emptyListText(selected, isPast)}
-              onPress={(expense) => router.push({ pathname: '/expense', params: { id: String(expense.id) } })}
+              onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
             />
           </ThemedView>
         </View>
@@ -178,13 +178,13 @@ export default function HomeScreen() {
 }
 
 /** Tile and filter titles; expenses read as what was spent. */
-const TILE_TITLES: Record<EntryBucket, string> = {
-  income: BUCKET_LABELS.income,
-  savings: BUCKET_LABELS.savings,
+const TILE_TITLES: Record<EntryKind, string> = {
+  income: KIND_LABELS.income,
+  savings: KIND_LABELS.savings,
   expense: 'Spent',
 };
 
-const EMPTY_TEXTS: Record<EntryBucket, string> = {
+const EMPTY_TEXTS: Record<EntryKind, string> = {
   income: 'No income this month.',
   savings: 'No savings this month.',
   expense: 'No expenses this month.',
@@ -216,7 +216,7 @@ function CardPill({
   );
 }
 
-function emptyListText(selected: EntryBucket | null, isPast: boolean): string {
+function emptyListText(selected: EntryKind | null, isPast: boolean): string {
   if (selected) return EMPTY_TEXTS[selected];
   if (isPast) return 'Nothing was recorded this month.';
   return 'Record what you earn, spend and save.';
@@ -239,31 +239,31 @@ function LeftToSpend({ left }: { left: number }) {
 }
 
 type KindTileProps = {
-  bucket: EntryBucket;
+  kind: EntryKind;
   title?: string;
   value: string;
   detail: string;
-  selected: EntryBucket | null;
-  onSelect: (bucket: EntryBucket) => void;
+  selected: EntryKind | null;
+  onSelect: (kind: EntryKind) => void;
 };
 
 /** One colored tile per kind of entry below the card. Tapping it lists only those entries. */
-function KindTile({ bucket, title = BUCKET_LABELS[bucket], value, detail, selected, onSelect }: KindTileProps) {
-  const color = BUCKET_COLORS[bucket];
+function KindTile({ kind, title = KIND_LABELS[kind], value, detail, selected, onSelect }: KindTileProps) {
+  const color = KIND_COLORS[kind];
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityValue={{ text: `${value}, ${detail}` }}
-      accessibilityState={{ selected: bucket === selected }}
-      onPress={() => onSelect(bucket)}
+      accessibilityState={{ selected: kind === selected }}
+      onPress={() => onSelect(kind)}
       style={({ pressed }) => [
         styles.tile,
-        { backgroundColor: BUCKET_TINTS[bucket], borderColor: bucket === selected ? color : 'transparent' },
+        { backgroundColor: KIND_TINTS[kind], borderColor: kind === selected ? color : 'transparent' },
         pressed && styles.pressed,
       ]}>
       <View style={styles.tileTitle}>
-        <Feather name={BUCKET_ICONS[bucket]} size={16} color={color} />
+        <Feather name={KIND_ICONS[kind]} size={16} color={color} />
         <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
           {title}
         </ThemedText>
