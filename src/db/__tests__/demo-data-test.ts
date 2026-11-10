@@ -18,12 +18,17 @@ describe('Demo data', () => {
   });
 
   it('Demo mode opens its own database file', () => {
+    const previous = process.env.EXPO_PUBLIC_DEMO;
     process.env.EXPO_PUBLIC_DEMO = '1';
-    jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      expect(require('@/db/database').DATABASE_NAME).toBe('cashmind-demo.db');
-    });
-    delete process.env.EXPO_PUBLIC_DEMO;
+    try {
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        expect(require('@/db/database').DATABASE_NAME).toBe('cashmind-demo.db');
+      });
+    } finally {
+      if (previous === undefined) delete process.env.EXPO_PUBLIC_DEMO;
+      else process.env.EXPO_PUBLIC_DEMO = previous;
+    }
   });
 
   it('Covers six months ending in the current one', async () => {
@@ -48,5 +53,17 @@ describe('Demo data', () => {
     await seedDemoData(db, new Date(2026, 10, 9, 12));
 
     expect(await count()).toBe(before);
+  });
+
+  it('The month two before the current one shows a negative left to spend', async () => {
+    const db = await seeded(new Date(2026, 10, 9, 12));
+    const total = async (bucket: string) =>
+      (await db.getAllAsync("SELECT COALESCE(SUM(amount_cents), 0) AS n FROM expense WHERE substr(date, 1, 7) = '2026-09' AND bucket = ?", bucket))[0].n as number;
+    const plan = await db.getAllAsync("SELECT savings_pct FROM plan_version WHERE effective_month <= '2026-09' ORDER BY effective_month DESC LIMIT 1");
+    const percent = plan[0]?.savings_pct ?? 20;
+    const income = await total('income');
+    const goal = Math.floor((income * percent) / 100);
+
+    expect(income - (await total('expense')) - Math.max(goal, await total('savings'))).toBeLessThan(0);
   });
 });

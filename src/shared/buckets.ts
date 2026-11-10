@@ -1,51 +1,24 @@
-/** The three budget categories, shared by the plan and expenses features. */
+/** The kinds of entry the user records each month, shared by every feature. */
 
-export type Bucket = 'fixed' | 'leisure' | 'savings';
+export type EntryBucket = 'income' | 'savings' | 'expense';
 
-export const BUCKETS: readonly Bucket[] = ['fixed', 'leisure', 'savings'];
-
-/** What can be recorded during a month: the parts of the plan, and income. */
-export type EntryBucket = Bucket | 'income';
-
-export const ENTRY_BUCKETS: readonly EntryBucket[] = [...BUCKETS, 'income'];
-
-export type FlexibleBucket = 'leisure' | 'savings';
-
-export type Targets = Record<Bucket, number> & {
-  /** How much the income is below the fixed expenses (0 when it covers them). */
-  shortfall: number;
-};
-
-export function otherFlexible(bucket: FlexibleBucket): FlexibleBucket {
-  return bucket === 'leisure' ? 'savings' : 'leisure';
-}
+export const ENTRY_BUCKETS: readonly EntryBucket[] = ['income', 'savings', 'expense'];
 
 export const BUCKET_LABELS: Record<EntryBucket, string> = {
-  fixed: 'Fixed',
-  leisure: 'Leisure',
-  savings: 'Savings',
   income: 'Income',
+  savings: 'Savings',
+  expense: 'Expense',
 };
 
 export const BUCKET_DESCRIPTIONS: Record<EntryBucket, string> = {
-  fixed: 'Rent, bills, groceries',
-  leisure: 'Going out, hobbies, treats',
-  savings: 'Money you set aside',
   income: 'Money you received',
+  savings: 'Money you set aside',
+  expense: 'Rent, bills, shopping, going out',
 };
 
-/** The savings share a new plan starts with. */
-export const SUGGESTED_SAVINGS_PERCENT = 20;
-
-export type BucketProgress = {
-  spent: number;
-  target: number;
-  /** What is left to spend (fixed, leisure) or to save (savings). */
-  left: number;
-  /** How much the recorded amount is above the target. */
-  over: number;
+/** The action that adds an entry of each kind: the form's title and its button. */
+export const ADD_LABELS: Record<EntryBucket, string> = {
+  income: 'Add income',
+  savings: 'Add to savings',
+  expense: 'Add expense',
 };
-
-export function bucketProgress(spent: number, target: number): BucketProgress {
-  return { spent, target, left: Math.max(target - spent, 0), over: Math.max(spent - target, 0) };
-}

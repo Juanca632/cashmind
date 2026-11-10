@@ -1,6 +1,6 @@
 # cashmind
 
-Personal budgeting app for Android. The user enters a monthly income, splits it into savings, leisure and fixed expenses, and sees how the current month is going against that plan.
+Personal budgeting app for Android. The user records what they earn, save and spend each month, sets one savings percentage as the plan, and sees how much is left to spend.
 
 ## Project rules
 
@@ -12,8 +12,8 @@ Personal budgeting app for Android. The user enters a monthly income, splits it 
 - **Planning:** features are planned with GitHub Spec Kit (`.specify/`, `specs/`). For new work use `/speckit-specify`, `/speckit-plan` and `/speckit-tasks`, then `/speckit-implement` and `/speckit-converge`. Project principles are in `.specify/memory/constitution.md`. Keep specs short and state what is out of scope; break work into small tasks that can each be verified on the phone or with a test.
 - **Current behavior:** `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs. A feature that changes that behavior must update the affected baseline spec in the same change.
 - **Architecture:** code lives in `src/features/<feature>` (rules, repository, service, hooks, components, screens), `src/db` and `src/shared`. All writes go through a feature's service. Screens read through hooks, repositories check the format of what they read, and features do not import each other (only `home` combines them). `npx expo lint` enforces these boundaries.
-- **Testing:** three levels are required. Unit tests for rules and calculations; integration tests that render the real routes with the real services and repositories on the test database and follow whole journeys across screens; E2E runs of the main journeys on the real app (Android emulator or phone) before any release or APK. Use the `test-writer` subagent to write tests from the specs independently of the implementation.
-- **Database changes:** every change is a new step in `src/db/migrations.ts`, with its structure added to `src/test-support/released-schemas.ts` and a test that upgrades sample data. A released step is never edited, and a migration must never delete user data to recover from a failure.
+- **Testing:** three levels are required. Unit tests for rules and calculations; integration tests that render the real routes with the real services and repositories on the test database and follow whole journeys across screens; E2E runs of the main journeys on the real app (Android emulator or phone) before any release or APK. Every test, unit tests included, is written by the `test-writer` subagent from the specs, independently of the implementation; the main agent never writes tests. E2E runs are done by the `e2e-tester` subagent, which follows the feature's `quickstart.md`.
+- **Database changes:** every change is a new step in `src/db/migrations.ts`, with its structure added to `src/test-support/released-schemas.ts` and a test that upgrades sample data. A released step is never edited, and a migration must never delete user data to recover from a failure. From v1.0.0 no migration deletes user data; before v1.0.0 a step may drop the data of a removed feature when its spec says so and the developer approved it.
 - **History:** the OpenSpec specs and archived changes are kept read-only in `docs/openspec-archive/`.
 
 This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.

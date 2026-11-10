@@ -7,7 +7,6 @@ import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, Vie
 import { useExpense } from '@/features/expenses/hooks/use-expense';
 import {
   EXPENSE_MISSING,
-  canUseBucket,
   defaultExpenseDate,
   expenseErrorMessage,
   lastDayOfMonth,
@@ -16,7 +15,7 @@ import {
   type ExpenseInput,
 } from '@/features/expenses/rules';
 import { addExpense, deleteExpense, editExpense } from '@/features/expenses/service';
-import { BUCKET_DESCRIPTIONS, BUCKET_LABELS, ENTRY_BUCKETS, type EntryBucket } from '@/shared/buckets';
+import { ADD_LABELS, BUCKET_DESCRIPTIONS, BUCKET_LABELS, ENTRY_BUCKETS, type EntryBucket } from '@/shared/buckets';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
@@ -48,7 +47,7 @@ export default function ExpenseScreen() {
   return (
     <ExpenseForm
       expense={expense}
-      defaultBucket={params.bucket === 'savings' || params.bucket === 'income' ? params.bucket : 'leisure'}
+      defaultBucket={params.bucket === 'savings' || params.bucket === 'income' ? params.bucket : 'expense'}
       defaultDate={defaultExpenseDate(params.month, today)}
       today={today}
     />
@@ -91,13 +90,11 @@ function ExpenseForm({
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
-  const newEntryTitle = bucket === 'savings' ? 'Add savings' : bucket === 'income' ? 'Add income' : 'Add expense';
   const input: ExpenseInput = { date, bucket, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim() };
   const errors = validateExpense(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
-  const newEntryLabel = bucket === 'savings' ? 'Add to savings' : bucket === 'income' ? 'Add income' : 'Add expense';
-  const submitLabel = expense ? 'Save changes' : newEntryLabel;
+  const submitLabel = expense ? 'Save changes' : ADD_LABELS[bucket];
 
   function onSave() {
     const now = new Date();
@@ -118,7 +115,7 @@ function ExpenseForm({
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ThemedView style={styles.screen}>
-        <Stack.Screen options={{ title: expense ? 'Edit entry' : newEntryTitle }} />
+        <Stack.Screen options={{ title: expense ? 'Edit entry' : ADD_LABELS[bucket] }} />
         {discardDialog}
         {confirmDialog}
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -140,27 +137,25 @@ function ExpenseForm({
           </View>
           {amountText.trim() !== '' && amountError ? <ErrorText>{expenseErrorMessage(amountError)}</ErrorText> : null}
 
-          {(
-            <View style={styles.bucketRow}>
-              {ENTRY_BUCKETS.filter((option) => canUseBucket(option, expense?.bucket)).map((option) => {
-                const selected = option === bucket;
-                return (
-                  <Pressable
-                    key={option}
-                    accessibilityRole="radio"
-                    accessibilityLabel={BUCKET_LABELS[option]}
-                    accessibilityState={{ selected }}
-                    onPress={() => setBucket(option)}
-                    style={[styles.bucket, { backgroundColor: selected ? BUCKET_COLORS[option] : theme.backgroundElement }]}>
-                    <Feather name={BUCKET_ICONS[option]} size={18} color={selected ? Accent.text : BUCKET_COLORS[option]} />
-                    <ThemedText type="smallBold" style={selected ? { color: Accent.text } : undefined}>
-                      {BUCKET_LABELS[option]}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
+          <View style={styles.bucketRow}>
+            {ENTRY_BUCKETS.map((option) => {
+              const selected = option === bucket;
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityLabel={BUCKET_LABELS[option]}
+                  accessibilityState={{ selected }}
+                  onPress={() => setBucket(option)}
+                  style={[styles.bucket, { backgroundColor: selected ? BUCKET_COLORS[option] : theme.backgroundElement }]}>
+                  <Feather name={BUCKET_ICONS[option]} size={18} color={selected ? Accent.text : BUCKET_COLORS[option]} />
+                  <ThemedText type="smallBold" style={selected ? { color: Accent.text } : undefined}>
+                    {BUCKET_LABELS[option]}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
           <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
             {BUCKET_DESCRIPTIONS[bucket]}
           </ThemedText>

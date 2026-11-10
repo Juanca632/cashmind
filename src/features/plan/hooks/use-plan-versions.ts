@@ -5,9 +5,9 @@ import { getPlanVersions } from '@/features/plan/repository';
 import type { PlanVersion } from '@/features/plan/rules';
 import { useFocusedData, type Loadable } from '@/shared/hooks/use-focused-data';
 
-/** All plan versions, reloaded every time the screen gets focus. */
-export function useIncomePlan(): Loadable<PlanVersion[]> {
+/** Every saved savings percentage, reloaded every time the screen gets focus. */
+export function usePlanVersions(): Loadable<PlanVersion[]> {
   const db = useSQLiteContext();
   const load = useCallback(() => getPlanVersions(db), [db]);
-  return useFocusedData('income-plan', load);
+  return useFocusedData('plan-versions', load);
 }

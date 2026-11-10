@@ -7,19 +7,20 @@ import { IconButton } from '@/shared/ui/icon-button';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 import { Accent, Radius, Spacing } from '@/shared/theme/theme';
-import { firstPlanMonth } from '@/features/plan/rules';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
-import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
+import { useFirstEntryMonth } from '@/features/expenses/hooks/use-first-entry-month';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export default function MonthPickerScreen() {
-  const state = useIncomePlan();
+  const state = useFirstEntryMonth();
   if (state.status === 'error') return <DataError />;
   if (state.status === 'loading') return <ThemedView style={styles.screen} />;
 
   const currentMonth = monthKey(new Date());
-  const firstMonth = firstPlanMonth(state.data) ?? currentMonth;
-  return <MonthPicker currentMonth={currentMonth} minYear={Math.min(yearOf(firstMonth), yearOf(currentMonth))} />;
+  // One rule: back to the year of the first entry, and always at least to last year.
+  const lastYear = yearOf(currentMonth) - 1;
+  const minYear = state.data ? Math.min(yearOf(state.data), lastYear) : lastYear;
+  return <MonthPicker currentMonth={currentMonth} minYear={minYear} />;
 }
 
 function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear: number }) {

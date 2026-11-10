@@ -28,12 +28,7 @@ export function validateExpense(input: ExpenseInput, today: Date): ExpenseError[
   return errors;
 }
 
-/** Fixed expenses count by themselves: only an expense already recorded as fixed can stay fixed. */
-export function canUseBucket(bucket: EntryBucket, currentBucket?: EntryBucket): boolean {
-  return bucket !== 'fixed' || currentBucket === 'fixed';
-}
-
-export const EXPENSE_MISSING = 'This expense no longer exists.';
+export const EXPENSE_MISSING = 'This entry no longer exists.';
 
 export function expenseErrorMessage(error: ExpenseError): string {
   switch (error) {
@@ -42,7 +37,7 @@ export function expenseErrorMessage(error: ExpenseError): string {
     case 'amount-too-large':
       return AMOUNT_TOO_LARGE;
     case 'bucket-invalid':
-      return 'Pick one of the categories.';
+      return 'Pick income, savings or expense.';
     case 'date-invalid':
       return 'Pick a date that is not in the future.';
   }
@@ -59,7 +54,7 @@ export function defaultExpenseDate(month: string | undefined, today: Date): stri
 }
 
 export function totalsByBucket(expenses: readonly Pick<Expense, 'bucket' | 'amountCents'>[]): Record<EntryBucket, number> {
-  const totals: Record<EntryBucket, number> = { fixed: 0, leisure: 0, savings: 0, income: 0 };
+  const totals: Record<EntryBucket, number> = { income: 0, savings: 0, expense: 0 };
   for (const expense of expenses) totals[expense.bucket] += expense.amountCents;
   return totals;
 }

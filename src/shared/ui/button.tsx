@@ -13,8 +13,7 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  /** `soft` is for a button on a white card. */
-  variant?: 'primary' | 'secondary' | 'pill' | 'soft';
+  variant?: 'primary' | 'secondary' | 'pill';
 };
 
 export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
@@ -33,7 +32,6 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
         variant === 'pill' ? styles.pill : styles.full,
         primary && { backgroundColor: Accent.background },
         (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
-        variant === 'soft' && { backgroundColor: theme.background },
         (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
       ]}>
       {icon ? <Feather name={icon} size={16} color={primary ? Accent.text : theme.text} /> : null}

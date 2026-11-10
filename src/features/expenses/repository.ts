@@ -27,15 +27,30 @@ export async function getExpensesOfMonth(db: SQLiteDatabase, month: string): Pro
   return rows.map(toExpense);
 }
 
-/** Total income of the most recent month before `month`, or null when there is none. */
+/**
+ * Total income of the most recent month before `month`, or null when there is none. Every earlier
+ * income is format-checked, like any other read.
+ */
 export async function getLatestIncomeBefore(db: SQLiteDatabase, month: string): Promise<number | null> {
-  const row = await db.getFirstAsync<{ total: unknown }>(
-    `SELECT sum(amount_cents) AS total FROM expense
+  const rows = await db.getAllAsync<Record<'date' | 'amount_cents', unknown>>(
+    `SELECT date, amount_cents FROM expense
      WHERE bucket = 'income' AND substr(date, 1, 7) < ?
-     GROUP BY substr(date, 1, 7) ORDER BY substr(date, 1, 7) DESC LIMIT 1`,
+     ORDER BY date DESC, id DESC`,
     month,
   );
-  return row ? readPositiveInteger(row.total, 'expense.amount_cents') : null;
+  const incomes = rows.map((row) => ({
+    month: readDay(row.date, 'expense.date').slice(0, 7),
+    cents: readPositiveInteger(row.amount_cents, 'expense.amount_cents'),
+  }));
+  if (incomes.length === 0) return null;
+  const latest = incomes[0].month;
+  return incomes.filter((income) => income.month === latest).reduce((sum, income) => sum + income.cents, 0);
+}
+
+/** Month ('YYYY-MM') of the oldest recorded entry, or null when nothing was recorded. */
+export async function getFirstEntryMonth(db: SQLiteDatabase): Promise<string | null> {
+  const row = await db.getFirstAsync<{ first: unknown }>('SELECT min(date) AS first FROM expense');
+  return row?.first == null ? null : readDay(row.first, 'expense.date').slice(0, 7);
 }
 
 export async function getExpense(db: SQLiteDatabase, id: number): Promise<Expense | null> {

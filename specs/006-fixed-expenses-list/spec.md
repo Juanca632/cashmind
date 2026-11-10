@@ -4,7 +4,9 @@
 
 **Created**: 2026-11-09
 
-**Status**: Implemented
+**Status**: Superseded by 008-simple-plan
+
+> **Historical.** Superseded by `008-simple-plan`. Current behavior is in the baseline specs 001-003.
 
 **Input**: User description: "Before splitting money, the user first needs to say what they must pay every month. A simple list of named amounts (House, Transport, Supermarket...) is the base of the plan; it stays the same every month until the user changes it, even when the income goes up."
 

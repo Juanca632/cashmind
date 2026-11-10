@@ -6,6 +6,8 @@
 
 **Status**: Implemented
 
+> **Historical.** The architecture still applies; its plan rules (fixed expenses, leisure) were superseded by `008-simple-plan`.
+
 **Input**: User description: "Restructure the app so it can keep growing: every write goes through one validation point, everything read is checked for the right format, screens only show data and send actions, and each part of the app lives in its own folder. Validated in the Notion page '6. Architecture proposal'."
 
 ## User Scenarios & Testing *(mandatory)*

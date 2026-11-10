@@ -28,7 +28,7 @@ All code, comments, docs, specs and commit messages MUST be in English.
 
 - Expo APIs change every SDK release: read the versioned docs for the installed SDK before using them.
 - Navigation uses Expo Router; every file in `src/app/` is a route.
-- Data lives in `expo-sqlite`. Migrations MUST be versioned, run in a transaction and preserve existing user data.
+- Data lives in `expo-sqlite`. Migrations MUST be versioned and run in a transaction. From v1.0.0 they MUST preserve all existing user data. Before v1.0.0 a migration MAY drop the data of a removed feature when the feature's spec says so and the developer approved it; it MUST never drop data to recover from a failure.
 
 ## Development Workflow
 
@@ -45,4 +45,4 @@ All code, comments, docs, specs and commit messages MUST be in English.
 
 This constitution takes precedence over other practices. Amending it requires the developer's approval and a version bump. `AGENTS.md` holds runtime guidance for agents and MUST stay consistent with it.
 
-**Version**: 1.1.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-09
+**Version**: 1.2.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-10

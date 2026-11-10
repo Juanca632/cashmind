@@ -143,4 +143,37 @@ export const MIGRATIONS: readonly Migration[] = [
       `);
     },
   },
+  {
+    // The plan becomes one savings percentage. Fixed and leisure entries become expenses; the fixed
+    // expenses list is removed with its feature (agreed before v1.0.0, see specs/008-simple-plan).
+    version: 4,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE expense_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          bucket TEXT NOT NULL CHECK (bucket IN ('expense', 'savings', 'income')),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        ) STRICT;
+        INSERT INTO expense_new (id, date, bucket, amount_cents, note, created_at)
+          SELECT id, date, CASE WHEN bucket IN ('fixed', 'leisure') THEN 'expense' ELSE bucket END,
+                 amount_cents, note, created_at
+          FROM expense;
+        DROP TABLE expense;
+        ALTER TABLE expense_new RENAME TO expense;
+        CREATE TABLE plan_version_new (
+          effective_month TEXT PRIMARY KEY NOT NULL CHECK (effective_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+          savings_pct INTEGER NOT NULL CHECK (savings_pct BETWEEN 0 AND 100)
+        ) STRICT;
+        INSERT INTO plan_version_new (effective_month, savings_pct)
+          SELECT effective_month,
+                 CASE WHEN kept_bucket = 'savings' AND kept_unit = 'pct' THEN kept_value ELSE 20 END
+          FROM plan_version;
+        DROP TABLE plan_version;
+        ALTER TABLE plan_version_new RENAME TO plan_version;
+        DROP TABLE fixed_item;
+      `),
+  },
 ];

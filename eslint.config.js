@@ -16,8 +16,6 @@ const NO_WRITES_IN_HOOKS = {
     'updateExpense',
     'deleteExpense',
     'savePlanFromMonth',
-    'setMonthOverride',
-    'removeMonthOverride',
   ],
   message: 'Writes go through services.',
 };

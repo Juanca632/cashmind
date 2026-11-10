@@ -75,4 +75,18 @@ export const RELEASED_SCHEMAS: Record<number, string> = {
       kept_value INTEGER NOT NULL CHECK (kept_value >= 0 AND (kept_unit = 'eur' OR kept_value <= 100))
     ) STRICT;
   `,
+  4: `
+    CREATE TABLE "expense" (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+      bucket TEXT NOT NULL CHECK (bucket IN ('expense', 'savings', 'income')),
+      amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    ) STRICT;
+    CREATE TABLE "plan_version" (
+      effective_month TEXT PRIMARY KEY NOT NULL CHECK (effective_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+      savings_pct INTEGER NOT NULL CHECK (savings_pct BETWEEN 0 AND 100)
+    ) STRICT;
+  `,
 };

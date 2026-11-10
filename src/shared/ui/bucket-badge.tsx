@@ -6,13 +6,12 @@ import type { EntryBucket } from '@/shared/buckets';
 import { BUCKET_COLORS, BUCKET_TINTS, Radius } from '@/shared/theme/theme';
 
 export const BUCKET_ICONS: Record<EntryBucket, ComponentProps<typeof Feather>['name']> = {
-  fixed: 'home',
-  leisure: 'shopping-bag',
-  savings: 'database',
   income: 'trending-up',
+  savings: 'database',
+  expense: 'shopping-bag',
 };
 
-/** The part's icon on a soft tint of its color. Decorative: the name is always written next to it. */
+/** The entry kind's icon on a soft tint of its color. Decorative: the name is always written next to it. */
 export function BucketBadge({ bucket }: { bucket: EntryBucket }) {
   return (
     <View

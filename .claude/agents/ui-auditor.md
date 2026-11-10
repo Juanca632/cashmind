@@ -14,7 +14,7 @@ Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use t
 ## What to do
 
 1. **Code pass** over `src/features/` and `src/shared/ui/`.
-2. **Device pass** with the `agent-device` CLI: run `agent-device doctor`, then use the app on the connected Android device. Walk every main flow: create a plan, add an expense, edit it, browse past months. Take screenshots of each screen in light and dark mode.
+2. **Device pass** with the `agent-device` CLI: run `agent-device doctor`, then use the app on the connected Android device. Walk every main flow: record an income, an expense and a saving, change the plan in My plan, filter by a tile, edit and delete an entry, browse a past month. Take screenshots of each screen. The app is light mode only.
 3. If `agent-device` or a device is not available, do the code pass only and state at the top of the report that nothing was checked on a device.
 
 **Privacy:** screenshots leave the device. Only use the app with invented data. If you see what looks like real financial data, stop and report it before taking any more screenshots.
@@ -22,7 +22,7 @@ Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use t
 ## What to check
 
 - **Consistency:** hardcoded colors, spacing, font sizes or radii instead of theme tokens; the same element styled differently on two screens.
-- **States:** empty, error and validation states; what the user sees with no plan, no expenses, or a month over budget.
+- **States:** empty, error and validation states; what the user sees with no income yet, no entries, or a negative left to spend.
 - **Money display:** euro formatting is the same everywhere; long amounts do not wrap, clip or break the layout.
 - **Layout:** safe areas, the keyboard covering inputs, small screens, large system font.
 - **Feedback:** pressed states, confirmation before destructive actions, clear results after saving.
