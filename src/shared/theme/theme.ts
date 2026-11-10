@@ -6,7 +6,6 @@ export const Colors = {
   text: '#111318',
   background: '#F3F4F6',
   backgroundElement: '#FFFFFF',
-  backgroundSelected: '#E5E7EB',
   textSecondary: '#5F6673',
 } as const;
 
@@ -27,18 +26,16 @@ export const Hero = {
   control: 'rgba(255, 255, 255, 0.18)',
 } as const;
 
-/** One color per part of the plan, the same on every screen. Readable with white text on top. */
-export const BUCKET_COLORS = {
-  fixed: '#3730A3',
-  leisure: '#9A3412',
+/** One color per kind of entry, the same on every screen. Readable with white text on top. */
+export const KIND_COLORS = {
+  expense: '#9A3412',
   savings: '#065F46',
   income: '#0F766E',
 } as const;
 
-/** The soft background of each part; its BUCKET_COLORS value reads on top of it. */
-export const BUCKET_TINTS = {
-  fixed: '#E7E5FF',
-  leisure: '#FDEBDD',
+/** The soft background of each kind; its KIND_COLORS value reads on top of it. */
+export const KIND_TINTS = {
+  expense: '#FDEBDD',
   savings: '#D9F2E6',
   income: '#D5F2EE',
 } as const;
@@ -64,7 +61,6 @@ export const FontFamily = {
 } as const;
 
 export const Spacing = {
-  half: 2,
   one: 4,
   two: 8,
   three: 16,

@@ -1,99 +1,100 @@
-import { Redirect, router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useState } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { useMonthExpenses } from '@/features/expenses/hooks/use-month-expenses';
-import { totalsByBucket } from '@/features/expenses/rules';
-import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
-import { fixedTotal, planForMonth, targetsFor, type IncomePlan } from '@/features/plan/rules';
-import { BUCKETS, BUCKET_LABELS, otherFlexible, type Bucket } from '@/shared/buckets';
-import { formatEurosCompact, formatPercentOf } from '@/shared/money';
+import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { totalsByKind } from '@/features/entries/rules';
+import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
+import { PERCENT_INVALID, savingsGoal, savingsPercentFor } from '@/features/plan/rules';
+import { savePlan } from '@/features/plan/service';
+import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
+import { useSubmit } from '@/shared/hooks/use-submit';
+import { formatEurosCompact, parsePercent } from '@/shared/money';
 import { monthKey } from '@/shared/months';
-import { Radius, Spacing } from '@/shared/theme/theme';
-import { BucketBadge } from '@/shared/ui/bucket-badge';
+import { KIND_COLORS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
-import { PlanDonut } from '@/shared/ui/plan-donut';
-import { ShortfallWarning } from '@/shared/ui/shortfall-warning';
+import { ErrorText } from '@/shared/ui/error-text';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
-/** The current plan at a glance. Changing it happens on the editor, reached from the end of this screen. */
+/** The plan is one number: the share of every income to save. Changes apply from this month on. */
 export default function PlanScreen() {
-  const insets = useSafeAreaInsets();
   const month = monthKey(new Date());
-  const state = useIncomePlan();
-  const expenses = useMonthExpenses(month);
-  if (state.status === 'error' || expenses.status === 'error') return <DataError />;
-  if (state.status === 'loading' || expenses.status === 'loading') return <ThemedView style={styles.screen} />;
-
-  const plan = planForMonth(state.data, month);
-  if (!plan) return <Redirect href="/plan-edit" />;
-
-  const income = totalsByBucket(expenses.data).income;
-  const targets = income > 0 ? targetsFor(plan, income) : null;
+  const plan = usePlanVersions();
+  const entries = useMonthEntries(month);
+  if (plan.status === 'error' || entries.status === 'error') return <DataError />;
+  if (plan.status === 'loading' || entries.status === 'loading') return <ThemedView style={styles.screen} />;
 
   return (
-    <ThemedView style={styles.screen}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.five + insets.bottom }]}>
-        {targets ? (
-          <PlanDonut targets={targets}>
-            <ThemedText type="small" themeColor="textSecondary">
-              This month&apos;s income
-            </ThemedText>
-            <ThemedText type="heading" numberOfLines={1} adjustsFontSizeToFit>
-              {formatEurosCompact(income)}
-            </ThemedText>
-          </PlanDonut>
-        ) : (
-          <ThemedText themeColor="textSecondary" style={styles.message}>
-            Add this month&apos;s income to see the split.
-          </ThemedText>
-        )}
-
-        <ThemedView type="backgroundElement" style={styles.card}>
-          {BUCKETS.map((bucket) => (
-            <View key={bucket} style={styles.row}>
-              <BucketBadge bucket={bucket} />
-              <ThemedText type="smallBold" style={styles.name}>
-                {BUCKET_LABELS[bucket]}
-              </ThemedText>
-              {targets ? (
-                <>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {formatPercentOf(targets[bucket], income)}
-                  </ThemedText>
-                  <ThemedText type="smallBold" style={styles.amount}>
-                    {formatEurosCompact(targets[bucket])}
-                  </ThemedText>
-                </>
-              ) : (
-                <ThemedText type="smallBold">{planValue(plan, bucket)}</ThemedText>
-              )}
-            </View>
-          ))}
-        </ThemedView>
-
-        {targets ? <ShortfallWarning shortfall={targets.shortfall} /> : null}
-
-        <View style={styles.actions}>
-          <Button
-            label="Edit plan"
-            icon="edit-2"
-            onPress={() => router.push({ pathname: '/plan-edit', params: income > 0 ? { income: String(income) } : {} })}
-          />
-          <Button label="Edit fixed expenses" icon="home" variant="secondary" onPress={() => router.push('/fixed-expenses')} />
-        </View>
-      </ScrollView>
-    </ThemedView>
+    <PlanForm
+      initialPercent={savingsPercentFor(plan.data, month)}
+      incomeCents={totalsByKind(entries.data).income}
+    />
   );
 }
 
-/** What the plan says about a part when there is no income to apply it to. */
-function planValue(plan: IncomePlan, bucket: Bucket): string {
-  if (bucket === 'fixed') return formatEurosCompact(fixedTotal(plan.fixedItems));
-  if (bucket === otherFlexible(plan.kept)) return 'The rest';
-  return plan.keptAmount.unit === 'pct' ? `${plan.keptAmount.pct} %` : formatEurosCompact(plan.keptAmount.cents);
+function PlanForm({ initialPercent, incomeCents }: { initialPercent: number; incomeCents: number }) {
+  const db = useSQLiteContext();
+  const theme = useTheme();
+  const [percentText, setPercentText] = useState(String(initialPercent));
+  const { dialog, allowLeave } = useDiscardGuard(percentText !== String(initialPercent));
+  const { submit, submitting } = useSubmit(allowLeave);
+  const percent = parsePercent(percentText);
+
+  return (
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
+      <ThemedView style={styles.screen}>
+        {dialog}
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.intro}>
+            <ThemedText type="heading">How much do you want to save?</ThemedText>
+            <ThemedText themeColor="textSecondary">
+              A share of every income you record. Whatever is left after your expenses and this goal is yours to spend.
+            </ThemedText>
+          </View>
+
+          <ThemedView type="backgroundElement" style={styles.card}>
+            <View style={styles.percentRow}>
+              <TextInput
+                accessibilityLabel="Savings percentage"
+                keyboardType="number-pad"
+                maxLength={3}
+                placeholder="20"
+                placeholderTextColor={theme.textSecondary}
+                selectTextOnFocus
+                style={[styles.percent, { color: theme.text }]}
+                value={percentText}
+                onChangeText={setPercentText}
+              />
+              <ThemedText type="heading" themeColor="textSecondary">
+                %
+              </ThemedText>
+            </View>
+            <ThemedText type="smallBold" style={[styles.centered, { color: KIND_COLORS.savings }]}>
+              {percent === null
+                ? ' '
+                : incomeCents > 0
+                  ? `${formatEurosCompact(savingsGoal(incomeCents, percent))} of this month's ${formatEurosCompact(incomeCents)}`
+                  : 'Add this month\'s income to see it in euros.'}
+            </ThemedText>
+          </ThemedView>
+          {percentText.trim() !== '' && percent === null ? <ErrorText>{PERCENT_INVALID}</ErrorText> : null}
+
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centered}>
+            Applies from this month on. Past months keep their goal.
+          </ThemedText>
+
+          <Button
+            label="Save plan"
+            disabled={percent === null || submitting}
+            onPress={() => submit(() => savePlan(db, percent as number, new Date()))}
+          />
+        </ScrollView>
+      </ThemedView>
+    </KeyboardAvoidingView>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -101,36 +102,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    alignItems: 'center',
     gap: Spacing.four,
-    padding: Spacing.three,
+    padding: Spacing.two + Spacing.one,
+    paddingBottom: Spacing.five,
   },
-  actions: {
-    alignSelf: 'stretch',
-    gap: Spacing.two,
-  },
-  message: {
-    paddingVertical: Spacing.four,
-    textAlign: 'center',
+  intro: {
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.one,
   },
   card: {
-    alignSelf: 'stretch',
-    borderRadius: Radius.card,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  row: {
     alignItems: 'center',
+    borderRadius: Radius.card,
+    gap: Spacing.two,
+    padding: Spacing.four,
+  },
+  percentRow: {
+    alignItems: 'baseline',
     flexDirection: 'row',
-    gap: Spacing.three,
-    minHeight: 62,
+    gap: Spacing.one,
   },
-  name: {
-    flex: 1,
-  },
-  amount: {
+  percent: {
+    fontFamily: FontFamily.bold,
+    fontSize: 56,
     fontVariant: ['tabular-nums'],
-    minWidth: 76,
-    textAlign: 'right',
+    letterSpacing: -1,
+    minWidth: 72,
+    padding: 0,
+    textAlign: 'center',
+  },
+  centered: {
+    textAlign: 'center',
   },
 });

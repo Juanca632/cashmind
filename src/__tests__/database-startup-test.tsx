@@ -1,5 +1,6 @@
 import { renderRouter, screen } from "expo-router/testing-library";
 
+import { MIGRATIONS } from "@/db/migrations";
 import { resetDevice, seedDevice } from "../test-support/fake-sqlite";
 
 jest.mock(
@@ -86,9 +87,9 @@ describe("A failed update is explained and harmless (screen)", () => {
     expect(await state()).toEqual(before);
   });
 
-  it("A development database (version 5) counts as newer than the app", async () => {
+  it("A development database one version ahead of the app counts as newer", async () => {
     await seedDevice(async (db) => {
-      await db.execAsync("PRAGMA user_version = 5");
+      await db.execAsync(`PRAGMA user_version = ${MIGRATIONS.length + 1}`);
     });
     await renderRouter("./src/app");
 
@@ -98,7 +99,7 @@ describe("A failed update is explained and harmless (screen)", () => {
   it("A normal new install shows no update message", async () => {
     await renderRouter("./src/app");
 
-    expect(await screen.findByText("Plan your month")).toBeOnTheScreen();
+    expect(await screen.findByText("Add this month's income")).toBeOnTheScreen();
     expect(screen.queryByText(FAILED)).not.toBeOnTheScreen();
     expect(screen.queryByText(NEWER)).not.toBeOnTheScreen();
   });

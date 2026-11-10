@@ -6,6 +6,8 @@
 
 **Status**: Implemented
 
+> **Historical.** The schema has since changed in migration steps 2-4; see `src/db/migrations.ts`.
+
 **Input**: User description: "Make the database structure final for the first APK and make migrations safe to rely on. Validated in the Notion pages '6. Migrations proposal' and '7. Database structure proposal'."
 
 ## User Scenarios & Testing *(mandatory)*

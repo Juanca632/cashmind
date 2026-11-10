@@ -1,71 +1,33 @@
-import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
-import { insertExpense } from '@/features/expenses/repository';
+import { insertEntry } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
 import { savePlanFromMonth } from '@/features/plan/repository';
-import type { ExpenseInput } from '@/features/expenses/rules';
-import type { IncomePlan } from '@/features/plan/rules';
+import type { EntryInput } from '@/features/entries/rules';
 
 import { resetDevice, seedDevice } from './fake-sqlite';
-
-/** A plan plus the income recorded each month it applies. */
-export type TestPlan = IncomePlan & { incomeCents: number };
-
-/** 2000 € income, 1000 € fixed in one item, savings 30 % kept, leisure automatic (400 €). */
-export const standardPlan: TestPlan = {
-  incomeCents: 200000,
-  fixedItems: [{ name: 'House', amountCents: 100000 }],
-  kept: 'savings',
-  keptAmount: { unit: 'pct', pct: 30 },
-};
+import { RELEASED_SCHEMAS } from './released-schemas';
 
 type Setup = {
   /** Local date the app thinks it is. */
   today: [year: number, monthIndex: number, day: number];
-  /** Plans saved on the device: [plan, month it applies from]. */
-  plans?: [TestPlan, string][];
-  /** Income of a month instead of its plan's. */
-  overrides?: Record<string, number>;
-  /** Leaves the months without any recorded income. */
-  noIncome?: boolean;
-  expenses?: ExpenseInput[];
+  /** Plans saved on the device: [savings percentage, month it applies from]. */
+  plans?: [number, string][];
+  /** Entries (income, savings and expenses) already recorded on the device. */
+  entries?: EntryInput[];
   /** Raw SQL run last, to store rows the app itself would never write (damaged data). */
   raw?: string[];
 };
 
-export const SEEDED_INCOME = 'Seeded income';
-
-/** The income of each month from the first plan up to today, as migration step 3 would create it. */
-function monthIncomes(plans: [TestPlan, string][], overrides: Record<string, number>, today: Setup['today']): [string, number][] {
-  if (plans.length === 0) return [];
-  const sorted = [...plans].sort((a, b) => a[1].localeCompare(b[1]));
-  const last = `${today[0]}-${String(today[1] + 1).padStart(2, '0')}`;
-  const result: [string, number][] = [];
-  let [year, month] = sorted[0][1].split('-').map(Number);
-  for (let key = sorted[0][1]; key <= last; key = `${year}-${String(month).padStart(2, '0')}`) {
-    const plan = sorted.filter(([, from]) => from <= key).at(-1)?.[0];
-    result.push([key, overrides[key] ?? plan?.incomeCents ?? 0]);
-    month += 1;
-    if (month > 12) {
-      month = 1;
-      year += 1;
-    }
-  }
-  return result;
-}
-
 /** Puts a fresh device in the given state, fixes the clock and opens the app on its home screen. */
-export async function startApp({ today, plans = [], overrides = {}, noIncome = false, expenses = [], raw = [] }: Setup) {
+export async function startApp({ today, plans = [], entries = [], raw = [] }: Setup) {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date(today[0], today[1], today[2], 12));
   resetDevice();
   await seedDevice(async (db) => {
     await migrateDbIfNeeded(db);
-    for (const [plan, month] of plans) await savePlanFromMonth(db, plan, month);
-    for (const [month, cents] of noIncome ? [] : monthIncomes(plans, overrides, today)) {
-      await insertExpense(db, { date: `${month}-01`, bucket: 'income', amountCents: cents, note: SEEDED_INCOME });
-    }
-    for (const expense of expenses) await insertExpense(db, expense);
+    for (const [percent, month] of plans) await savePlanFromMonth(db, percent, month);
+    for (const entry of entries) await insertEntry(db, entry);
     for (const sql of raw) await db.execAsync(sql);
   });
   return renderRouter('./src/app');
@@ -83,11 +45,78 @@ export function partialText(text: string): RegExp {
   return new RegExp(escaped);
 }
 
-/** Presses a button of the open confirmation dialog. */
-export async function answerDialog(label: string) {
-  await act(async () => {
-    fireEvent.press(within(screen.getByTestId('confirm-dialog')).getByRole('button', { name: label }));
+export const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
+export const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
+export const choose = (name: string) => fireEvent.press(screen.getByRole('radio', { name }));
+
+/** Checks the amount shown on the "Left to spend" card, e.g. "700,00 €" or "-100,00 €". */
+export function expectLeftToSpend(amount: string) {
+  const escaped = amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\u00a0\\u202f]');
+  expect(screen.getByText('Left to spend').parent).toHaveTextContent(new RegExp(`^Left to spend${escaped}`));
+}
+
+/** Records one entry through the form opened from home, for the kind and amount typed. */
+export async function record(kind: 'Income' | 'Savings' | 'Expense', amount: string, note?: string) {
+  await press('Add expense');
+  await choose(kind);
+  await type('Amount', amount);
+  if (note) await type('Note (optional)', note);
+  await press(kind === 'Income' ? 'Add income' : kind === 'Savings' ? 'Add to savings' : 'Add expense');
+}
+
+export const DELETE_DIALOG = 'Delete this entry?';
+export const DISCARD_DIALOG = 'Discard changes?';
+
+/** The open confirmation dialog, found by its title (the only header that asks a question). */
+function openDialog(title?: string) {
+  const header = screen.getByRole('header', { name: title ?? /\?$/ });
+  return { header, dialog: within(header.parent!) };
+}
+
+/** Checks that the confirmation dialog with this title is open. */
+export function expectDialog(title: string) {
+  expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+}
+
+/** Checks that no confirmation dialog is open. */
+export function expectNoDialog() {
+  expect(screen.queryByRole('header', { name: /\?$/ })).not.toBeOnTheScreen();
+}
+
+/** Presses a button of the open confirmation dialog, found through its title. */
+export async function answerDialog(label: string, title?: string) {
+  await fireEvent.press(openDialog(title).dialog.getByRole('button', { name: label }));
+}
+
+/** Titles shown in the navigation header, outermost screen first (e.g. ["cashmind", "Add expense"]). */
+export function headerTitles(): string[] {
+  const titles: string[] = [];
+  const walk = (node: unknown) => {
+    if (!node || typeof node === 'string') return;
+    if (Array.isArray(node)) return node.forEach(walk);
+    const { props, children } = node as { props?: { title?: unknown }; children?: unknown };
+    if (typeof props?.title === 'string') titles.push(props.title);
+    walk(children);
+  };
+  walk(screen.toJSON());
+  return titles;
+}
+
+/** Opens the app on a database left by a released version, to prove the update keeps the user's data. */
+export async function startAppOnReleasedVersion(
+  today: [year: number, monthIndex: number, day: number],
+  version: number,
+  data: string,
+) {
+  jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+  jest.setSystemTime(new Date(today[0], today[1], today[2], 12));
+  resetDevice();
+  await seedDevice(async (db) => {
+    await db.execAsync(RELEASED_SCHEMAS[version]);
+    await db.execAsync(data);
+    await db.execAsync(`PRAGMA user_version = ${version}`);
   });
+  return renderRouter('./src/app');
 }
 
 /** Closes the app and opens it again on the same device, optionally on another day. */
@@ -115,9 +144,8 @@ export async function dumpDevice() {
   let rows: unknown[] = [];
   await seedDevice(async (db) => {
     rows = [
-      await db.getAllAsync('SELECT * FROM expense ORDER BY id'),
+      await db.getAllAsync('SELECT * FROM entry ORDER BY id'),
       await db.getAllAsync('SELECT * FROM plan_version ORDER BY effective_month'),
-      await db.getAllAsync('SELECT * FROM fixed_item ORDER BY id'),
     ];
   });
   return rows;

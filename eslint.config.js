@@ -12,12 +12,10 @@ const NO_DB = { group: ['@/db/*'], message: 'Only the root layout and repositori
 const NO_WRITES_IN_HOOKS = {
   group: ['**/repository'],
   importNames: [
-    'insertExpense',
-    'updateExpense',
-    'deleteExpense',
+    'insertEntry',
+    'updateEntry',
+    'deleteEntry',
     'savePlanFromMonth',
-    'setMonthOverride',
-    'removeMonthOverride',
   ],
   message: 'Writes go through services.',
 };
@@ -65,9 +63,9 @@ module.exports = defineConfig([
   },
   zone(['src/app/**'], [NO_REPOSITORIES, NO_DB]),
   { files: ['src/app/_layout.tsx'], rules: { 'no-restricted-imports': 'off' } },
-  zone(['src/shared/**'], [noFeatures('expenses', 'plan', 'home'), NO_DB]),
-  ...featureZones('expenses', [noFeatures('plan', 'home')]),
-  ...featureZones('plan', [noFeatures('expenses', 'home')]),
+  zone(['src/shared/**'], [noFeatures('entries', 'plan', 'home'), NO_DB]),
+  ...featureZones('entries', [noFeatures('plan', 'home')]),
+  ...featureZones('plan', [noFeatures('entries', 'home')]),
   ...featureZones('home', []),
   noDirectQueries,
 ]);

@@ -6,25 +6,23 @@ function monthAt(today: Date, offset: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const FIRST_PLAN: [string, number][] = [
-  ['House', 70000],
-  ['Transport', 6000],
-  ['Phone', 2000],
-  ['Supermarket', 25000],
-  ['Gym', 3000],
+type Entry = [day: number, kind: 'income' | 'savings' | 'expense', cents: number, note: string];
+
+/** Bills every month has, recorded as ordinary expenses. */
+const BILLS: Entry[] = [
+  [2, 'expense', 70000, 'Rent'],
+  [4, 'expense', 6000, 'Transport'],
+  [5, 'expense', 2000, 'Phone'],
 ];
-const SECOND_PLAN: [string, number][] = [['House', 75000], ...FIRST_PLAN.slice(1)];
 
-type Entry = [day: number, bucket: 'leisure' | 'savings' | 'income', cents: number, note: string];
-
-/** One list per month, oldest first; the fourth month goes over its leisure budget. */
+/** One list per month, oldest first; the fourth month spends more than it allows (left to spend is negative). */
 const MONTHS: Entry[][] = [
-  [[1, 'income', 210000, 'Salary'], [3, 'leisure', 4250, 'Dinner out'], [9, 'leisure', 1250, 'Cinema'], [15, 'savings', 42000, 'Monthly saving'], [22, 'leisure', 8900, 'Shoes']],
-  [[1, 'income', 210000, 'Salary'], [2, 'leisure', 3100, 'Bar'], [11, 'leisure', 12000, 'Concert'], [15, 'savings', 42000, 'Monthly saving'], [27, 'leisure', 2300, 'Books']],
-  [[1, 'income', 230000, 'Salary'], [5, 'leisure', 6400, 'Birthday dinner'], [14, 'savings', 57500, 'Monthly saving'], [19, 'leisure', 4500, 'Museum'], [28, 'leisure', 1800, 'Coffee']],
-  [[1, 'income', 300000, 'Salary and bonus'], [1, 'leisure', 32000, 'Weekend trip'], [8, 'leisure', 26000, 'New jacket'], [14, 'savings', 75000, 'Bonus saved'], [20, 'leisure', 19000, 'Dinner out']],
-  [[1, 'income', 230000, 'Salary'], [2, 'leisure', 11000, 'Flights'], [6, 'leisure', 3800, 'Lunch'], [12, 'savings', 30000, 'Monthly saving'], [24, 'leisure', 5200, 'Gift']],
-  [[1, 'income', 230000, 'Salary'], [1, 'leisure', 1500, 'Coffee'], [3, 'leisure', 4200, 'Dinner out'], [6, 'savings', 20000, 'Monthly saving'], [8, 'leisure', 2750, 'Cinema']],
+  [[1, 'income', 210000, 'Salary'], [3, 'expense', 4250, 'Dinner out'], [9, 'expense', 25000, 'Supermarket'], [15, 'savings', 42000, 'Monthly saving'], [22, 'expense', 8900, 'Shoes']],
+  [[1, 'income', 210000, 'Salary'], [2, 'expense', 3100, 'Bar'], [11, 'expense', 24000, 'Supermarket'], [15, 'savings', 42000, 'Monthly saving'], [27, 'expense', 2300, 'Books']],
+  [[1, 'income', 230000, 'Salary'], [5, 'expense', 6400, 'Birthday dinner'], [10, 'expense', 26000, 'Supermarket'], [14, 'savings', 57500, 'Monthly saving'], [19, 'expense', 4500, 'Museum']],
+  [[1, 'income', 300000, 'Salary and bonus'], [1, 'expense', 32000, 'Weekend trip'], [8, 'expense', 106000, 'New laptop'], [14, 'savings', 75000, 'Bonus saved'], [20, 'expense', 19000, 'Dinner out']],
+  [[1, 'income', 230000, 'Salary'], [2, 'expense', 11000, 'Flights'], [6, 'expense', 25000, 'Supermarket'], [12, 'savings', 30000, 'Monthly saving'], [24, 'expense', 5200, 'Gift']],
+  [[1, 'income', 230000, 'Salary'], [1, 'expense', 1500, 'Coffee'], [3, 'expense', 4200, 'Dinner out'], [6, 'savings', 20000, 'Monthly saving'], [8, 'expense', 2750, 'Cinema']],
 ];
 
 /**
@@ -33,33 +31,26 @@ const MONTHS: Entry[][] = [
  */
 export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM expense; DELETE FROM fixed_item; DELETE FROM plan_version;');
+    await db.execAsync('DELETE FROM entry; DELETE FROM plan_version;');
 
-    const plans: [string, number, [string, number][]][] = [
-      [monthAt(today, -5), 20, FIRST_PLAN],
-      [monthAt(today, -3), 25, SECOND_PLAN],
+    const plans: [string, number][] = [
+      [monthAt(today, -5), 20],
+      [monthAt(today, -3), 25],
     ];
-    for (const [month, savingsPercent, items] of plans) {
-      await db.runAsync(
-        "INSERT INTO plan_version (effective_month, kept_bucket, kept_unit, kept_value) VALUES (?, 'savings', 'pct', ?)",
-        month,
-        savingsPercent,
-      );
-      for (const [name, cents] of items) {
-        await db.runAsync('INSERT INTO fixed_item (effective_month, name, amount_cents) VALUES (?, ?, ?)', month, name, cents);
-      }
+    for (const [month, savingsPercent] of plans) {
+      await db.runAsync('INSERT INTO plan_version (effective_month, savings_pct) VALUES (?, ?)', month, savingsPercent);
     }
 
     for (const [index, entries] of MONTHS.entries()) {
       const offset = index - (MONTHS.length - 1);
       const month = monthAt(today, offset);
-      for (const [day, bucket, cents, note] of entries) {
+      for (const [day, kind, cents, note] of [...BILLS, ...entries]) {
         // The current month only goes up to today, so nothing is dated in the future.
         const safeDay = offset === 0 ? Math.min(day, today.getDate()) : day;
         await db.runAsync(
-          'INSERT INTO expense (date, bucket, amount_cents, note) VALUES (?, ?, ?, ?)',
+          'INSERT INTO entry (date, kind, amount_cents, note) VALUES (?, ?, ?, ?)',
           `${month}-${String(safeDay).padStart(2, '0')}`,
-          bucket,
+          kind,
           cents,
           note,
         );

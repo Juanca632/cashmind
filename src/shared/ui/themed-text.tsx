@@ -4,7 +4,7 @@ import { FontFamily, ThemeColor } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'display' | 'heading' | 'caption' | 'small' | 'smallBold' | 'subtitle';
+  type?: 'default' | 'heading' | 'caption' | 'small' | 'smallBold' | 'subtitle';
   themeColor?: ThemeColor;
 };
 
@@ -15,13 +15,6 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  display: {
-    fontSize: 48,
-    fontVariant: ['tabular-nums'],
-    fontFamily: FontFamily.bold,
-    letterSpacing: -1,
-    lineHeight: 56,
-  },
   heading: {
     fontSize: 22,
     fontFamily: FontFamily.bold,

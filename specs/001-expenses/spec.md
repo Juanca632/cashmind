@@ -6,13 +6,13 @@
 
 **Status**: Implemented
 
-**Input**: Migrated verbatim from the OpenSpec `expenses` capability. History is in `docs/openspec-archive/`.
+**Input**: Migrated from the OpenSpec `expenses` capability; updated by 007-recorded-income and 008-simple-plan. History is in `docs/openspec-archive/`.
 
 This is a baseline spec: it describes the current behavior of the app and is kept up to date when a later feature changes that behavior.
 
 ## Purpose
 
-Lets the user record what they earn, spend or save and see, for any month, how it compares to that month's targets.
+Lets the user record what they earn, save or spend, in any month, and see that month's entries.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -22,7 +22,7 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 **Acceptance Scenarios**:
 
-1. *Add a leisure expense*: **When** the user adds 12,50 € to leisure with the note "Cinema" and today's date, **Then** the expense appears in this month's list and leisure spending increases by 12,50 €
+1. *Add an expense*: **When** the user adds an expense of 12,50 € with the note "Cinema" and today's date, **Then** it appears in this month's list and the month's spending increases by 12,50 €
 2. *Invalid amount*: **When** the user tries to save an expense with a zero or negative amount, **Then** the system does not save it and shows that the amount must be greater than zero
 3. *Empty amount*: **When** the amount is empty, **Then** the save action is disabled and the system does not save the expense
 
@@ -34,7 +34,7 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 **Acceptance Scenarios**:
 
-1. *Saving after payday*: **Given** a savings target of 900,00 €, **When** the user records 600,00 € in savings, **Then** the savings progress shows 600,00 € of 900,00 €
+1. *Saving after payday*: **Given** a savings goal of 900,00 €, **When** the user records 600,00 € in savings, **Then** savings shows 600,00 € of 900,00 €
 
 ---
 
@@ -44,8 +44,8 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 **Acceptance Scenarios**:
 
-1. *Correct an amount*: **When** the user changes an expense from 12,50 € to 15,00 €, **Then** the list and the bucket's spending reflect 15,00 €
-2. *Delete an expense*: **When** the user deletes an expense and confirms, **Then** it disappears from the list and no longer counts towards its bucket
+1. *Correct an amount*: **When** the user changes an expense from 12,50 € to 15,00 €, **Then** the list and the month's spending reflect 15,00 €
+2. *Delete an expense*: **When** the user deletes an expense and confirms, **Then** it disappears from the list and no longer counts
 3. *Deleting an expense can be cancelled*: **When** the user taps delete and cancels, **Then** nothing changes
 4. *Leaving with changes*: **Given** an expense form with unsaved changes, **When** the user leaves, **Then** the app asks before discarding them
 
@@ -57,20 +57,18 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 **Acceptance Scenarios**:
 
-1. *Forgotten expense*: **Given** today is 3 December, **When** the user opens November and adds an expense, **Then** it is saved and counts towards November
+1. *Forgotten expense*: **Given** today is 3 December and nothing was ever recorded, **When** the user opens November and adds an expense, **Then** it is saved and counts towards November
 2. *Any past month*: **Given** today is 6 December, **When** the user views November, **Then** the expenses of November can be added, edited or deleted
 
 ---
 
-### User Story 5 - Month progress against targets
+### User Story 5 - Month figures
 
 **Implements**: FR-005
 
 **Acceptance Scenarios**:
 
-1. *Leisure over its limit*: **Given** a leisure target of 400,00 €, **When** leisure expenses add up to 450,00 €, **Then** leisure shows that it is 50,00 € over
-2. *Within the limit*: **Given** a leisure target of 400,00 €, **When** leisure expenses add up to 100,00 €, **Then** leisure shows 300,00 € left
-3. *Progress percentage*: **Given** a savings target of 900,00 € and a leisure target of 400,00 €, **When** 630,00 € are saved and 200,00 € of leisure are spent, **Then** savings shows 630,00 € of 900,00 € and leisure shows 200,00 € of 400,00 €
+1. *Spent*: **When** a month's expenses add up to 900,00 €, **Then** home shows 900,00 € spent; savings and income are not spending
 
 ---
 
@@ -80,7 +78,7 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 **Acceptance Scenarios**:
 
-1. *Viewing a past month*: **When** the user picks a past month with expenses, **Then** the list shows that month's expenses and its progress per bucket
+1. *Viewing a past month*: **When** the user picks a past month with expenses, **Then** the list shows that month's entries and its figures
 
 ---
 
@@ -92,27 +90,27 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 1. *Failed save*: **When** an expense cannot be added, edited or deleted, **Then** a message explains it and the form stays open
 2. *Unreadable expense*: **Given** a stored expense has the wrong format, **When** the user opens its month, **Then** the screen says some data could not be read and no data is changed
+3. *Unreadable date in the month picker*: **Given** a stored entry has a date in the wrong format, **When** the user opens the month picker, **Then** it says some data could not be read and no data is changed
 
 ---
 
-### User Story 8 - Look inside one part of the plan
+### User Story 8 - Look inside one kind
 
 **Implements**: FR-009
 
 **Acceptance Scenarios**:
 
-1. *Tapping a part lists only its expenses*: **Given** a month with expenses in several buckets, **When** the user taps one bucket on the home screen, **Then** the list shows only that bucket's expenses, **And** "Show all" brings back the full list
+1. *Tapping a kind lists only its entries*: **Given** a month with entries of every kind, **When** the user taps Income, Spent or Savings on home, **Then** the list shows only those entries, **And** "Show all" brings back the full list
 
 ---
 
-### User Story 9 - Fixed expenses are not recorded
+### User Story 9 - Three kinds of entry
 
 **Implements**: FR-010
 
 **Acceptance Scenarios**:
 
-1. *The form chooses*: **When** the user adds an entry, **Then** they choose Leisure, Savings or Income, and not Fixed
-2. *An expense already recorded as fixed keeps its part*: **Given** an expense recorded as fixed by an older version, **When** the user edits it, **Then** it can stay fixed
+1. *The form chooses*: **When** the user adds an entry, **Then** they choose Income, Savings or Expense
 
 ---
 
@@ -120,17 +118,16 @@ Lets the user record what they earn, spend or save and see, for any month, how i
 
 ### Functional Requirements
 
-- **FR-001** (Record an expense): The system SHALL let the user record an expense with an amount in EUR greater than zero (cent precision), one part (leisure or savings), chosen in the form, an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the expense is recorded.
-- **FR-002** (Savings entries count towards the savings goal): The system SHALL treat expenses in the savings bucket as money set aside, and SHALL show them as progress towards the month's savings target.
-- **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an expense or delete it, in any month. Deleting SHALL ask for confirmation, and leaving the form with unsaved changes SHALL ask before discarding them.
-- **FR-004** (Past months can be corrected): The system SHALL let the user add, edit and delete expenses in any month with a plan, up to today. There is no editable period.
-- **FR-005** (Month progress against targets): The system SHALL show, for the selected month, the total spent (fixed expenses plus leisure, never savings). For leisure and savings it SHALL show what is left and the percentage reached. The fixed part counts as spent in full by itself.
-- **FR-006** (Month expense list): The system SHALL list the selected month's expenses, newest date first, showing date, bucket, note and amount.
+- **FR-001** (Record an expense): The system SHALL let the user record an entry with an amount in EUR greater than zero (cent precision), one kind (income, savings or expense) chosen in the form, an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the entry is recorded.
+- **FR-002** (Savings entries count towards the savings goal): Savings entries SHALL be money set aside and SHALL show as progress towards the month's savings goal (see 002).
+- **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an entry or delete it, in any month. Deleting SHALL ask for confirmation, and leaving the form with unsaved changes SHALL ask before discarding them.
+- **FR-004** (Past months can be corrected): The system SHALL let the user add, edit and delete entries in any month up to today. There is no editable period.
+- **FR-005** (Month figures): When the selected month has income, the system SHALL show its income, savings and spending (the sum of its expenses); see 002 for the goal and what is left. Without income, home asks for it instead (see 002).
+- **FR-006** (Month list): The system SHALL list the selected month's entries, newest first (by date, then by when they were recorded), showing the date, the kind as an icon, the note (or the kind's name when there is no note) and the amount.
 - **FR-007** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
-- **FR-008** (Unreadable data): The system SHALL check the format of the expenses it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. It SHALL NOT change or delete the data.
-- **FR-009** (Look inside one part of the plan): The system SHALL let the user tap leisure or savings on the home screen to list only that part's entries for the selected month, and SHALL let the user return to the full list.
-- **FR-010** (Expenses recorded as fixed): New expenses SHALL NOT be recorded as fixed. An expense already recorded as fixed SHALL be kept, stay listed in its month and keep its part when edited.
-- **FR-011** (Income entries): The system SHALL let the user record income the same way, chosen in the form, with an amount, an optional note and a date. Income entries appear in the month's list and can be edited and deleted.
+- **FR-008** (Unreadable data): The system SHALL check the format of the entries it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. This includes entries of an earlier month that home reads to offer repeating the last income. It SHALL NOT change or delete the data.
+- **FR-009** (Look inside one kind): When the month has income, the system SHALL let the user tap income, spent or savings on home to list only those entries, titled with that tile's name, and SHALL let the user return to the full list. The Add action then adds that kind; with no tile selected it adds an expense.
+- **FR-010** (Three kinds): Every entry SHALL be an income, a saving or an expense. Entries recorded as fixed or leisure by older versions become expenses when the app updates.
 
 ## Success Criteria *(mandatory)*
 

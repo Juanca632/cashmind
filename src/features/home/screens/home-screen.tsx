@@ -5,21 +5,21 @@ import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExpenseList } from '@/features/expenses/components/expense-list';
-import { useMonthExpenses } from '@/features/expenses/hooks/use-month-expenses';
-import { usePreviousIncome } from '@/features/expenses/hooks/use-previous-income';
-import { defaultExpenseDate, totalsByBucket } from '@/features/expenses/rules';
-import { addExpense } from '@/features/expenses/service';
-import { useIncomePlan } from '@/features/plan/hooks/use-income-plan';
-import { planForMonth, targetsFor } from '@/features/plan/rules';
-import { BUCKET_LABELS, type Bucket } from '@/shared/buckets';
+import { EntryList } from '@/features/entries/components/entry-list';
+import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
+import { defaultEntryDate, totalsByKind } from '@/features/entries/rules';
+import { addEntry } from '@/features/entries/service';
+import { monthSummary } from '@/features/home/month-summary';
+import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
+import { savingsPercentFor } from '@/features/plan/rules';
+import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { Accent, BUCKET_COLORS, BUCKET_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { Accent, KIND_COLORS, KIND_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useToday } from '@/shared/hooks/use-today';
-import { BUCKET_ICONS } from '@/shared/ui/bucket-badge';
-import { ShortfallWarning } from '@/shared/ui/shortfall-warning';
+import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -28,7 +28,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
-  const state = useIncomePlan();
+  const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
   const today = useToday();
   const currentMonth = monthKey(today);
@@ -36,54 +36,46 @@ export default function HomeScreen() {
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
   // Reloads the month after a change made on this same screen.
   const [refresh, setRefresh] = useState(0);
-  const expenses = useMonthExpenses(month, refresh);
+  const entries = useMonthEntries(month, refresh);
   const previousIncome = usePreviousIncome(month, refresh);
-  const [repeating, setRepeating] = useState(false);
-  const repeatInProgress = useRef(false);
-  // Which part of the plan the expense list is showing; null shows all of them.
-  const [selected, setSelected] = useState<Bucket | null>(null);
+  // Which kind of entry the list is showing; null shows all of them.
+  const [selected, setSelected] = useState<EntryKind | null>(null);
+  // A repeat is tied to the month and its income as loaded: once the reload shows the new income
+  // (or the month changes) the key changes, so a tap made before the reload cannot record it twice.
+  const loadedIncome = entries.status === 'ready' ? totalsByKind(entries.data).income : 0;
+  const repeatKey = `${month}:${loadedIncome}`;
+  // A ref, not state: two taps in the same frame must not record the income twice.
+  const repeatedFor = useRef<string | null>(null);
+  const [repeatedKey, setRepeatedKey] = useState<string | null>(null);
 
-  if (state.status === 'error' || expenses.status === 'error' || previousIncome.status === 'error') return <DataError />;
-  if (state.status === 'loading' || expenses.status === 'loading' || previousIncome.status === 'loading') {
+  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error') return <DataError />;
+  if (plan.status === 'loading' || entries.status === 'loading' || previousIncome.status === 'loading') {
     return <ThemedView style={styles.screen} />;
   }
 
-  const versions = state.data;
-  const monthExpenses = expenses.data;
-
-  if (versions.length === 0) {
-    return (
-      <ThemedView style={[styles.screen, styles.centeredScreen]}>
-        <ThemedText type="heading">Plan your month</ThemedText>
-        <ThemedText themeColor="textSecondary" style={styles.centeredText}>
-          List what you must pay, then split the rest between savings and leisure.
-        </ThemedText>
-        <Button label="Set up my plan" onPress={() => router.push('/fixed-expenses')} />
-      </ThemedView>
-    );
-  }
-
+  const monthEntries = entries.data;
   const isPast = isPastMonth(month, currentMonth);
-  const plan = planForMonth(versions, month);
-  const spent = totalsByBucket(monthExpenses);
-  const targets = plan && spent.income > 0 ? targetsFor(plan, spent.income) : null;
+  const percent = savingsPercentFor(plan.data, month);
+  const summary = monthSummary(totalsByKind(monthEntries), percent);
+  const hasIncome = summary.income > 0;
 
   async function repeatIncome(amountCents: number) {
-    // A ref, not state: two taps in the same frame must not record the income twice.
-    if (repeatInProgress.current) return;
-    repeatInProgress.current = true;
-    setRepeating(true);
-    try {
-      const entry = { date: defaultExpenseDate(month, today), bucket: 'income', amountCents, note: 'Monthly income' } as const;
-      const result = await addExpense(db, entry, new Date());
-      if (result.ok) setRefresh((current) => current + 1);
-      else Alert.alert('Something went wrong', result.message);
-    } finally {
-      repeatInProgress.current = false;
-      setRepeating(false);
+    if (repeatedFor.current === repeatKey) return;
+    repeatedFor.current = repeatKey;
+    setRepeatedKey(repeatKey);
+    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income' } as const;
+    const result = await addEntry(db, entry, new Date());
+    if (result.ok) {
+      setRefresh((current) => current + 1);
+      return;
     }
+    repeatedFor.current = null;
+    setRepeatedKey(null);
+    Alert.alert('Something went wrong', result.message);
   }
-  const toggle = (bucket: Bucket) => setSelected(bucket === selected ? null : bucket);
+  const toggle = (kind: EntryKind) => setSelected(kind === selected ? null : kind);
+  const openNewEntry = (kind?: EntryKind) => router.push({ pathname: '/entry', params: { month, kind } });
+  const savingsDone = summary.goal > 0 && summary.saved >= summary.goal;
 
   return (
     <ThemedView style={styles.screen}>
@@ -109,57 +101,47 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.monthCard}>
-          {targets ? (
-            <MonthBrief spent={targets.fixed + spent.leisure} />
-          ) : plan ? (
+          {hasIncome ? (
+            <LeftToSpend left={summary.left} />
+          ) : (
             <View style={styles.askIncome}>
               <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
                 Add this month&apos;s income
               </ThemedText>
-              {previousIncome.data !== null ? (
-                <CardPill
-                  label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
-                  accessibilityLabel="Repeat last income"
-                  disabled={repeating}
-                  onPress={() => repeatIncome(previousIncome.data as number)}
-                />
-              ) : null}
+              <View style={styles.cardActions}>
+                <CardPill label="Add income" onPress={() => openNewEntry('income')} />
+                {previousIncome.data !== null ? (
+                  <CardPill
+                    label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
+                    accessibilityLabel="Repeat last income"
+                    disabled={repeatedKey === repeatKey}
+                    onPress={() => repeatIncome(previousIncome.data as number)}
+                  />
+                ) : null}
+              </View>
             </View>
-          ) : (
-            <ThemedText style={[styles.centeredText, styles.noPlan, { color: Hero.label }]}>
-              There was no plan in {formatMonth(month)}.
-            </ThemedText>
           )}
-
         </View>
 
-        {targets ? (
-          <>
-            <ShortfallWarning shortfall={targets.shortfall} />
-            <View style={styles.tiles}>
-              <PartTile
-                bucket="leisure"
-                value={spent.leisure > targets.leisure ? `${formatEurosCompact(spent.leisure - targets.leisure)} over` : `${formatEurosCompact(targets.leisure - spent.leisure)} left`}
-                detail={`${percentOf(spent.leisure, targets.leisure)} % used`}
-                selected={selected}
-                onSelect={toggle}
-              />
-              <PartTile
-                bucket="savings"
-                value={spent.savings >= targets.savings && spent.savings > 0 ? 'Goal reached' : `${formatEurosCompact(targets.savings - spent.savings)} to go`}
-                detail={`${percentOf(spent.savings, targets.savings)} % saved`}
-                selected={selected}
-                onSelect={toggle}
-              />
-            </View>
-          </>
+        {hasIncome ? (
+          <View style={styles.tiles}>
+            <KindTile kind="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
+            <KindTile kind="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
+            <KindTile
+              kind="savings"
+              value={formatEurosCompact(summary.saved)}
+              detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
+              selected={selected}
+              onSelect={toggle}
+            />
+          </View>
         ) : null}
 
         <View style={styles.section}>
           <View style={styles.sectionTitle}>
             <View style={styles.titleGroup}>
               <ThemedText type="smallBold" themeColor="textSecondary">
-                {selected ? BUCKET_LABELS[selected] : 'Activity'}
+                {selected ? TILE_TITLES[selected] : 'Activity'}
               </ThemedText>
               {selected ? (
                 <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
@@ -169,22 +151,20 @@ export default function HomeScreen() {
                 </Pressable>
               ) : null}
             </View>
-            {plan ? (
-              <Button
-                label="Add"
-                icon="plus"
-                accessibilityLabel={selected === 'savings' ? 'Add to savings' : 'Add expense'}
-                variant="pill"
-                onPress={() => router.push({ pathname: '/expense', params: { month, bucket: selected ?? undefined } })}
-              />
-            ) : null}
+            <Button
+              label="Add"
+              icon="plus"
+              accessibilityLabel={ADD_LABELS[selected ?? 'expense']}
+              variant="pill"
+              onPress={() => openNewEntry(selected ?? undefined)}
+            />
           </View>
           <ThemedView type="backgroundElement" style={styles.activity}>
-            <ExpenseList
-              expenses={selected ? monthExpenses.filter((expense) => expense.bucket === selected) : monthExpenses}
+            <EntryList
+              entries={selected ? monthEntries.filter((entry) => entry.kind === selected) : monthEntries}
               today={today}
               emptyText={emptyListText(selected, isPast)}
-              onPress={(expense) => router.push({ pathname: '/expense', params: { id: String(expense.id) } })}
+              onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
             />
           </ThemedView>
         </View>
@@ -196,6 +176,19 @@ export default function HomeScreen() {
     </ThemedView>
   );
 }
+
+/** Tile and filter titles; expenses read as what was spent. */
+const TILE_TITLES: Record<EntryKind, string> = {
+  income: KIND_LABELS.income,
+  savings: KIND_LABELS.savings,
+  expense: 'Spent',
+};
+
+const EMPTY_TEXTS: Record<EntryKind, string> = {
+  income: 'No income this month.',
+  savings: 'No savings this month.',
+  expense: 'No expenses this month.',
+};
 
 function CardPill({
   label,
@@ -223,18 +216,18 @@ function CardPill({
   );
 }
 
-function emptyListText(selected: Bucket | null, isPast: boolean): string {
-  if (selected) return `Nothing in ${BUCKET_LABELS[selected]} this month.`;
+function emptyListText(selected: EntryKind | null, isPast: boolean): string {
+  if (selected) return EMPTY_TEXTS[selected];
   if (isPast) return 'Nothing was recorded this month.';
-  return 'Record what you earn, spend and save. Fixed expenses are already counted.';
+  return 'Record what you earn, spend and save.';
 }
 
-/** The month in brief: everything spent so far, fixed expenses included. Savings is not spending. */
-function MonthBrief({ spent }: { spent: number }) {
-  const [whole, decimals] = formatEuros(spent).split(',');
+/** The month in brief: what can still be spent after expenses and the savings goal. */
+function LeftToSpend({ left }: { left: number }) {
+  const [whole, decimals] = formatEuros(left).split(',');
   return (
     <View style={styles.brief}>
-      <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Spent this month</ThemedText>
+      <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Left to spend</ThemedText>
       <View style={styles.figure}>
         <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.figureWhole, { color: Hero.text }]}>
           {whole}
@@ -245,44 +238,40 @@ function MonthBrief({ spent }: { spent: number }) {
   );
 }
 
-/** How much of `target` is done, as a whole percentage. */
-function percentOf(done: number, target: number): number {
-  return target > 0 ? Math.round((done * 100) / target) : 0;
-}
-
-type PartTileProps = {
-  bucket: Bucket;
+type KindTileProps = {
+  kind: EntryKind;
+  title?: string;
   value: string;
   detail: string;
-  selected: Bucket | null;
-  onSelect: (bucket: Bucket) => void;
+  selected: EntryKind | null;
+  onSelect: (kind: EntryKind) => void;
 };
 
-/** One colored tile per part below the card. Tapping it shows what is inside. */
-function PartTile({ bucket, value, detail, selected, onSelect }: PartTileProps) {
-  const color = BUCKET_COLORS[bucket];
+/** One colored tile per kind of entry below the card. Tapping it lists only those entries. */
+function KindTile({ kind, title = KIND_LABELS[kind], value, detail, selected, onSelect }: KindTileProps) {
+  const color = KIND_COLORS[kind];
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={BUCKET_LABELS[bucket]}
+      accessibilityLabel={title}
       accessibilityValue={{ text: `${value}, ${detail}` }}
-      accessibilityState={{ selected: bucket === selected }}
-      onPress={() => onSelect(bucket)}
+      accessibilityState={{ selected: kind === selected }}
+      onPress={() => onSelect(kind)}
       style={({ pressed }) => [
         styles.tile,
-        { backgroundColor: BUCKET_TINTS[bucket], borderColor: bucket === selected ? color : 'transparent' },
+        { backgroundColor: KIND_TINTS[kind], borderColor: kind === selected ? color : 'transparent' },
         pressed && styles.pressed,
       ]}>
       <View style={styles.tileTitle}>
-        <Feather name={BUCKET_ICONS[bucket]} size={18} color={color} />
-        <ThemedText type="smallBold" style={{ color }}>
-          {BUCKET_LABELS[bucket]}
+        <Feather name={KIND_ICONS[kind]} size={16} color={color} />
+        <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
+          {title}
         </ThemedText>
       </View>
       <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit style={[styles.tileValue, { color }]}>
         {value}
       </ThemedText>
-      <ThemedText type="caption" style={{ color }}>
+      <ThemedText type="caption" numberOfLines={1} style={{ color }}>
         {detail}
       </ThemedText>
     </Pressable>
@@ -292,12 +281,6 @@ function PartTile({ bucket, value, detail, selected, onSelect }: PartTileProps) 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-  },
-  centeredScreen: {
-    alignItems: 'center',
-    gap: Spacing.three,
-    justifyContent: 'center',
-    padding: Spacing.four,
   },
   centeredText: {
     textAlign: 'center',
@@ -332,8 +315,11 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingVertical: Spacing.two,
   },
-  noPlan: {
-    paddingVertical: Spacing.five,
+  cardActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    justifyContent: 'center',
   },
   brief: {
     alignItems: 'center',

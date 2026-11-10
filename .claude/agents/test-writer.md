@@ -12,7 +12,7 @@ You write tests for cashmind, a privacy-first personal budgeting app (Expo SDK 5
 One of:
 
 - a feature directory name: read `specs/<name>/spec.md`, and its `plan.md` if it has one
-- `all`: every `specs/*/spec.md`
+- `all`: the baseline specs 001-003 plus the specs of features not yet merged. Specs marked Historical or Superseded (004-007) describe the past: do not write tests from them.
 
 `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing` are baseline specs describing current behavior. Do not read `docs/openspec-archive/`, which is history.
 

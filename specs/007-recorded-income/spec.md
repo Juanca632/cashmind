@@ -4,7 +4,9 @@
 
 **Created**: 2026-11-09
 
-**Status**: Implemented
+**Status**: Superseded by 008-simple-plan
+
+> **Historical.** Superseded by `008-simple-plan`. Current behavior is in the baseline specs 001-003.
 
 **Input**: User description: "Record what I earn the same way I record what I spend and save. The plan only keeps the fixed expenses and the percentages; a simulator helps me choose them. Everything is calculated from what I record. The goal is flexibility, not more complexity."
 
