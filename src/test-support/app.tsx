@@ -88,7 +88,7 @@ export async function answerDialog(label: string, title?: string) {
   await fireEvent.press(openDialog(title).dialog.getByRole('button', { name: label }));
 }
 
-/** Titles shown in the navigation header, outermost screen first (e.g. ["cashmind", "Add expense"]). */
+/** Titles shown in the navigation header, outermost screen first (e.g. ["CashMind", "Add expense"]). */
 export function headerTitles(): string[] {
   const titles: string[] = [];
   const walk = (node: unknown) => {
