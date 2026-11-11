@@ -21,7 +21,7 @@
 
 - [X] T006 test-writer subagent writes config tests from the spec: name is "CashMind", package `com.juancrestrepo.cashmind` and slug `cashmind` unchanged, splash background #065F52, production profile builds an APK with auto-increment
 - [X] T007 Run lint, typecheck, tests and `npx expo-doctor`
-- [ ] T008 E2E of quickstart.md by the e2e-tester subagent with the production APK (done in the release step, together with 010's backup journey)
+- [X] T008 E2E of quickstart.md by the e2e-tester subagent with the production APK (done in the release step, together with 010's backup journey)
 
 ## Dependencies
 

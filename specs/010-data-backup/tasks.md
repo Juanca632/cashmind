@@ -17,7 +17,7 @@
 
 - [X] T005 test-writer subagent writes the config test from the spec (FR-001): app.json keeps `expo.android.allowBackup` set to `true`
 - [X] T006 Run lint, typecheck and tests (`npx expo lint`, `npx tsc --noEmit`, `npx jest --maxWorkers=4`)
-- [ ] T007 E2E of quickstart.md by the e2e-tester subagent, with the APK built for the v1.0.0 release (needs an EAS build; done during the release feature)
+- [X] T007 E2E of quickstart.md by the e2e-tester subagent, with the APK built for the v1.0.0 release (needs an EAS build; done during the release feature)
 
 ## Dependencies
 

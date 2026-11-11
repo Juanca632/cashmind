@@ -35,7 +35,7 @@
 - [X] T012 [P] Update baseline specs/002-income-plan/spec.md: savings bar and red card
 - [X] T013 test-writer subagent writes the tests from the spec: unit for countFrame; integration for the bar, the red card, haptic calls on save/delete/choice and none on failure (test setup for Reanimated/haptics if needed)
 - [X] T014 Run lint, typecheck and tests
-- [ ] T015 E2E of quickstart.md by the e2e-tester subagent
+- [X] T015 E2E of quickstart.md by the e2e-tester subagent
 
 ## Dependencies
 

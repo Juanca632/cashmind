@@ -12,7 +12,7 @@ Needs an APK of the app built by EAS (`preview` or `production` profile); Expo G
 
 1. Install the APK: `adb install <path>.apk`. Open the app: home asks for this month's income.
 2. Record invented data: an income of 2000 €, an expense of 900 € with the note "Backup test", a saving of 150 €, and set the plan to 30 %. Note what home shows (left to spend 500 €).
-3. Close the app (send it to the background and swipe it away), then back up with Android's local transport:
+3. Open the app once and press Home (do not force-stop it: Android does not back up a stopped app and answers "Backup is not allowed"), then back up with Android's local transport:
    ```bash
    adb shell bmgr enable true
    adb shell bmgr transport com.android.localtransport/.LocalTransport

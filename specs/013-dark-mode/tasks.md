@@ -19,4 +19,4 @@
 
 - [X] T006 test-writer subagent writes the tests from the spec: contrast of every text/background pair in both token sets (FR-003), light values unchanged (FR-004), screens render with the dark set when the system is dark (FR-001, FR-002)
 - [X] T007 Run lint, typecheck and tests
-- [ ] T008 E2E of quickstart.md by the e2e-tester subagent (in the release run)
+- [X] T008 E2E of quickstart.md by the e2e-tester subagent (in the release run)
