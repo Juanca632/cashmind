@@ -47,7 +47,7 @@ describe('Record an expense', () => {
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
     expect(screen.getAllByText(exactText('12,50 €'))).toHaveLength(2);
     expect(tile('Spent').getByText(exactText('12,50 €'))).toBeOnTheScreen();
-    expectLeftToSpend('1 587,50 €');
+    await expectLeftToSpend('1 587,50 €');
   });
 
   it.each([
@@ -180,7 +180,7 @@ describe('Edit and delete an expense', () => {
 
     expect(screen.getByText(exactText('15,00 €'))).toBeOnTheScreen();
     expect(screen.queryByText(exactText('12,50 €'))).not.toBeOnTheScreen();
-    expectLeftToSpend('1 585,00 €');
+    await expectLeftToSpend('1 585,00 €');
   });
 
   it('Delete an expense: after confirming it disappears and no longer counts', async () => {
@@ -191,7 +191,7 @@ describe('Edit and delete an expense', () => {
 
     expect(screen).toHavePathname('/');
     expect(screen.queryByText('Cinema')).not.toBeOnTheScreen();
-    expectLeftToSpend('1 600,00 €');
+    await expectLeftToSpend('1 600,00 €');
   });
 
   it('Deleting an expense can be cancelled: nothing changes', async () => {
@@ -206,7 +206,7 @@ describe('Edit and delete an expense', () => {
     await testRouter.back();
     expectNoDialog();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
-    expectLeftToSpend('1 587,50 €');
+    await expectLeftToSpend('1 587,50 €');
   });
 
   it('Leaving with changes: the app asks before discarding them', async () => {
@@ -425,7 +425,7 @@ describe('Month expense list', () => {
     expect(screen.getByText('Concert')).toBeOnTheScreen();
     expect(screen.getByText(exactText('80,00 €'))).toBeOnTheScreen();
     expect(screen.queryByText('Coffee')).not.toBeOnTheScreen();
-    expectLeftToSpend('720,00 €');
+    await expectLeftToSpend('720,00 €');
   });
 });
 
@@ -497,6 +497,6 @@ describe('Look inside one kind', () => {
     await startApp({ today: TODAY, entries: [...everyKind] });
     await press('Spent');
 
-    expectLeftToSpend('1 285,00 €');
+    await expectLeftToSpend('1 285,00 €');
   });
 });

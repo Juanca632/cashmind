@@ -11,7 +11,7 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { formatEurosCompact, parsePercent } from '@/shared/money';
 import { monthKey } from '@/shared/months';
-import { KIND_COLORS, FontFamily, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
@@ -72,7 +72,7 @@ function PlanForm({ initialPercent, incomeCents }: { initialPercent: number; inc
                 %
               </ThemedText>
             </View>
-            <ThemedText type="smallBold" style={[styles.centered, { color: KIND_COLORS.savings }]}>
+            <ThemedText type="smallBold" style={[styles.centered, { color: theme.kindInk.savings }]}>
               {percent === null
                 ? ' '
                 : incomeCents > 0

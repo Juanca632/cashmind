@@ -6,7 +6,7 @@ cashmind is a personal budgeting app for Android (Expo / React Native, TypeScrip
 
 ### I. Privacy First
 
-All financial data MUST stay on the device. The app MUST NOT use bank credentials or open banking, and MUST NOT have a backend unless the developer explicitly decides otherwise. Financial data MUST NOT be logged or sent over the network.
+All financial data MUST stay on the device. The one exception is Android's own encrypted backup of the app's data to the user's Google account, which Android runs when the user has backup turned on. The app MUST NOT use bank credentials or open banking, and MUST NOT have a backend unless the developer explicitly decides otherwise. Financial data MUST NOT be logged, and the app itself MUST NOT send it over the network.
 
 ### II. Keep It Simple
 
@@ -45,4 +45,4 @@ All code, comments, docs, specs and commit messages MUST be in English.
 
 This constitution takes precedence over other practices. Amending it requires the developer's approval and a version bump. `AGENTS.md` holds runtime guidance for agents and MUST stay consistent with it.
 
-**Version**: 1.2.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-10
+**Version**: 1.3.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-11

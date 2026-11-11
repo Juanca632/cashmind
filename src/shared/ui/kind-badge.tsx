@@ -3,7 +3,8 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { EntryKind } from '@/shared/kinds';
-import { KIND_COLORS, KIND_TINTS, Radius } from '@/shared/theme/theme';
+import { Radius } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
 
 export const KIND_ICONS: Record<EntryKind, ComponentProps<typeof Feather>['name']> = {
   income: 'trending-up',
@@ -13,12 +14,13 @@ export const KIND_ICONS: Record<EntryKind, ComponentProps<typeof Feather>['name'
 
 /** The entry kind's icon on a soft tint of its color. Decorative: the name is always written next to it. */
 export function KindBadge({ kind }: { kind: EntryKind }) {
+  const theme = useTheme();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.badge, { backgroundColor: KIND_TINTS[kind] }]}>
-      <Feather name={KIND_ICONS[kind]} size={18} color={KIND_COLORS[kind]} />
+      style={[styles.badge, { backgroundColor: theme.kindTint[kind] }]}>
+      <Feather name={KIND_ICONS[kind]} size={18} color={theme.kindInk[kind]} />
     </View>
   );
 }

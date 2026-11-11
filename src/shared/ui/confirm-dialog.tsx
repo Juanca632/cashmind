@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { ERROR_COLOR, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -56,7 +56,7 @@ function ConfirmDialog({
           <ThemedText themeColor="textSecondary">{request.message}</ThemedText>
           <View style={styles.buttons}>
             <DialogButton label={request.cancel} fill={theme.background} ink={theme.text} onPress={onCancel} />
-            <DialogButton label={request.confirm} fill={ERROR_COLOR} ink="#FFFFFF" onPress={onConfirm} />
+            <DialogButton label={request.confirm} fill={theme.errorFill} ink={theme.onAccent} onPress={onConfirm} />
           </View>
         </View>
       </View>

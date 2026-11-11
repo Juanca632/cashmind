@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EntryList } from '@/features/entries/components/entry-list';
@@ -17,7 +18,11 @@ import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { Accent, KIND_COLORS, KIND_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
+import { hapticSuccess, hapticTick } from '@/shared/haptics';
+import { useCountUp } from '@/shared/hooks/use-count-up';
+import { PressableScale } from '@/shared/ui/pressable-scale';
 import { useToday } from '@/shared/hooks/use-today';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
@@ -28,6 +33,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
   const today = useToday();
@@ -66,6 +72,7 @@ export default function HomeScreen() {
     const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income' } as const;
     const result = await addEntry(db, entry, new Date());
     if (result.ok) {
+      hapticSuccess();
       setRefresh((current) => current + 1);
       return;
     }
@@ -73,7 +80,10 @@ export default function HomeScreen() {
     setRepeatedKey(null);
     Alert.alert('Something went wrong', result.message);
   }
-  const toggle = (kind: EntryKind) => setSelected(kind === selected ? null : kind);
+  const toggle = (kind: EntryKind) => {
+    hapticTick();
+    setSelected(kind === selected ? null : kind);
+  };
   const openNewEntry = (kind?: EntryKind) => router.push({ pathname: '/entry', params: { month, kind } });
   const savingsDone = summary.goal > 0 && summary.saved >= summary.goal;
 
@@ -101,8 +111,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.monthCard}>
+          <OverspentLayer visible={hasIncome && summary.left < 0} />
           {hasIncome ? (
-            <LeftToSpend left={summary.left} />
+            <LeftToSpend left={summary.left} month={month} />
           ) : (
             <View style={styles.askIncome}>
               <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
@@ -131,6 +142,7 @@ export default function HomeScreen() {
               kind="savings"
               value={formatEurosCompact(summary.saved)}
               detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
+              progress={summary.goal > 0 ? Math.min(summary.saved / summary.goal, 1) : undefined}
               selected={selected}
               onSelect={toggle}
             />
@@ -144,8 +156,11 @@ export default function HomeScreen() {
                 {selected ? TILE_TITLES[selected] : 'Activity'}
               </ThemedText>
               {selected ? (
-                <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
-                  <ThemedText type="small" style={{ color: Accent.background }}>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.showAll, pressed && styles.disabled]}
+                  onPress={() => setSelected(null)}>
+                  <ThemedText type="small" style={{ color: theme.accentInk }}>
                     Show all
                   </ThemedText>
                 </Pressable>
@@ -202,17 +217,17 @@ function CardPill({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.cardPill, (pressed || disabled) && styles.pressed]}>
+      style={[styles.cardPill, disabled && styles.disabled]}>
       <ThemedText type="smallBold" style={{ color: Hero.text }}>
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -222,11 +237,26 @@ function emptyListText(selected: EntryKind | null, isPast: boolean): string {
   return 'Record what you earn, spend and save.';
 }
 
-/** The month in brief: what can still be spent after expenses and the savings goal. */
-function LeftToSpend({ left }: { left: number }) {
-  const [whole, decimals] = formatEuros(left).split(',');
+/** The red version of the card, faded in over the green one when the month is overspent. */
+function OverspentLayer({ visible }: { visible: boolean }) {
+  const reducedMotion = useReducedMotion();
   return (
-    <View style={styles.brief}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.overspent,
+        { opacity: visible ? 1 : 0, transitionProperty: 'opacity', transitionDuration: reducedMotion ? 0 : 250 },
+      ]}
+    />
+  );
+}
+
+/** The month in brief: what can still be spent after expenses and the savings goal. */
+function LeftToSpend({ left, month }: { left: number; month: string }) {
+  const shown = useCountUp(left, month);
+  const [whole, decimals] = formatEuros(shown).split(',');
+  return (
+    <View style={styles.brief} accessible accessibilityLabel={`Left to spend: ${formatEuros(left)}`}>
       <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Left to spend</ThemedText>
       <View style={styles.figure}>
         <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.figureWhole, { color: Hero.text }]}>
@@ -243,38 +273,63 @@ type KindTileProps = {
   title?: string;
   value: string;
   detail: string;
+  /** How full the savings goal bar is, from 0 to 1. No bar when undefined. */
+  progress?: number;
   selected: EntryKind | null;
   onSelect: (kind: EntryKind) => void;
 };
 
 /** One colored tile per kind of entry below the card. Tapping it lists only those entries. */
-function KindTile({ kind, title = KIND_LABELS[kind], value, detail, selected, onSelect }: KindTileProps) {
-  const color = KIND_COLORS[kind];
+function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, selected, onSelect }: KindTileProps) {
+  const theme = useTheme();
+  const color = theme.kindInk[kind];
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityValue={{ text: `${value}, ${detail}` }}
       accessibilityState={{ selected: kind === selected }}
       onPress={() => onSelect(kind)}
-      style={({ pressed }) => [
-        styles.tile,
-        { backgroundColor: KIND_TINTS[kind], borderColor: kind === selected ? color : 'transparent' },
-        pressed && styles.pressed,
-      ]}>
+      style={[styles.tile, { backgroundColor: theme.kindTint[kind], borderColor: kind === selected ? color : 'transparent' }]}>
       <View style={styles.tileTitle}>
         <Feather name={KIND_ICONS[kind]} size={16} color={color} />
         <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
           {title}
         </ThemedText>
       </View>
-      <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit style={[styles.tileValue, { color }]}>
+      <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.tileValue, { color }]}>
         {value}
       </ThemedText>
       <ThemedText type="caption" numberOfLines={1} style={{ color }}>
         {detail}
       </ThemedText>
-    </Pressable>
+      {progress === undefined ? null : <GoalBar progress={progress} color={color} />}
+    </PressableScale>
+  );
+}
+
+/** How much of the savings goal is saved. Decorative: the tile already says it in words. */
+function GoalBar({ progress, color }: { progress: number; color: string }) {
+  const theme = useTheme();
+  const reducedMotion = useReducedMotion();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="savings-goal-bar"
+      style={[styles.goalTrack, { backgroundColor: theme.savingsTrack }]}>
+      <Animated.View
+        style={[
+          styles.goalFill,
+          {
+            backgroundColor: color,
+            width: `${progress * 100}%`,
+            transitionProperty: 'width',
+            transitionDuration: reducedMotion ? 0 : 300,
+          },
+        ]}
+      />
+    </View>
   );
 }
 
@@ -291,12 +346,30 @@ const styles = StyleSheet.create({
   },
   monthCard: {
     backgroundColor: Hero.background,
+    overflow: 'hidden',
     borderRadius: Radius.hero,
     experimental_backgroundImage: Hero.gradient,
     gap: Spacing.three,
     justifyContent: 'center',
     minHeight: 168,
     padding: Spacing.three,
+  },
+  overspent: {
+    ...StyleSheet.absoluteFill,
+    experimental_backgroundImage: Hero.overspentGradient,
+  },
+  goalTrack: {
+    borderRadius: Radius.full,
+    height: 6,
+    marginTop: Spacing.one,
+    overflow: 'hidden',
+  },
+  goalFill: {
+    borderRadius: Radius.full,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    top: 0,
   },
   topRow: {
     alignItems: 'center',
@@ -392,7 +465,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: MIN_TOUCH,
   },
-  pressed: {
+  disabled: {
     opacity: 0.6,
   },
 });

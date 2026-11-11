@@ -45,9 +45,9 @@ The plan is one number: the whole percentage of each month's recorded income the
 
 **Acceptance Scenarios**:
 
-1. *Normal month*: **Given** 20 % and an income of 2000,00 €, **When** 150,00 € are saved and 900,00 € spent, **Then** home shows savings 150,00 € of 400,00 €, spent 900,00 € and 700,00 € left to spend
-2. *Overspent*: **Given** 20 % and an income of 1000,00 €, **When** 900,00 € are spent, **Then** home shows -100,00 € left to spend
-3. *Saved above the goal*: **Given** 20 % and an income of 2000,00 €, **When** 600,00 € are saved and 900,00 € spent, **Then** the goal shows as reached and 500,00 € are left
+1. *Normal month*: **Given** 20 % and an income of 2000,00 €, **When** 150,00 € are saved and 900,00 € spent, **Then** home shows savings 150,00 € of 400,00 € with the goal bar a little over a third full, spent 900,00 € and 700,00 € left to spend
+2. *Overspent*: **Given** 20 % and an income of 1000,00 €, **When** 900,00 € are spent, **Then** the month card turns red and shows -100,00 € left to spend; it is green again once left to spend is 0 or more
+3. *Saved above the goal*: **Given** 20 % and an income of 2000,00 €, **When** 600,00 € are saved and 900,00 € spent, **Then** the goal shows as reached with a full bar and 500,00 € are left
 
 ---
 
@@ -84,7 +84,7 @@ The plan is one number: the whole percentage of each month's recorded income the
 - **FR-001** (Income comes from what is recorded): A month's income SHALL be the sum of its income entries (see 001). The plan SHALL NOT store an income.
 - **FR-002** (One percentage): The plan SHALL be one whole percentage from 0 to 100. With no saved plan every month uses 20 %.
 - **FR-003** (Savings goal): A month's goal SHALL be its percentage of that month's income, rounded down to the cent.
-- **FR-004** (Left to spend): When the selected month has income, home SHALL show the income, what was saved against the goal, what was spent and what is left to spend = income − expenses − the larger of the goal and what was saved. It can be negative. With a 0 % plan the savings tile says "No goal"; when saved reaches a goal above 0 it says "Goal reached". A month with no income asks for it and offers repeating the most recent earlier month's total as one income with the note "Monthly income", dated today, or the month's last day in a past month.
+- **FR-004** (Left to spend): When the selected month has income, home SHALL show the income, what was saved against the goal, what was spent and what is left to spend = income − expenses − the larger of the goal and what was saved. It can be negative. With a goal above 0 the savings tile shows a bar filled to saved ÷ goal (full at most); with a 0 % plan it says "No goal" and has no bar; when saved reaches a goal above 0 it says "Goal reached". The month card is red while left to spend is below 0 and green otherwise (added by 012-polish). A month with no income asks for it and offers repeating the most recent earlier month's total as one income with the note "Monthly income", dated today, or the month's last day in a past month.
 - **FR-005** (Plan screen): My plan SHALL show the percentage and, while typing, the goal in euros for this month's income (or, with no income yet, ask for it), and SHALL save it. Leaving with unsaved changes SHALL ask before discarding them. It is not offered from past months.
 - **FR-006** (Plan history): Saving SHALL apply from the current month onwards; every past month keeps the percentage that applied to it. Saving again in the same month replaces that month's version.
 - **FR-007** (Changes that cannot be saved): The system SHALL validate the percentage before storing it, and SHALL show a message and keep the screen open when the save is rejected or fails.

@@ -1,9 +1,10 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { CARD_SHADOW, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type ButtonProps = {
@@ -13,7 +14,7 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'pill';
+  variant?: 'primary' | 'secondary' | 'pill' | 'destructive';
 };
 
 export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
@@ -21,24 +22,24 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
   const primary = variant === 'primary';
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
-        primary && { backgroundColor: Accent.background },
-        (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
-        (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
+        primary && { backgroundColor: theme.accent, outlineColor: theme.accentOutline, outlineWidth: 1 },
+        variant !== 'primary' && { backgroundColor: theme.backgroundElement, boxShadow: theme.cardShadow },
+        disabled && { opacity: 0.4 },
       ]}>
-      {icon ? <Feather name={icon} size={16} color={primary ? Accent.text : theme.text} /> : null}
-      <ThemedText type="smallBold" style={[styles.label, { color: primary ? Accent.text : theme.text }]}>
+      {icon ? <Feather name={icon} size={16} color={primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text} /> : null}
+      <ThemedText type="smallBold" style={[styles.label, { color: primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text }]}>
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 }
 

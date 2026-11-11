@@ -2,7 +2,7 @@ import { Feather } from '@react-native-vector-icons/feather';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { useEntry } from '@/features/entries/hooks/use-entry';
 import {
@@ -21,11 +21,13 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { KIND_COLORS, FontFamily, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { IconButton } from '@/shared/ui/icon-button';
+import { PressableScale } from '@/shared/ui/pressable-scale';
+import { hapticTick } from '@/shared/haptics';
 import { DataError } from '@/shared/ui/data-error';
 import { ErrorText } from '@/shared/ui/error-text';
 import { TextField } from '@/shared/ui/text-field';
@@ -108,7 +110,7 @@ function EntryForm({
       message: 'This cannot be undone.',
       cancel: 'Cancel',
       confirm: 'Delete',
-      onConfirm: () => submit(() => deleteEntry(db, entry.id)),
+      onConfirm: () => submit(() => deleteEntry(db, entry.id), 'delete'),
     });
   }
 
@@ -141,18 +143,21 @@ function EntryForm({
             {ENTRY_KINDS.map((option) => {
               const selected = option === kind;
               return (
-                <Pressable
+                <PressableScale
                   key={option}
                   accessibilityRole="radio"
                   accessibilityLabel={KIND_LABELS[option]}
                   accessibilityState={{ selected }}
-                  onPress={() => setKind(option)}
-                  style={[styles.kind, { backgroundColor: selected ? KIND_COLORS[option] : theme.backgroundElement }]}>
-                  <Feather name={KIND_ICONS[option]} size={18} color={selected ? Accent.text : KIND_COLORS[option]} />
-                  <ThemedText type="smallBold" style={selected ? { color: Accent.text } : undefined}>
+                  onPress={() => {
+                    if (option !== kind) hapticTick();
+                    setKind(option);
+                  }}
+                  style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
+                  <Feather name={KIND_ICONS[option]} size={18} color={selected ? theme.onAccent : theme.kindInk[option]} />
+                  <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
                     {KIND_LABELS[option]}
                   </ThemedText>
-                </Pressable>
+                </PressableScale>
               );
             })}
           </View>
@@ -180,7 +185,7 @@ function EntryForm({
           {errors.includes('date-invalid') ? <ErrorText>{entryErrorMessage('date-invalid')}</ErrorText> : null}
 
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
-          {entry ? <Button label="Delete" variant="secondary" disabled={submitting} onPress={onDelete} /> : null}
+          {entry ? <Button label="Delete" variant="destructive" disabled={submitting} onPress={onDelete} /> : null}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>

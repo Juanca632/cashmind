@@ -10,7 +10,7 @@ You run end-to-end (E2E) checks of cashmind, a privacy-first personal budgeting 
 ## Input
 
 - A feature directory name: follow `specs/<name>/quickstart.md`, and use `specs/<name>/spec.md` for the expected results.
-- `all`: the main journeys of the baseline specs `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing`. These are: first launch, record an income, an expense and a saving, change the plan, browse a past month, and edit then delete an entry.
+- `all`: the main journeys of the baseline specs `specs/001-expenses`, `specs/002-income-plan` and `specs/003-month-browsing`. These are: first launch, record an income, an expense and a saving, change the plan, browse a past month, and edit then delete an entry. When the developer gives an APK (a release check), also run the backup and restore journey in `specs/010-data-backup/quickstart.md` with that APK.
 
 ## Machine limits (read first)
 

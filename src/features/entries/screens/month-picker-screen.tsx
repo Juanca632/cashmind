@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { DataError } from '@/shared/ui/data-error';
 import { IconButton } from '@/shared/ui/icon-button';
+import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Accent, Radius, Spacing } from '@/shared/theme/theme';
+import { Radius, Spacing } from '@/shared/theme/theme';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
 import { useFirstEntryMonth } from '@/features/entries/hooks/use-first-entry-month';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -49,23 +50,23 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
           const isSelected = month === selected;
           const isCurrent = month === currentMonth;
           return (
-            <Pressable
+            <PressableScale
               key={month}
               accessibilityRole="button"
               accessibilityState={{ disabled: isFuture, selected: isSelected }}
               disabled={isFuture}
               onPress={() => pick(month)}
-              style={({ pressed }) => [
+              style={[
                 styles.cell,
-                { backgroundColor: isSelected ? Accent.background : theme.backgroundElement },
-                isCurrent && !isSelected && { borderColor: Accent.background, borderWidth: 2 },
+                { backgroundColor: isSelected ? theme.accent : theme.backgroundElement },
+                isCurrent && !isSelected && { borderColor: theme.accentInk, borderWidth: 2 },
+                isSelected && { outlineColor: theme.accentOutline, outlineWidth: 1 },
                 isFuture && styles.disabled,
-                pressed && styles.pressed,
               ]}>
-              <ThemedText type="smallBold" style={isSelected ? { color: Accent.text } : undefined}>
+              <ThemedText type="smallBold" style={isSelected ? { color: theme.onAccent } : undefined}>
                 {formatShortMonth(month)}
               </ThemedText>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>
@@ -98,8 +99,5 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.3,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

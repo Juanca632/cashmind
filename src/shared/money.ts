@@ -19,7 +19,7 @@ export function formatEurosCompact(cents: number): string {
  * Largest amount the app accepts: 900 000,00 €. Keeps every value and calculation within exact
  * integer arithmetic, so what is saved can always be read back.
  */
-export const MAX_CENTS = 90_000_000;
+const MAX_CENTS = 90_000_000;
 
 export const AMOUNT_TOO_LARGE = `Amounts cannot be above ${formatEuros(MAX_CENTS)}.`;
 
