@@ -22,9 +22,13 @@ export type Theme = {
   kindTint: KindColors;
   /** The savings goal bar: the empty track behind the savings color. */
   savingsTrack: string;
-  /** Error text. */
+  /** A full-width row while pressed. */
+  pressed: string;
+  /** Outline (no layout space) of filled accent shapes, so they stand out from a dark surface; transparent in light. */
+  accentOutline: string;
+  /** Error text, and the label of a destructive button such as Delete. */
   error: string;
-  /** A destructive button, with white text. */
+  /** The filled confirm button of a destructive dialog, with white text. */
   errorFill: string;
   cardShadow: string;
 };
@@ -33,7 +37,7 @@ export type Theme = {
 const KIND_FILL: KindColors = {
   expense: '#9A3412',
   savings: '#065F46',
-  income: '#0F766E',
+  income: '#1D4ED8',
 };
 
 export const LIGHT: Theme = {
@@ -49,9 +53,11 @@ export const LIGHT: Theme = {
   kindTint: {
     expense: '#FDEBDD',
     savings: '#D9F2E6',
-    income: '#D5F2EE',
+    income: '#DBE7FE',
   },
-  savingsTrack: 'rgba(6, 95, 70, 0.18)',
+  savingsTrack: 'rgba(6, 95, 70, 0.3)',
+  pressed: '#E4E7EB',
+  accentOutline: 'transparent',
   error: '#C92A2A',
   errorFill: '#C92A2A',
   cardShadow: '0 2px 8px rgba(14, 17, 22, 0.06)',
@@ -69,14 +75,16 @@ export const DARK: Theme = {
   kindInk: {
     expense: '#FDBA8C',
     savings: '#6EE7B7',
-    income: '#5EEAD4',
+    income: '#93B4FD',
   },
   kindTint: {
     expense: '#3A2418',
     savings: '#11342A',
-    income: '#0F3330',
+    income: '#15223F',
   },
-  savingsTrack: 'rgba(110, 231, 183, 0.2)',
+  savingsTrack: 'rgba(110, 231, 183, 0.35)',
+  pressed: '#2A3135',
+  accentOutline: '#5FD4BC',
   error: '#FF8A80',
   errorFill: '#C92A2A',
   cardShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',

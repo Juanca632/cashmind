@@ -144,6 +144,17 @@ describe('Notice when the month is overspent', () => {
     expect(redLayerOpacity()).toBe(1);
   });
 
+  it('No income: a month with expenses but no income stays green', async () => {
+    await startApp({ today: TODAY, entries: [spending(5000)] });
+
+    expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
+    const card = screen.getByText("Add this month's income").parent!.parent as unknown as {
+      children: { props: { style: unknown } }[];
+    };
+    const layer = StyleSheet.flatten(card.children[0].props.style as never) as { opacity: number };
+    expect(layer.opacity).toBe(0);
+  });
+
   it('A normal month is green', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(15000), spending(90000)] });
 

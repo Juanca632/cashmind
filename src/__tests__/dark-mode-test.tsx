@@ -4,7 +4,7 @@ import { screen } from 'expo-router/testing-library';
 
 import { DARK, LIGHT } from '@/shared/theme/theme';
 
-import { press, startApp } from '../test-support/app';
+import { press, startApp, type } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 
@@ -59,5 +59,45 @@ describe.each([
 
     const bgs = [theme.background, theme.backgroundElement];
     expect(bgs).toContain(backgroundBehind(screen.getByText('Oct') as never));
+  });
+
+  it('Audit fixes: the Delete button label uses the theme error color', async () => {
+    await startApp({ today: [2026, 10, 7], entries: [...entries] });
+    await press(/Salary/);
+
+    const label = screen.getByRole('button', { name: 'Delete' });
+    const text = screen.getByText('Delete');
+    expect(styleOf(text).color).toBe(theme.error);
+    expect(label).toBeOnTheScreen();
+  });
+
+  it('Audit fixes: a validation error is announced politely', async () => {
+    await startApp({ today: [2026, 10, 7], entries: [...entries] });
+    await press('Add expense');
+    await type('Amount', '5');
+    await type('Amount', '0');
+
+    const node = screen.getByText(/greater than 0/);
+    expect(node.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  it('Audit fixes: the primary button and selected month cell take no extra space', async () => {
+    await startApp({ today: [2026, 10, 7], entries: [...entries] });
+    await press('Add expense');
+    const save = StyleSheet.flatten(screen.getByRole('button', { name: 'Add expense' }).props.style) as any;
+    expect(save.borderWidth ?? 0).toBe(0);
+    if (scheme === 'light') expect(save.outlineColor ?? 'transparent').toBe('transparent');
+    else expect(save.outlineColor).toBe(theme.accentOutline);
+  });
+
+  it('Audit fixes: the selected month cell takes no extra space', async () => {
+    await startApp({ today: [2026, 10, 7], entries: [...entries] });
+    await press(/^Month:/);
+
+    const cell = screen.getByRole('button', { name: /Nov/ });
+    const style = StyleSheet.flatten(cell.props.style) as any;
+    expect(style.borderWidth ?? 0).toBe(0);
+    if (scheme === 'dark') expect(style.outlineColor).toBe(theme.accentOutline);
+    else expect(style.outlineColor ?? 'transparent').toBe('transparent');
   });
 });

@@ -66,6 +66,22 @@ describe('The app follows the phone\'s theme', () => {
     }
   });
 
+  it('Same meaning: income reads blue and savings green, clearly different in hue in both themes', () => {
+    const hue = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+      const max = Math.max(r, g, b);
+      const d = max - Math.min(r, g, b);
+      const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return (h * 60 + 360) % 360;
+    };
+    for (const t of [LIGHT, DARK]) {
+      const diff = Math.abs(hue(t.kindInk.income) - hue(t.kindInk.savings));
+      expect(Math.min(diff, 360 - diff)).toBeGreaterThanOrEqual(60);
+      expect(hue(t.kindInk.income)).toBeGreaterThan(200);
+      expect(hue(t.kindInk.income)).toBeLessThan(260);
+    }
+  });
+
   it('Light phone: the app looks as it does today (the colors used before this change)', () => {
     expect(LIGHT).toMatchObject({
       text: '#111318',
@@ -75,14 +91,25 @@ describe('The app follows the phone\'s theme', () => {
       accent: '#065F52',
       onAccent: '#FFFFFF',
       accentInk: '#065F52',
-      kindFill: { expense: '#9A3412', savings: '#065F46', income: '#0F766E' },
-      kindInk: { expense: '#9A3412', savings: '#065F46', income: '#0F766E' },
-      kindTint: { expense: '#FDEBDD', savings: '#D9F2E6', income: '#D5F2EE' },
-      savingsTrack: 'rgba(6, 95, 70, 0.18)',
+      kindFill: { expense: '#9A3412', savings: '#065F46', income: '#1D4ED8' },
+      kindInk: { expense: '#9A3412', savings: '#065F46', income: '#1D4ED8' },
+      kindTint: { expense: '#FDEBDD', savings: '#D9F2E6', income: '#DBE7FE' },
+      savingsTrack: 'rgba(6, 95, 70, 0.3)',
       error: '#C92A2A',
       errorFill: '#C92A2A',
       cardShadow: '0 2px 8px rgba(14, 17, 22, 0.06)',
     });
+  });
+
+  it('Dark phone: accentOutline contrasts at least 3:1 with both backgrounds, and light has none', () => {
+    expect(contrast(DARK.accentOutline, DARK.backgroundElement)).toBeGreaterThanOrEqual(3);
+    expect(contrast(DARK.accentOutline, DARK.background)).toBeGreaterThanOrEqual(3);
+    expect(LIGHT.accentOutline).toBe('transparent');
+  });
+
+  it('Pressed rows are visibly different from the card color in both themes', () => {
+    expect(LIGHT.pressed).not.toBe(LIGHT.backgroundElement);
+    expect(DARK.pressed).not.toBe(DARK.backgroundElement);
   });
 
   it('Same meaning: the month card is the same fixed set as before, except the darker green gradient', () => {

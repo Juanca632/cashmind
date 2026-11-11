@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "The app follows the phone's light or dark theme, so it is comfortable at night and looks finished for v1.0.0."
 
@@ -39,7 +39,9 @@
 - **FR-001**: The app MUST follow the phone's light or dark theme, live, with no setting of its own.
 - **FR-002**: Every color on screen MUST come from the current theme; no screen keeps light-only colors in dark mode.
 - **FR-003**: Text and amounts MUST meet 4.5:1 contrast on their backgrounds in both themes.
-- **FR-004**: Light mode MUST look as it does before this change, except the month card's green gradient, which ends slightly darker (#065F52 → #08705E → #0A7A66) so its text meets 4.5:1 at every point (decided with the developer on 2026-11-11).
+- **FR-004**: Light mode MUST look as it does before this change, except the v1.0.0 audit fixes in FR-005 and the month card's green gradient, which ends slightly darker (#065F52 → #08705E → #0A7A66) so its text meets 4.5:1 at every point, the savings bar's empty track, which is stronger (30 % instead of 18 % of the savings color) so the bar reads at a glance, and Income, which turns blue (ink and fill #1D4ED8, tint #DBE7FE) so it no longer looks like Savings (all from the v1.0.0 audits, 2026-11-11).
+
+- **FR-005** (v1.0.0 audit fixes, 2026-11-11): the Delete button on the entry form has red (error) text; a pressed Activity row shows a clearly darker highlight (#E4E7EB light, #2A3135 dark); in dark mode the primary button and the selected month cell have a thin light-green outline that takes no space (none in light); "Show all" dims while pressed; amounts in the home tiles shrink to fit but never below 70 % of their size; validation errors are announced by screen readers when they appear.
 
 ### Key Entities
 

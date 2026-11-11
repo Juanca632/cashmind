@@ -14,7 +14,7 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'pill';
+  variant?: 'primary' | 'secondary' | 'pill' | 'destructive';
 };
 
 export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
@@ -31,12 +31,12 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
       style={[
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
-        primary && { backgroundColor: theme.accent },
-        (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: theme.cardShadow },
+        primary && { backgroundColor: theme.accent, outlineColor: theme.accentOutline, outlineWidth: 1 },
+        variant !== 'primary' && { backgroundColor: theme.backgroundElement, boxShadow: theme.cardShadow },
         disabled && { opacity: 0.4 },
       ]}>
-      {icon ? <Feather name={icon} size={16} color={primary ? theme.onAccent : theme.text} /> : null}
-      <ThemedText type="smallBold" style={[styles.label, { color: primary ? theme.onAccent : theme.text }]}>
+      {icon ? <Feather name={icon} size={16} color={primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text} /> : null}
+      <ThemedText type="smallBold" style={[styles.label, { color: primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text }]}>
         {label}
       </ThemedText>
     </PressableScale>

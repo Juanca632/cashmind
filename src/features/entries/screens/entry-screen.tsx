@@ -185,7 +185,7 @@ function EntryForm({
           {errors.includes('date-invalid') ? <ErrorText>{entryErrorMessage('date-invalid')}</ErrorText> : null}
 
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
-          {entry ? <Button label="Delete" variant="secondary" disabled={submitting} onPress={onDelete} /> : null}
+          {entry ? <Button label="Delete" variant="destructive" disabled={submitting} onPress={onDelete} /> : null}
         </ScrollView>
       </ThemedView>
     </KeyboardAvoidingView>

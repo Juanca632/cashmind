@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Before v1.0.0 the app needs its own identity: replace Expo's default icon and splash with a CashMind icon (a simple open white C on the app's green gradient), show the name 'CashMind' on the phone, and add an EAS production profile that builds an installable APK."
 

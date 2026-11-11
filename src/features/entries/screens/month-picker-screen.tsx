@@ -60,6 +60,7 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
                 styles.cell,
                 { backgroundColor: isSelected ? theme.accent : theme.backgroundElement },
                 isCurrent && !isSelected && { borderColor: theme.accentInk, borderWidth: 2 },
+                isSelected && { outlineColor: theme.accentOutline, outlineWidth: 1 },
                 isFuture && styles.disabled,
               ]}>
               <ThemedText type="smallBold" style={isSelected ? { color: theme.onAccent } : undefined}>

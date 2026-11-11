@@ -50,7 +50,7 @@ export function EntryList({ entries, today, emptyText, onPress }: EntryListProps
             accessibilityRole="button"
             onPress={() => onPress(entry)}
             // A full-width row highlights when pressed instead of shrinking.
-            style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.background }]}>
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
             <KindBadge kind={entry.kind} />
             <View style={styles.text}>
               <ThemedText type="smallBold" numberOfLines={1}>

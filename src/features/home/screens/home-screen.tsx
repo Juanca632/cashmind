@@ -156,7 +156,10 @@ export default function HomeScreen() {
                 {selected ? TILE_TITLES[selected] : 'Activity'}
               </ThemedText>
               {selected ? (
-                <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.showAll, pressed && styles.disabled]}
+                  onPress={() => setSelected(null)}>
                   <ThemedText type="small" style={{ color: theme.accentInk }}>
                     Show all
                   </ThemedText>
@@ -294,7 +297,7 @@ function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, se
           {title}
         </ThemedText>
       </View>
-      <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit style={[styles.tileValue, { color }]}>
+      <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.tileValue, { color }]}>
         {value}
       </ThemedText>
       <ThemedText type="caption" numberOfLines={1} style={{ color }}>

@@ -9,18 +9,17 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
 
 import { DatabaseBoundary } from '@/db/database-boundary';
 import { DATABASE_NAME, migrateDbIfNeeded } from '@/db/database';
-import { useTheme } from '@/shared/theme/use-theme';
+import { useIsDark, useTheme } from '@/shared/theme/use-theme';
 
 // Keeps the splash up until the fonts settle, so text never flashes in another font.
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   const theme = useTheme();
-  const dark = useColorScheme() === 'dark';
+  const dark = useIsDark();
   const [fontsLoaded, fontError] = useFonts({
     Manrope_400Regular,
     Manrope_500Medium,

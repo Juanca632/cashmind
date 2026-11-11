@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Backups for v1.0.0. The point is not having to make backups by hand: rely on Android's automatic backup (data goes encrypted to the user's Google Drive) and prove it works with the APK before v1.0.0. No manual export or import."
 

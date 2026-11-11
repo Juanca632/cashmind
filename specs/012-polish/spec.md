@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-11
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Make the app feel polished for v1.0.0: smooth animations (the left-to-spend figure, list rows, presses, filters), short vibrations on key actions, a progress bar for the savings goal, and a clear red state when the month is overspent."
 
@@ -83,7 +83,7 @@
 ### Functional Requirements
 
 - **FR-001**: The Savings tile MUST show a progress bar filled to saved ÷ goal, capped at full, when the goal is above 0, and no bar when there is no goal.
-- **FR-002**: The month card MUST be red when left to spend is below 0 and green otherwise. Nothing else on the card changes.
+- **FR-002**: The month card MUST be red when the month has income and left to spend is below 0, and green otherwise. A month with no income keeps asking for it (green), even if it has expenses. Nothing else on the card changes.
 - **FR-003**: The left-to-spend figure MUST animate from its previous to its new value when it changes within the same month, and appear at once otherwise. The final figure is always the exact amount in cents.
 - **FR-004**: Activity rows MUST animate when they appear, disappear or move; buttons, tiles and kind options MUST shrink slightly while pressed and Activity rows highlight; the savings bar and the card color MUST animate between states.
 - **FR-005**: All motion MUST follow Android's reduced-motion setting.

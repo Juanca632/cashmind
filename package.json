@@ -35,8 +35,6 @@
     "start": "expo start",
     "demo": "EXPO_PUBLIC_DEMO=1 expo start -c",
     "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest",
     "typecheck": "tsc --noEmit"

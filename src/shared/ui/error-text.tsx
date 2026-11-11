@@ -5,7 +5,7 @@ import { ThemedText } from '@/shared/ui/themed-text';
 
 export function ErrorText({ children }: { children: ReactNode }) {
   return (
-    <ThemedText type="small" style={{ color: useTheme().error }}>
+    <ThemedText type="small" accessibilityLiveRegion="polite" style={{ color: useTheme().error }}>
       {children}
     </ThemedText>
   );
