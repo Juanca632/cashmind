@@ -1,51 +1,100 @@
-/** Design tokens. The app is light mode only for now. */
+/** Design tokens. Colors come in a light and a dark set; screens read the current one with useTheme(). */
 
-export const ERROR_COLOR = '#C92A2A';
+import type { EntryKind } from '@/shared/kinds';
 
-export const Colors = {
+type KindColors = Record<EntryKind, string>;
+
+export type Theme = {
+  text: string;
+  textSecondary: string;
+  background: string;
+  backgroundElement: string;
+  /** The main action, filled; `onAccent` reads on top of it. */
+  accent: string;
+  onAccent: string;
+  /** The app's green used as text or as a border. */
+  accentInk: string;
+  /** A kind of entry as a filled background with white text (a selected kind option). */
+  kindFill: KindColors;
+  /** A kind of entry as text or icon color. */
+  kindInk: KindColors;
+  /** The soft background of each kind; its kindInk reads on top of it. */
+  kindTint: KindColors;
+  /** The savings goal bar: the empty track behind the savings color. */
+  savingsTrack: string;
+  /** Error text. */
+  error: string;
+  /** A destructive button, with white text. */
+  errorFill: string;
+  cardShadow: string;
+};
+
+/** Fills that carry white text: the same in both themes. */
+const KIND_FILL: KindColors = {
+  expense: '#9A3412',
+  savings: '#065F46',
+  income: '#0F766E',
+};
+
+export const LIGHT: Theme = {
   text: '#111318',
+  textSecondary: '#5F6673',
   background: '#F3F4F6',
   backgroundElement: '#FFFFFF',
-  textSecondary: '#5F6673',
-} as const;
+  accent: '#065F52',
+  onAccent: '#FFFFFF',
+  accentInk: '#065F52',
+  kindFill: KIND_FILL,
+  kindInk: KIND_FILL,
+  kindTint: {
+    expense: '#FDEBDD',
+    savings: '#D9F2E6',
+    income: '#D5F2EE',
+  },
+  savingsTrack: 'rgba(6, 95, 70, 0.18)',
+  error: '#C92A2A',
+  errorFill: '#C92A2A',
+  cardShadow: '0 2px 8px rgba(14, 17, 22, 0.06)',
+};
 
-export type ThemeColor = keyof typeof Colors;
+export const DARK: Theme = {
+  text: '#F1F3F5',
+  textSecondary: '#9AA3AE',
+  background: '#0E1113',
+  backgroundElement: '#1A1F22',
+  accent: '#065F52',
+  onAccent: '#FFFFFF',
+  accentInk: '#5FD4BC',
+  kindFill: KIND_FILL,
+  kindInk: {
+    expense: '#FDBA8C',
+    savings: '#6EE7B7',
+    income: '#5EEAD4',
+  },
+  kindTint: {
+    expense: '#3A2418',
+    savings: '#11342A',
+    income: '#0F3330',
+  },
+  savingsTrack: 'rgba(110, 231, 183, 0.2)',
+  error: '#FF8A80',
+  errorFill: '#C92A2A',
+  cardShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+};
 
-/** The main action on a screen. */
-export const Accent = {
-  background: '#065F52',
-  text: '#FFFFFF',
-} as const;
+/** The plain colors a ThemedText or ThemedView can take by name. */
+export type ThemeColor = 'text' | 'textSecondary' | 'background' | 'backgroundElement';
 
-/** The month card at the top of Home. */
+/** The month card at the top of Home. The same in both themes. */
 export const Hero = {
   background: '#065F52',
-  gradient: 'linear-gradient(145deg, #065F52 0%, #0A7A66 60%, #0B8A6F 100%)',
+  gradient: 'linear-gradient(145deg, #065F52 0%, #08705E 60%, #0A7A66 100%)',
   /** The card when the month is overspent (left to spend below zero). */
   overspentGradient: 'linear-gradient(145deg, #8F1D16 0%, #B42318 60%, #C4320A 100%)',
   text: '#FFFFFF',
   label: '#DFF7EF',
   control: 'rgba(255, 255, 255, 0.18)',
 } as const;
-
-/** One color per kind of entry, the same on every screen. Readable with white text on top. */
-export const KIND_COLORS = {
-  expense: '#9A3412',
-  savings: '#065F46',
-  income: '#0F766E',
-} as const;
-
-/** The soft background of each kind; its KIND_COLORS value reads on top of it. */
-export const KIND_TINTS = {
-  expense: '#FDEBDD',
-  savings: '#D9F2E6',
-  income: '#D5F2EE',
-} as const;
-
-/** The savings goal bar: the empty track behind the savings color. */
-export const SAVINGS_TRACK = 'rgba(6, 95, 70, 0.18)';
-
-export const CARD_SHADOW = '0 2px 8px rgba(14, 17, 22, 0.06)';
 
 export const Radius = {
   hero: 28,

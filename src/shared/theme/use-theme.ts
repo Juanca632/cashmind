@@ -1,6 +1,8 @@
-import { Colors } from '@/shared/theme/theme';
+import { useColorScheme } from 'react-native';
 
-/** The app is light mode only for now. */
-export function useTheme() {
-  return Colors;
+import { DARK, LIGHT, type Theme } from '@/shared/theme/theme';
+
+/** The colors of the phone's current theme, light or dark. Updates when the phone switches. */
+export function useTheme(): Theme {
+  return useColorScheme() === 'dark' ? DARK : LIGHT;
 }

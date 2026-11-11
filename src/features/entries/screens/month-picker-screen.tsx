@@ -7,7 +7,7 @@ import { IconButton } from '@/shared/ui/icon-button';
 import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Accent, Radius, Spacing } from '@/shared/theme/theme';
+import { Radius, Spacing } from '@/shared/theme/theme';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
 import { useFirstEntryMonth } from '@/features/entries/hooks/use-first-entry-month';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -58,11 +58,11 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
               onPress={() => pick(month)}
               style={[
                 styles.cell,
-                { backgroundColor: isSelected ? Accent.background : theme.backgroundElement },
-                isCurrent && !isSelected && { borderColor: Accent.background, borderWidth: 2 },
+                { backgroundColor: isSelected ? theme.accent : theme.backgroundElement },
+                isCurrent && !isSelected && { borderColor: theme.accentInk, borderWidth: 2 },
                 isFuture && styles.disabled,
               ]}>
-              <ThemedText type="smallBold" style={isSelected ? { color: Accent.text } : undefined}>
+              <ThemedText type="smallBold" style={isSelected ? { color: theme.onAccent } : undefined}>
                 {formatShortMonth(month)}
               </ThemedText>
             </PressableScale>

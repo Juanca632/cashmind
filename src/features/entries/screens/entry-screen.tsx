@@ -21,7 +21,7 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { KIND_COLORS, FontFamily, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
@@ -152,9 +152,9 @@ function EntryForm({
                     if (option !== kind) hapticTick();
                     setKind(option);
                   }}
-                  style={[styles.kind, { backgroundColor: selected ? KIND_COLORS[option] : theme.backgroundElement }]}>
-                  <Feather name={KIND_ICONS[option]} size={18} color={selected ? Accent.text : KIND_COLORS[option]} />
-                  <ThemedText type="smallBold" style={selected ? { color: Accent.text } : undefined}>
+                  style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
+                  <Feather name={KIND_ICONS[option]} size={18} color={selected ? theme.onAccent : theme.kindInk[option]} />
+                  <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
                     {KIND_LABELS[option]}
                   </ThemedText>
                 </PressableScale>

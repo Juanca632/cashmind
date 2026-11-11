@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 
 import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { CARD_SHADOW, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type ButtonProps = {
@@ -31,12 +31,12 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
       style={[
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
-        primary && { backgroundColor: Accent.background },
-        (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
+        primary && { backgroundColor: theme.accent },
+        (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: theme.cardShadow },
         disabled && { opacity: 0.4 },
       ]}>
-      {icon ? <Feather name={icon} size={16} color={primary ? Accent.text : theme.text} /> : null}
-      <ThemedText type="smallBold" style={[styles.label, { color: primary ? Accent.text : theme.text }]}>
+      {icon ? <Feather name={icon} size={16} color={primary ? theme.onAccent : theme.text} /> : null}
+      <ThemedText type="smallBold" style={[styles.label, { color: primary ? theme.onAccent : theme.text }]}>
         {label}
       </ThemedText>
     </PressableScale>

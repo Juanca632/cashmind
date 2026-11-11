@@ -5,7 +5,7 @@ import { type Entry } from '@/features/entries/rules';
 import { KIND_LABELS } from '@/shared/kinds';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
-import { KIND_COLORS, Radius, Spacing } from '@/shared/theme/theme';
+import { Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -62,7 +62,7 @@ export function EntryList({ entries, today, emptyText, onPress }: EntryListProps
             </View>
             <ThemedText
               type="smallBold"
-              style={entry.kind === 'savings' || entry.kind === 'income' ? { color: KIND_COLORS[entry.kind] } : undefined}>
+              style={entry.kind === 'savings' || entry.kind === 'income' ? { color: theme.kindInk[entry.kind] } : undefined}>
               {entry.kind === 'income' ? '+' : ''}
               {formatEuros(entry.amountCents)}
             </ThemedText>

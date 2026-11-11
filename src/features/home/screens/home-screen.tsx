@@ -18,7 +18,8 @@ import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { Accent, KIND_COLORS, KIND_TINTS, FontFamily, Hero, MIN_TOUCH, Radius, SAVINGS_TRACK, Spacing } from '@/shared/theme/theme';
+import { FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
 import { hapticSuccess, hapticTick } from '@/shared/haptics';
 import { useCountUp } from '@/shared/hooks/use-count-up';
 import { PressableScale } from '@/shared/ui/pressable-scale';
@@ -32,6 +33,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
   const today = useToday();
@@ -155,7 +157,7 @@ export default function HomeScreen() {
               </ThemedText>
               {selected ? (
                 <Pressable accessibilityRole="button" style={styles.showAll} onPress={() => setSelected(null)}>
-                  <ThemedText type="small" style={{ color: Accent.background }}>
+                  <ThemedText type="small" style={{ color: theme.accentInk }}>
                     Show all
                   </ThemedText>
                 </Pressable>
@@ -276,7 +278,8 @@ type KindTileProps = {
 
 /** One colored tile per kind of entry below the card. Tapping it lists only those entries. */
 function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, selected, onSelect }: KindTileProps) {
-  const color = KIND_COLORS[kind];
+  const theme = useTheme();
+  const color = theme.kindInk[kind];
   return (
     <PressableScale
       accessibilityRole="button"
@@ -284,7 +287,7 @@ function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, se
       accessibilityValue={{ text: `${value}, ${detail}` }}
       accessibilityState={{ selected: kind === selected }}
       onPress={() => onSelect(kind)}
-      style={[styles.tile, { backgroundColor: KIND_TINTS[kind], borderColor: kind === selected ? color : 'transparent' }]}>
+      style={[styles.tile, { backgroundColor: theme.kindTint[kind], borderColor: kind === selected ? color : 'transparent' }]}>
       <View style={styles.tileTitle}>
         <Feather name={KIND_ICONS[kind]} size={16} color={color} />
         <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
@@ -304,13 +307,14 @@ function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, se
 
 /** How much of the savings goal is saved. Decorative: the tile already says it in words. */
 function GoalBar({ progress, color }: { progress: number; color: string }) {
+  const theme = useTheme();
   const reducedMotion = useReducedMotion();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID="savings-goal-bar"
-      style={[styles.goalTrack, { backgroundColor: SAVINGS_TRACK }]}>
+      style={[styles.goalTrack, { backgroundColor: theme.savingsTrack }]}>
       <Animated.View
         style={[
           styles.goalFill,
