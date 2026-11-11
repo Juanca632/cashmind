@@ -4,7 +4,7 @@ Personal budgeting app for Android. The user records what they earn, save and sp
 
 ## Project rules
 
-- **Privacy first:** all financial data stays on the device. No bank credentials, no open banking, no backend unless explicitly decided.
+- **Privacy first:** all financial data stays on the device; the one exception is Android's encrypted auto backup to the user's Google account (`android.allowBackup`). No bank credentials, no open banking, no backend unless explicitly decided.
 - **Keep it simple:** build only what the current change needs. No speculative abstractions, layers or libraries "for later".
 - **Android first.** iOS is out of scope for now.
 - **Money:** amounts are EUR. Never use floating point for money; store integer cents.
