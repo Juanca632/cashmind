@@ -30,7 +30,7 @@ describe('App updates: opening the app on a database left by released version 3'
     expect(tile('Spent').getByText(exactText('950 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
-    expectLeftToSpend('650,00 €');
+    await expectLeftToSpend('650,00 €');
     expect(screen.getByText('Rent')).toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
   });

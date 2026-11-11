@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
+import { hapticDelete, hapticSuccess } from '@/shared/haptics';
 import type { WriteResult } from '@/shared/write-result';
 
 const UNEXPECTED = 'The change could not be saved. Please try again.';
@@ -15,13 +16,16 @@ export function useSubmit(beforeLeave?: () => void) {
   // A ref, not state: two taps in the same frame must not write twice.
   const inProgress = useRef(false);
 
-  async function submit(write: () => Promise<WriteResult>) {
+  /** `kind` picks the vibration given when the write works: a save or a delete. */
+  async function submit(write: () => Promise<WriteResult>, kind: 'save' | 'delete' = 'save') {
     if (inProgress.current) return;
     inProgress.current = true;
     setSubmitting(true);
     try {
       const result = await write();
       if (result.ok) {
+        if (kind === 'delete') hapticDelete();
+        else hapticSuccess();
         // The form stays disabled while it leaves, so a second tap cannot save twice.
         beforeLeave?.();
         if (router.canGoBack()) router.back();

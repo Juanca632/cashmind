@@ -1,7 +1,8 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import type { ComponentProps } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { CARD_SHADOW, Accent, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -21,24 +22,24 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
   const primary = variant === 'primary';
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         variant === 'pill' ? styles.pill : styles.full,
         primary && { backgroundColor: Accent.background },
         (variant === 'secondary' || variant === 'pill') && { backgroundColor: theme.backgroundElement, boxShadow: CARD_SHADOW },
-        (pressed || disabled) && { opacity: disabled ? 0.4 : 0.7 },
+        disabled && { opacity: 0.4 },
       ]}>
       {icon ? <Feather name={icon} size={16} color={primary ? Accent.text : theme.text} /> : null}
       <ThemedText type="smallBold" style={[styles.label, { color: primary ? Accent.text : theme.text }]}>
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 }
 

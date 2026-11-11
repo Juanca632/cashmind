@@ -1,4 +1,4 @@
-import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
 import { insertEntry } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
@@ -49,8 +49,14 @@ export const press = (name: string | RegExp) => fireEvent.press(screen.getByRole
 export const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
 export const choose = (name: string) => fireEvent.press(screen.getByRole('radio', { name }));
 
-/** Checks the amount shown on the "Left to spend" card, e.g. "700,00 €" or "-100,00 €". */
-export function expectLeftToSpend(amount: string) {
+/**
+ * Checks the amount shown on the "Left to spend" card, e.g. "700,00 €" or "-100,00 €", once the
+ * figure has finished running (it counts to its new value in under half a second).
+ */
+export async function expectLeftToSpend(amount: string) {
+  await act(async () => {
+    jest.advanceTimersByTime(500);
+  });
   const escaped = amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\u00a0\\u202f]');
   expect(screen.getByText('Left to spend').parent).toHaveTextContent(new RegExp(`^Left to spend${escaped}`));
 }

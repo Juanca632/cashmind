@@ -21,6 +21,8 @@ export const Accent = {
 export const Hero = {
   background: '#065F52',
   gradient: 'linear-gradient(145deg, #065F52 0%, #0A7A66 60%, #0B8A6F 100%)',
+  /** The card when the month is overspent (left to spend below zero). */
+  overspentGradient: 'linear-gradient(145deg, #8F1D16 0%, #B42318 60%, #C4320A 100%)',
   text: '#FFFFFF',
   label: '#DFF7EF',
   control: 'rgba(255, 255, 255, 0.18)',
@@ -39,6 +41,9 @@ export const KIND_TINTS = {
   savings: '#D9F2E6',
   income: '#D5F2EE',
 } as const;
+
+/** The savings goal bar: the empty track behind the savings color. */
+export const SAVINGS_TRACK = 'rgba(6, 95, 70, 0.18)';
 
 export const CARD_SHADOW = '0 2px 8px rgba(14, 17, 22, 0.06)';
 

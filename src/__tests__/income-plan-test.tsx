@@ -91,26 +91,26 @@ describe('Left to spend', () => {
     expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('900 €'))).toBeOnTheScreen();
-    expectLeftToSpend('700,00 €');
+    await expectLeftToSpend('700,00 €');
   });
 
   it('Overspent: an income of 1000,00 € and 900,00 € spent show -100,00 € left to spend', async () => {
     await startApp({ today: TODAY, entries: [salary(100000), spending(90000)] });
 
-    expectLeftToSpend('-100,00 €');
+    await expectLeftToSpend('-100,00 €');
   });
 
   it('Saved above the goal: the goal shows as reached and 500,00 € are left', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(60000), spending(90000)] });
 
     expect(tile('Savings').getByText('Goal reached')).toBeOnTheScreen();
-    expectLeftToSpend('500,00 €');
+    await expectLeftToSpend('500,00 €');
   });
 
   it('With 0 % there is no goal and left is income minus expenses minus what was saved', async () => {
     await startApp({ today: TODAY, plans: [[0, '2026-07']], entries: [salary(200000), saving(10000), spending(50000)] });
 
-    expectLeftToSpend('1 400,00 €');
+    await expectLeftToSpend('1 400,00 €');
   });
 
   it('Expenses but no income: expenses stay listed and home keeps asking for income', async () => {
@@ -141,7 +141,7 @@ describe('Change the plan', () => {
 
     expect(screen).toHavePathname('/');
     expect(tile('Savings').getByText(exactText('of 600 €'))).toBeOnTheScreen();
-    expectLeftToSpend('1 400,00 €');
+    await expectLeftToSpend('1 400,00 €');
   });
 
   it('Applies from now on: 25 % saved in July, 30 % saved in November; July to October keep 25 %', async () => {
@@ -224,7 +224,7 @@ describe('Change the plan', () => {
 
   it('Valid limits: 0 saved from My plan shows "No goal" and leaves income minus expenses minus savings', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(10000), spending(50000)] });
-    expectLeftToSpend('1 100,00 €');
+    await expectLeftToSpend('1 100,00 €');
     await press('My plan');
     await type('Savings percentage', '0');
     await press('Save plan');
@@ -232,7 +232,7 @@ describe('Change the plan', () => {
     expect(screen).toHavePathname('/');
     expect(tile('Savings').getByText('No goal')).toBeOnTheScreen();
     expect(tile('Savings').queryByText('Goal reached')).not.toBeOnTheScreen();
-    expectLeftToSpend('1 400,00 €');
+    await expectLeftToSpend('1 400,00 €');
   });
 
   it('My plan with no income yet asks for it instead of showing a euro goal', async () => {
@@ -281,7 +281,7 @@ describe('Rounding on screen', () => {
     await startApp({ today: TODAY, plans: [[percent, '2026-07']], entries: [salary(income)] });
 
     expect(tile('Savings').getByText(exactText(goal))).toBeOnTheScreen();
-    expectLeftToSpend(left);
+    await expectLeftToSpend(left);
   });
 
   it('The preview in euros while typing is also rounded down (30 % of 1000,03 € is 300,00 €)', async () => {

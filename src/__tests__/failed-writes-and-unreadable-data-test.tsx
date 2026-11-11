@@ -273,7 +273,7 @@ describe('Data that is not damaged is never reported as damaged', () => {
     expect(screen.queryByText(UNREADABLE)).not.toBeOnTheScreen();
     expect(screen.getByText('Big pay')).toBeOnTheScreen();
     expect(screen.getByText(partialText('1 000 000,00 €'))).toBeOnTheScreen();
-    expectLeftToSpend('799 995,00 €');
+    await expectLeftToSpend('799 995,00 €');
   });
 
   it('An entry dated after today is listed and counted, not reported as unreadable', async () => {
@@ -285,7 +285,7 @@ describe('Data that is not damaged is never reported as damaged', () => {
 
     expect(screen.queryByText(UNREADABLE)).not.toBeOnTheScreen();
     expect(screen.getByText('Booked ahead')).toBeOnTheScreen();
-    expectLeftToSpend('1 575,00 €');
+    await expectLeftToSpend('1 575,00 €');
   });
 
   it('A past entry is still shown years later', async () => {
