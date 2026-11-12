@@ -59,3 +59,27 @@ export function totalsByKind(entries: readonly Pick<Entry, 'kind' | 'amountCents
   return totals;
 }
 
+/** How many entries home lists before linking to the whole month. */
+export const HOME_LIST_SIZE = 5;
+
+/** The entries of one kind, in the same order; null keeps every entry. */
+export function entriesOfKind<T extends Pick<Entry, 'kind'>>(entries: readonly T[], kind: EntryKind | null): T[] {
+  return kind === null ? [...entries] : entries.filter((entry) => entry.kind === kind);
+}
+
+/** The first `size` entries and how many there are in all. */
+export function firstEntries<T>(entries: readonly T[], size: number): { shown: T[]; total: number } {
+  return { shown: entries.slice(0, size), total: entries.length };
+}
+
+/** True for a kind of entry; used to read a kind from route params. */
+export function isEntryKind(value: unknown): value is EntryKind {
+  return typeof value === 'string' && (ENTRY_KINDS as readonly string[]).includes(value);
+}
+
+/** What a list filtered to one kind says when the month has none of it. */
+export const EMPTY_KIND_TEXTS: Record<EntryKind, string> = {
+  income: 'No income this month.',
+  savings: 'No savings this month.',
+  expense: 'No expenses this month.',
+};
