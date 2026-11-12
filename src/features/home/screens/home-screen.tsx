@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
-import { defaultEntryDate, totalsByKind } from '@/features/entries/rules';
+import { defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
 import { addEntry } from '@/features/entries/service';
 import { monthSummary } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
@@ -64,6 +64,7 @@ export default function HomeScreen() {
   const percent = savingsPercentFor(plan.data, month);
   const summary = monthSummary(totalsByKind(monthEntries), percent);
   const hasIncome = summary.income > 0;
+  const list = firstEntries(entriesOfKind(monthEntries, selected), HOME_LIST_SIZE);
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
@@ -176,12 +177,20 @@ export default function HomeScreen() {
           </View>
           <ThemedView type="backgroundElement" style={styles.activity}>
             <EntryList
-              entries={selected ? monthEntries.filter((entry) => entry.kind === selected) : monthEntries}
+              entries={list.shown}
               today={today}
               emptyText={emptyListText(selected, isPast)}
               onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
             />
           </ThemedView>
+          {list.total > HOME_LIST_SIZE ? (
+            <Button
+              label={`See all (${list.total})`}
+              accessibilityLabel={`See all ${list.total} entries`}
+              variant="secondary"
+              onPress={() => router.push({ pathname: '/activity', params: { month, kind: selected ?? undefined } })}
+            />
+          ) : null}
         </View>
 
         {isPast ? (
@@ -197,12 +206,6 @@ const TILE_TITLES: Record<EntryKind, string> = {
   income: KIND_LABELS.income,
   savings: KIND_LABELS.savings,
   expense: 'Spent',
-};
-
-const EMPTY_TEXTS: Record<EntryKind, string> = {
-  income: 'No income this month.',
-  savings: 'No savings this month.',
-  expense: 'No expenses this month.',
 };
 
 function CardPill({
@@ -232,7 +235,7 @@ function CardPill({
 }
 
 function emptyListText(selected: EntryKind | null, isPast: boolean): string {
-  if (selected) return EMPTY_TEXTS[selected];
+  if (selected) return EMPTY_KIND_TEXTS[selected];
   if (isPast) return 'Nothing was recorded this month.';
   return 'Record what you earn, spend and save.';
 }

@@ -79,6 +79,8 @@ Lets the user record what they earn, save or spend, in any month, and see that m
 **Acceptance Scenarios**:
 
 1. *Viewing a past month*: **When** the user picks a past month with expenses, **Then** the list shows that month's entries and its figures
+2. *Short list on home*: **Given** a month with 12 entries, **Then** home lists the 5 newest and a "See all (12)" link; with 5 entries or fewer it lists them all and shows no link
+3. *Whole month*: **When** the user taps "See all", **Then** an Activity screen titled "Activity · <month>" lists every entry of that month, newest first; tapping one opens it to edit, and going back shows the change
 
 ---
 
@@ -101,6 +103,7 @@ Lets the user record what they earn, save or spend, in any month, and see that m
 **Acceptance Scenarios**:
 
 1. *Tapping a kind lists only its entries*: **Given** a month with entries of every kind, **When** the user taps Income, Spent or Savings on home, **Then** the list shows only those entries, **And** "Show all" brings back the full list
+2. *Filter on the Activity screen*: **Given** the Spent tile is selected, **When** the user taps "See all", **Then** the Activity screen opens with Spent selected, **And** its All, Income, Spent and Savings filters change the list without changing home's tile
 
 ---
 
@@ -123,10 +126,10 @@ Lets the user record what they earn, save or spend, in any month, and see that m
 - **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an entry or delete it, in any month. Deleting SHALL ask for confirmation, and leaving the form with unsaved changes SHALL ask before discarding them.
 - **FR-004** (Past months can be corrected): The system SHALL let the user add, edit and delete entries in any month up to today. There is no editable period.
 - **FR-005** (Month figures): When the selected month has income, the system SHALL show its income, savings and spending (the sum of its expenses); see 002 for the goal and what is left. Without income, home asks for it instead (see 002).
-- **FR-006** (Month list): The system SHALL list the selected month's entries, newest first (by date, then by when they were recorded), showing the date, the kind as an icon, the note (or the kind's name when there is no note) and the amount.
+- **FR-006** (Month list): The system SHALL list the selected month's entries, newest first (by date, then by when they were recorded), showing the date, the kind as an icon, the note (or the kind's name when there is no note) and the amount. Home SHALL list at most the 5 newest of them; when there are more, it SHALL show a "See all (N)" link to an Activity screen that lists all of the month's entries the same way (see 014).
 - **FR-007** (Changes that cannot be saved): The system SHALL validate every change before storing it, and SHALL show a message and keep the form open when a change is rejected or fails.
 - **FR-008** (Unreadable data): The system SHALL check the format of the entries it reads and, when one has the wrong format, SHALL say that some data could not be read instead of showing figures. This includes entries of an earlier month that home reads to offer repeating the last income. It SHALL NOT change or delete the data.
-- **FR-009** (Look inside one kind): When the month has income, the system SHALL let the user tap income, spent or savings on home to list only those entries, titled with that tile's name, and SHALL let the user return to the full list. The Add action then adds that kind; with no tile selected it adds an expense.
+- **FR-009** (Look inside one kind): When the month has income, the system SHALL let the user tap income, spent or savings on home to list only those entries, titled with that tile's name, and SHALL let the user return to the full list. The selected tile filters home's short list (and the count in "See all") and is the starting filter of the Activity screen, which has its own All, Income, Spent and Savings filter and shows the same empty texts. The Add action then adds that kind; with no tile selected it adds an expense.
 - **FR-010** (Three kinds): Every entry SHALL be an income, a saving or an expense. Entries recorded as fixed or leisure by older versions become expenses when the app updates.
 
 ## Success Criteria *(mandatory)*

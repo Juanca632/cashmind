@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
@@ -33,7 +34,6 @@ function dayTitle(day: string, today: Date): string {
 }
 
 export function EntryList({ entries, today, emptyText, onPress }: EntryListProps) {
-  const theme = useTheme();
   if (entries.length === 0) {
     return (
       <ThemedText themeColor="textSecondary" style={styles.empty}>
@@ -46,32 +46,46 @@ export function EntryList({ entries, today, emptyText, onPress }: EntryListProps
     <LayoutAnimationConfig skipEntering>
       {entries.map((entry) => (
         <Animated.View key={entry.id} entering={ENTERING} exiting={EXITING} layout={LAYOUT}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => onPress(entry)}
-            // A full-width row highlights when pressed instead of shrinking.
-            style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
-            <KindBadge kind={entry.kind} />
-            <View style={styles.text}>
-              <ThemedText type="smallBold" numberOfLines={1}>
-                {entry.note || KIND_LABELS[entry.kind]}
-              </ThemedText>
-              <ThemedText type="caption" themeColor="textSecondary">
-                {dayTitle(entry.date, today)}
-              </ThemedText>
-            </View>
-            <ThemedText
-              type="smallBold"
-              style={entry.kind === 'savings' || entry.kind === 'income' ? { color: theme.kindInk[entry.kind] } : undefined}>
-              {entry.kind === 'income' ? '+' : ''}
-              {formatEuros(entry.amountCents)}
-            </ThemedText>
-          </Pressable>
+          <EntryRow entry={entry} today={today} onPress={onPress} />
         </Animated.View>
       ))}
     </LayoutAnimationConfig>
   );
 }
+
+type EntryRowProps = {
+  entry: Entry;
+  today: Date;
+  onPress: (entry: Entry) => void;
+};
+
+/** One entry: kind icon, note (or kind name), day and amount. Memoized for long lists. */
+export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => onPress(entry)}
+      // A full-width row highlights when pressed instead of shrinking.
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
+      <KindBadge kind={entry.kind} />
+      <View style={styles.text}>
+        <ThemedText type="smallBold" numberOfLines={1}>
+          {entry.note || KIND_LABELS[entry.kind]}
+        </ThemedText>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {dayTitle(entry.date, today)}
+        </ThemedText>
+      </View>
+      <ThemedText
+        type="smallBold"
+        style={entry.kind === 'savings' || entry.kind === 'income' ? { color: theme.kindInk[entry.kind] } : undefined}>
+        {entry.kind === 'income' ? '+' : ''}
+        {formatEuros(entry.amountCents)}
+      </ThemedText>
+    </Pressable>
+  );
+});
 
 const styles = StyleSheet.create({
   empty: {
