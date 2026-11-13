@@ -6,7 +6,7 @@
 
 **Status**: Implemented
 
-**Input**: Migrated from the OpenSpec `income-plan` capability; simplified by `008-simple-plan`. History is in `docs/openspec-archive/`.
+**Input**: Migrated from the OpenSpec `income-plan` capability; simplified by `008-simple-plan`; updated by 017-entry-and-daily-budget. History is in `docs/openspec-archive/`.
 
 This is a baseline spec: it describes the current behavior of the app and is kept up to date when a later feature changes that behavior.
 
@@ -84,7 +84,7 @@ The plan is one number: the whole percentage of each month's recorded income the
 - **FR-001** (Income comes from what is recorded): A month's income SHALL be the sum of its income entries (see 001). The plan SHALL NOT store an income.
 - **FR-002** (One percentage): The plan SHALL be one whole percentage from 0 to 100. With no saved plan every month uses 20 %.
 - **FR-003** (Savings goal): A month's goal SHALL be its percentage of that month's income, rounded down to the cent.
-- **FR-004** (Left to spend): When the selected month has income, home SHALL show the income, what was saved against the goal, what was spent and what is left to spend = income − expenses − the larger of the goal and what was saved. It can be negative. With a goal above 0 the savings tile shows a bar filled to saved ÷ goal (full at most); with a 0 % plan it says "No goal" and has no bar; when saved reaches a goal above 0 it says "Goal reached". The month card is red while left to spend is below 0 and green otherwise (added by 012-polish). A month with no income asks for it and offers repeating the most recent earlier month's total as one income with the note "Monthly income", dated today, or the month's last day in a past month.
+- **FR-004** (Left to spend): When the selected month has income, home SHALL show the income, what was saved against the goal, what was spent and what is left to spend = income − expenses − the larger of the goal and what was saved. It can be negative. With a goal above 0 the savings tile shows a bar filled to saved ÷ goal (full at most); with a 0 % plan it says "No goal" and has no bar; when saved reaches a goal above 0 it says "Goal reached". The month card is red while left to spend is below 0 and green otherwise (added by 012-polish). In the current month, while left to spend is above 0, the card also says what can be spent per day: "≈ X / day · N days left" with N the days left including today and X = left to spend ÷ N rounded down to the cent, or "Today: X" on the last day (added by 017). A month with no income asks for it and offers repeating the most recent earlier month's total as one income with the note "Monthly income", dated today, or the month's last day in a past month.
 - **FR-005** (Plan screen): My plan SHALL show the percentage and, while typing, the goal in euros for this month's income (or, with no income yet, ask for it), and SHALL save it. Leaving with unsaved changes SHALL ask before discarding them. It is not offered from past months.
 - **FR-006** (Plan history): Saving SHALL apply from the current month onwards; every past month keeps the percentage that applied to it. Saving again in the same month replaces that month's version.
 - **FR-007** (Changes that cannot be saved): The system SHALL validate the percentage before storing it, and SHALL show a message and keep the screen open when the save is rejected or fails.

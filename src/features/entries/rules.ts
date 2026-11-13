@@ -2,6 +2,7 @@
  * Entry domain logic. Pure functions, no React and no storage.
  * Dates are local-time day keys 'YYYY-MM-DD'; months are 'YYYY-MM'. Money is integer cents.
  */
+import { CATEGORIES, isCategoryOf, type EntryCategory } from '@/features/entries/categories';
 import { ENTRY_KINDS, type EntryKind } from '@/shared/kinds';
 import { AMOUNT_TOO_LARGE, isValidCents } from '@/shared/money';
 import { dayKey, isValidDayKey } from '@/shared/days';
@@ -13,17 +14,19 @@ export type Entry = {
   kind: EntryKind;
   amountCents: number;
   note: string;
+  category: EntryCategory;
 };
 
 export type EntryInput = Omit<Entry, 'id'>;
 
-export type EntryError = 'amount-not-positive' | 'amount-too-large' | 'kind-invalid' | 'date-invalid';
+export type EntryError = 'amount-not-positive' | 'amount-too-large' | 'kind-invalid' | 'date-invalid' | 'category-invalid';
 
 export function validateEntry(input: EntryInput, today: Date): EntryError[] {
   const errors: EntryError[] = [];
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
   else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
   if (!ENTRY_KINDS.includes(input.kind)) errors.push('kind-invalid');
+  else if (!isCategoryOf(input.kind, input.category)) errors.push('category-invalid');
   if (!isValidDayKey(input.date) || input.date > dayKey(today)) errors.push('date-invalid');
   return errors;
 }
@@ -40,6 +43,8 @@ export function entryErrorMessage(error: EntryError): string {
       return 'Pick income, savings or expense.';
     case 'date-invalid':
       return 'Pick a date that is not in the future.';
+    case 'category-invalid':
+      return 'Pick a category for this kind.';
   }
 }
 
@@ -83,3 +88,24 @@ export const EMPTY_KIND_TEXTS: Record<EntryKind, string> = {
   savings: 'No savings this month.',
   expense: 'No expenses this month.',
 };
+
+/** One category's part of a kind's total for the month. */
+export type CategoryShare = { category: EntryCategory; cents: number; percent: number };
+
+/**
+ * A kind's entries added up by category, largest first (ties in list order), with each one's whole
+ * percentage of the kind's total rounded to the nearest. Empty when the kind has no entries.
+ */
+export function categorySplit(entries: readonly Pick<Entry, 'kind' | 'amountCents' | 'category'>[], kind: EntryKind): CategoryShare[] {
+  const order = CATEGORIES[kind];
+  const cents = new Map<EntryCategory, number>();
+  let total = 0;
+  for (const entry of entries) {
+    if (entry.kind !== kind) continue;
+    cents.set(entry.category, (cents.get(entry.category) ?? 0) + entry.amountCents);
+    total += entry.amountCents;
+  }
+  return [...cents]
+    .map(([category, sum]) => ({ category, cents: sum, percent: Math.round((sum * 100) / total) }))
+    .sort((a, b) => b.cents - a.cents || order.indexOf(a.category) - order.indexOf(b.category));
+}

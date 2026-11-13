@@ -15,7 +15,7 @@ async function newDb() {
 
 const rows = (db: any) => db.getAllAsync('SELECT * FROM entry ORDER BY id');
 
-const lunch = { date: '2026-11-05', kind: 'expense', amountCents: 900, note: 'Lunch' } as const;
+const lunch = { date: '2026-11-05', kind: 'expense', amountCents: 900, note: 'Lunch', category: 'eating_out' } as const;
 
 async function withFailingWrites(db: any) {
   const fail = async () => {
@@ -61,7 +61,7 @@ describe('Invalid data is never saved (expenses)', () => {
 
   it('An unknown category is rejected and nothing is stored', async () => {
     const db = await newDb();
-    const result = await addEntry(db, { ...lunch, kind: 'gifts' as any }, NOV_7);
+    const result = await addEntry(db, { ...lunch, kind: 'gifts' as any, category: 'other' }, NOV_7);
 
     expect(result).toMatchObject({ ok: false, kind: 'invalid' });
     expect(await rows(db)).toEqual([]);
@@ -165,7 +165,7 @@ describe('Entries that do not exist or edits that are invalid', () => {
 
   it.each([
     ['a zero amount', { amountCents: 0 }, /greater than 0/],
-    ['an unknown kind', { kind: 'gifts' as never }, undefined],
+    ['an unknown kind', { kind: 'gifts' as never, category: 'other' as const }, undefined],
     ['a date after today', { date: '2026-11-08' }, undefined],
   ])('Editing with %s is rejected and the stored entry stays as it was', async (_label, change, message) => {
     const db = await newDb();
@@ -184,14 +184,74 @@ describe('Every kind can be recorded', () => {
   it.each(['income', 'savings', 'expense'] as const)('A new %s is stored', async (kind) => {
     const db = await newDb();
 
-    expect(await addEntry(db, { ...lunch, kind }, NOV_7)).toEqual({ ok: true });
+    expect(await addEntry(db, { ...lunch, kind, category: 'other' }, NOV_7)).toEqual({ ok: true });
     expect((await rows(db))[0].kind).toBe(kind);
   });
 
   it('An old kind is refused and nothing is stored', async () => {
     const db = await newDb();
 
-    expect(await addEntry(db, { ...lunch, kind: 'fixed' as never }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
+    expect(await addEntry(db, { ...lunch, kind: 'fixed' as never, category: 'other' }, NOV_7)).toMatchObject({ ok: false, kind: 'invalid' });
     expect(await rows(db)).toEqual([]);
+  });
+});
+
+describe('Choose a category when recording (validation)', () => {
+  it.each([
+    ['income', 'salary'],
+    ['income', 'freelance'],
+    ['savings', 'goal'],
+    ['savings', 'emergency_fund'],
+    ['expense', 'groceries'],
+    ['expense', 'other'],
+  ] as const)('A %s in %s is stored with that category', async (kind, category) => {
+    const db = await newDb();
+
+    expect(await addEntry(db, { ...lunch, kind, category }, NOV_7)).toEqual({ ok: true });
+    expect(await rows(db)).toEqual([expect.objectContaining({ kind, category })]);
+  });
+
+  it.each([
+    ['a category of another kind', 'expense', 'salary'],
+    ['an income category on savings', 'savings', 'freelance'],
+    ['an expense category on income', 'income', 'groceries'],
+    ['an unknown category', 'expense', 'pets'],
+    ['an empty category', 'expense', ''],
+    ['a label instead of a key', 'expense', 'Groceries'],
+  ])('Adding with %s is refused with a message and stores nothing', async (_label, kind, category) => {
+    const db = await newDb();
+    const result = await addEntry(db, { ...lunch, kind: kind as any, category: category as any }, NOV_7);
+
+    expect(result).toEqual({ ok: false, kind: 'invalid', message: 'Pick a category for this kind.' });
+    expect(await rows(db)).toEqual([]);
+  });
+
+  it('Editing to a category of another kind is refused and the stored entry stays as it was', async () => {
+    const db = await newDb();
+    await addEntry(db, lunch, NOV_7);
+    const before = await rows(db);
+
+    const result = await editEntry(db, 1, { ...lunch, category: 'salary' }, NOV_7);
+
+    expect(result).toEqual({ ok: false, kind: 'invalid', message: 'Pick a category for this kind.' });
+    expect(await rows(db)).toEqual(before);
+  });
+
+  it('Editing only the category keeps the amount, date and note', async () => {
+    const db = await newDb();
+    await addEntry(db, { ...lunch, category: 'other' }, NOV_7);
+
+    expect(await editEntry(db, 1, { ...lunch, category: 'transport' }, NOV_7)).toEqual({ ok: true });
+    expect(await rows(db)).toEqual([
+      expect.objectContaining({ date: '2026-11-05', amount_cents: 900, note: 'Lunch', category: 'transport' }),
+    ]);
+  });
+
+  it('Changing the kind with a category of the new kind is stored', async () => {
+    const db = await newDb();
+    await addEntry(db, lunch, NOV_7);
+
+    expect(await editEntry(db, 1, { ...lunch, kind: 'income', category: 'other' }, NOV_7)).toEqual({ ok: true });
+    expect(await rows(db)).toEqual([expect.objectContaining({ kind: 'income', category: 'other' })]);
   });
 });

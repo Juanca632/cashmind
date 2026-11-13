@@ -2,11 +2,13 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
+import { CATEGORY_LABELS } from '@/features/entries/categories';
+import { categoryIcon } from '@/features/entries/components/category-icons';
 import { type Entry } from '@/features/entries/rules';
 import { KIND_LABELS } from '@/shared/kinds';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
-import { Radius, Spacing } from '@/shared/theme/theme';
+import { Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -59,7 +61,13 @@ type EntryRowProps = {
   onPress: (entry: Entry) => void;
 };
 
-/** One entry: kind icon, note (or kind name), day and amount. Memoized for long lists. */
+/** What a row is called: its note, else its category, else (Other) its kind. */
+function entryTitle(entry: Entry): string {
+  if (entry.note) return entry.note;
+  return entry.category === 'other' ? KIND_LABELS[entry.kind] : CATEGORY_LABELS[entry.category];
+}
+
+/** One entry: category icon, title, day and amount. Memoized for long lists. */
 export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
   const theme = useTheme();
   return (
@@ -68,10 +76,10 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
-      <KindBadge kind={entry.kind} />
+      <KindBadge kind={entry.kind} icon={categoryIcon(entry.kind, entry.category)} />
       <View style={styles.text}>
         <ThemedText type="smallBold" numberOfLines={1}>
-          {entry.note || KIND_LABELS[entry.kind]}
+          {entryTitle(entry)}
         </ThemedText>
         <ThemedText type="caption" themeColor="textSecondary">
           {dayTitle(entry.date, today)}
@@ -89,17 +97,17 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
 
 const styles = StyleSheet.create({
   empty: {
-    paddingVertical: Spacing.two,
+    paddingVertical: Layout.itemGap,
   },
   row: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Layout.rowGap,
     justifyContent: 'space-between',
-    marginHorizontal: -Spacing.two,
-    minHeight: 62,
-    paddingHorizontal: Spacing.two,
+    marginHorizontal: -Layout.itemGap,
+    minHeight: Size.row,
+    paddingHorizontal: Layout.itemGap,
   },
   text: {
     flex: 1,

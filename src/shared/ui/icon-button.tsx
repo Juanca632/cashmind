@@ -2,7 +2,7 @@ import { Feather } from '@react-native-vector-icons/feather';
 import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
-import { MIN_TOUCH } from '@/shared/theme/theme';
+import { IconSize, Opacity, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type IconButtonProps = {
@@ -23,7 +23,7 @@ export function IconButton({ icon, accessibilityLabel, disabled = false, onPress
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [styles.button, disabled && styles.disabled, pressed && styles.pressed]}>
-      <Feather name={icon} size={24} color={theme.text} />
+      <Feather name={icon} size={IconSize.large} color={theme.text} />
     </Pressable>
   );
 }
@@ -32,13 +32,13 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-    minWidth: MIN_TOUCH,
+    minHeight: Size.control,
+    minWidth: Size.control,
   },
   disabled: {
-    opacity: 0.3,
+    opacity: Opacity.disabled,
   },
   pressed: {
-    opacity: 0.6,
+    opacity: Opacity.pressed,
   },
 });

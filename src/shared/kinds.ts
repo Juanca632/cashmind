@@ -10,10 +10,11 @@ export const KIND_LABELS: Record<EntryKind, string> = {
   expense: 'Expense',
 };
 
-export const KIND_DESCRIPTIONS: Record<EntryKind, string> = {
-  income: 'Money you received',
-  savings: 'Money you set aside',
-  expense: 'Rent, bills, shopping, going out',
+/** The example in the note field of the entry form. */
+export const NOTE_EXAMPLES: Record<EntryKind, string> = {
+  income: 'Salary',
+  savings: 'Emergency fund',
+  expense: 'Cinema',
 };
 
 /** The action that adds an entry of each kind: the form's title and its button. */

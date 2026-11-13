@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { EntryKind } from '@/shared/kinds';
-import { Radius } from '@/shared/theme/theme';
+import { IconSize, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export const KIND_ICONS: Record<EntryKind, ComponentProps<typeof Feather>['name']> = {
@@ -12,15 +12,20 @@ export const KIND_ICONS: Record<EntryKind, ComponentProps<typeof Feather>['name'
   expense: 'shopping-bag',
 };
 
-/** The entry kind's icon on a soft tint of its color. Decorative: the name is always written next to it. */
-export function KindBadge({ kind }: { kind: EntryKind }) {
+type IconName = ComponentProps<typeof Feather>['name'];
+
+/**
+ * An icon on a soft tint of the kind's color: the kind's own icon unless another one is given.
+ * Decorative: the name is always written next to it.
+ */
+export function KindBadge({ kind, icon = KIND_ICONS[kind] }: { kind: EntryKind; icon?: IconName }) {
   const theme = useTheme();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[styles.badge, { backgroundColor: theme.kindTint[kind] }]}>
-      <Feather name={KIND_ICONS[kind]} size={18} color={theme.kindInk[kind]} />
+      <Feather name={icon} size={IconSize.medium} color={theme.kindInk[kind]} />
     </View>
   );
 }
@@ -29,8 +34,8 @@ const styles = StyleSheet.create({
   badge: {
     alignItems: 'center',
     borderRadius: Radius.full,
-    height: 40,
+    height: Size.badge,
     justifyContent: 'center',
-    width: 40,
+    width: Size.badge,
   },
 });

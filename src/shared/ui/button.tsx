@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 
 import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { elevation, IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type ButtonProps = {
@@ -14,12 +14,27 @@ type ButtonProps = {
   accessibilityLabel?: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'secondary' | 'pill' | 'destructive';
+  /**
+   * primary: the screen's main action. secondary: any other. destructive: deletes, red text.
+   * danger: confirms a deletion in a dialog, red fill. quiet: the safe choice in a dialog.
+   */
+  variant?: 'primary' | 'secondary' | 'destructive' | 'danger' | 'quiet';
+  /** Shares a row with other buttons, each taking an equal part. */
+  stretch?: boolean;
+  /** compact: smaller text and padding, for buttons side by side in a dialog. */
+  size?: 'regular' | 'compact';
 };
 
-export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
+/** The one full-size button of the app. Pills are `Pill`; small text actions are `LinkButton`. */
+export function Button({ label, icon, accessibilityLabel, onPress, disabled = false, variant = 'primary', stretch = false, size = 'regular' }: ButtonProps) {
   const theme = useTheme();
-  const primary = variant === 'primary';
+  const look = {
+    primary: { fill: theme.accent, ink: theme.onAccent, raised: false },
+    secondary: { fill: theme.backgroundElement, ink: theme.text, raised: true },
+    destructive: { fill: theme.backgroundElement, ink: theme.error, raised: true },
+    danger: { fill: theme.errorFill, ink: theme.onAccent, raised: false },
+    quiet: { fill: theme.background, ink: theme.text, raised: false },
+  }[variant];
 
   return (
     <PressableScale
@@ -30,13 +45,15 @@ export function Button({ label, icon, accessibilityLabel, onPress, disabled = fa
       onPress={onPress}
       style={[
         styles.button,
-        variant === 'pill' ? styles.pill : styles.full,
-        primary && { backgroundColor: theme.accent, outlineColor: theme.accentOutline, outlineWidth: 1 },
-        variant !== 'primary' && { backgroundColor: theme.backgroundElement, boxShadow: theme.cardShadow },
-        disabled && { opacity: 0.4 },
+        { backgroundColor: look.fill },
+        look.raised && elevation(theme, 'raised'),
+        variant === 'primary' && { outlineColor: theme.accentOutline, outlineWidth: 1 },
+        size === 'compact' && styles.compact,
+        stretch && styles.stretch,
+        disabled && styles.disabled,
       ]}>
-      {icon ? <Feather name={icon} size={16} color={primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text} /> : null}
-      <ThemedText type="smallBold" style={[styles.label, { color: primary ? theme.onAccent : variant === 'destructive' ? theme.error : theme.text }]}>
+      {icon ? <Feather name={icon} size={IconSize.small} color={look.ink} /> : null}
+      <ThemedText type={size === 'compact' ? 'smallBold' : 'button'} style={{ color: look.ink }}>
         {label}
       </ThemedText>
     </PressableScale>
@@ -48,18 +65,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: Radius.full,
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
     justifyContent: 'center',
+    minHeight: Size.button,
+    paddingHorizontal: Layout.buttonPadding,
   },
-  full: {
-    minHeight: 56,
-    paddingHorizontal: Spacing.four,
+  compact: {
+    minHeight: Size.control,
+    paddingHorizontal: Layout.cardPadding,
   },
-  pill: {
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: Spacing.three,
+  stretch: {
+    flex: 1,
   },
-  label: {
-    fontSize: 16,
+  disabled: {
+    opacity: Opacity.disabled,
   },
 });

@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { Layout, Radius, Size } from '@/shared/theme/theme';
+import { Button } from '@/shared/ui/button';
 import { useTheme } from '@/shared/theme/use-theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -55,26 +56,12 @@ function ConfirmDialog({
           </ThemedText>
           <ThemedText themeColor="textSecondary">{request.message}</ThemedText>
           <View style={styles.buttons}>
-            <DialogButton label={request.cancel} fill={theme.background} ink={theme.text} onPress={onCancel} />
-            <DialogButton label={request.confirm} fill={theme.errorFill} ink={theme.onAccent} onPress={onConfirm} />
+            <Button label={request.cancel} variant="quiet" size="compact" stretch onPress={onCancel} />
+            <Button label={request.confirm} variant="danger" size="compact" stretch onPress={onConfirm} />
           </View>
         </View>
       </View>
     </Modal>
-  );
-}
-
-function DialogButton({ label, fill, ink, onPress }: { label: string; fill: string; ink: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.button, { backgroundColor: fill }, pressed && styles.pressed]}>
-      <ThemedText type="smallBold" style={{ color: ink }}>
-        {label}
-      </ThemedText>
-    </Pressable>
   );
 }
 
@@ -83,32 +70,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    padding: Spacing.four,
+    padding: Layout.dialogPadding,
   },
   scrim: {
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   card: {
-    borderRadius: Radius.hero,
-    gap: Spacing.two,
-    maxWidth: 360,
-    padding: Spacing.four,
+    borderRadius: Radius.dialog,
+    gap: Layout.itemGap,
+    maxWidth: Size.dialog,
+    padding: Layout.dialogPadding,
     width: '100%',
   },
   buttons: {
     flexDirection: 'row',
-    gap: Spacing.two,
-    marginTop: Spacing.three,
-  },
-  button: {
-    alignItems: 'center',
-    borderRadius: Radius.full,
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: Spacing.three,
-  },
-  pressed: {
-    opacity: 0.7,
+    gap: Layout.itemGap,
+    marginTop: Layout.sectionGap,
   },
 });

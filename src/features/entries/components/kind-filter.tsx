@@ -2,10 +2,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { hapticTick } from '@/shared/haptics';
 import { KIND_LABELS, type EntryKind } from '@/shared/kinds';
-import { MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { Layout } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
-import { PressableScale } from '@/shared/ui/pressable-scale';
-import { ThemedText } from '@/shared/ui/themed-text';
+import { Pill } from '@/shared/ui/pill';
 
 /** Filter labels; expenses read as what was spent, as on the home tile. */
 const FILTER_LABELS: Record<EntryKind, string> = {
@@ -27,30 +26,23 @@ export function KindFilter({ value, onChange }: KindFilterProps) {
   const theme = useTheme();
   return (
     <View style={styles.row}>
-      {OPTIONS.map((option) => {
-        const selected = option === value;
-        const ink = option === null ? theme.accentInk : theme.kindInk[option];
-        const tint = option === null ? theme.backgroundElement : theme.kindTint[option];
-        return (
-          <PressableScale
-            key={option ?? 'all'}
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            onPress={() => {
-              if (selected) return;
-              hapticTick();
-              onChange(option);
-            }}
-            style={[
-              styles.pill,
-              { backgroundColor: selected ? tint : theme.backgroundElement, borderColor: selected ? ink : 'transparent' },
-            ]}>
-            <ThemedText type="smallBold" style={selected ? { color: ink } : undefined}>
-              {option === null ? 'All' : FILTER_LABELS[option]}
-            </ThemedText>
-          </PressableScale>
-        );
-      })}
+      {OPTIONS.map((option) => (
+        <Pill
+          key={option ?? 'all'}
+          label={option === null ? 'All' : FILTER_LABELS[option]}
+          selected={option === value}
+          colors={
+            option === null
+              ? { fill: theme.backgroundElement, ink: theme.accentInk }
+              : { fill: theme.kindTint[option], ink: theme.kindInk[option] }
+          }
+          onPress={() => {
+            if (option === value) return;
+            hapticTick();
+            onChange(option);
+          }}
+        />
+      ))}
     </View>
   );
 }
@@ -59,13 +51,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  pill: {
-    borderRadius: Radius.full,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: Spacing.three,
+    gap: Layout.itemGap,
   },
 });

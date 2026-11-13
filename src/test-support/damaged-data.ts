@@ -10,8 +10,9 @@ export const RELAX_TABLES: string[] = [
   "ALTER TABLE plan_version_loose RENAME TO plan_version",
   `CREATE TABLE entry_loose (
      id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, kind TEXT NOT NULL, amount_cents INTEGER NOT NULL,
-     note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')))`,
-  "INSERT INTO entry_loose SELECT id, date, kind, amount_cents, note, created_at FROM entry",
+     note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (datetime('now')),
+     category TEXT NOT NULL DEFAULT 'other')`,
+  "INSERT INTO entry_loose SELECT id, date, kind, amount_cents, note, created_at, category FROM entry",
   "DROP TABLE entry",
   "ALTER TABLE entry_loose RENAME TO entry",
 ];
