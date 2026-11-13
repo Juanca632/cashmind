@@ -2,7 +2,8 @@ import { Feather } from '@react-native-vector-icons/feather';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet, TextInput, View } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { KeyboardAvoidingView, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { CATEGORIES, CATEGORY_LABELS, DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { categoryIcon } from '@/features/entries/components/category-icons';
@@ -17,13 +18,13 @@ import {
   type EntryInput,
 } from '@/features/entries/rules';
 import { addEntry, deleteEntry, editEntry } from '@/features/entries/service';
-import { ADD_LABELS, KIND_DESCRIPTIONS, KIND_LABELS, ENTRY_KINDS, type EntryKind } from '@/shared/kinds';
-import { addDays, dayKey, formatDay } from '@/shared/days';
+import { ADD_LABELS, ENTRY_KINDS, KIND_LABELS, NOTE_EXAMPLES, type EntryKind } from '@/shared/kinds';
+import { addDays, dayKey, dayToDate, formatDay } from '@/shared/days';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { FontFamily, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
+import { FontFamily, IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
@@ -101,6 +102,19 @@ function EntryForm({
     submit(() => (entry ? editEntry(db, entry.id, input, now) : addEntry(db, input, now)));
   }
 
+  /** Android's calendar, limited to the entry's month and to today. */
+  function pickDate() {
+    DateTimePickerAndroid.open({
+      value: dayToDate(date),
+      mode: 'date',
+      minimumDate: dayToDate(firstDay),
+      maximumDate: dayToDate(lastDay),
+      onValueChange: (_event, picked) => {
+        if (picked) setDate(dayKey(picked));
+      },
+    });
+  }
+
   function onDelete() {
     if (!entry) return;
     ask({
@@ -139,35 +153,30 @@ function EntryForm({
             {amountText.trim() !== '' && amountError ? <ErrorText>{entryErrorMessage(amountError)}</ErrorText> : null}
           </View>
 
-          <View style={styles.group}>
-            <View style={styles.kindRow}>
-              {ENTRY_KINDS.map((option) => {
-                const selected = option === kind;
-                return (
-                  <PressableScale
-                    key={option}
-                    accessibilityRole="radio"
-                    accessibilityLabel={KIND_LABELS[option]}
-                    accessibilityState={{ selected }}
-                    onPress={() => {
-                      if (option === kind) return;
-                      hapticTick();
-                      setKind(option);
-                      // Categories belong to a kind: a new kind starts again from Other.
-                      setCategory(DEFAULT_CATEGORY);
-                    }}
-                    style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
-                    <Feather name={KIND_ICONS[option]} size={IconSize.medium} color={selected ? theme.onAccent : theme.kindInk[option]} />
-                    <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
-                      {KIND_LABELS[option]}
-                    </ThemedText>
-                  </PressableScale>
-                );
-              })}
-            </View>
-            <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
-              {KIND_DESCRIPTIONS[kind]}
-            </ThemedText>
+          <View style={styles.kindRow}>
+            {ENTRY_KINDS.map((option) => {
+              const selected = option === kind;
+              return (
+                <PressableScale
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityLabel={KIND_LABELS[option]}
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    if (option === kind) return;
+                    hapticTick();
+                    setKind(option);
+                    // Categories belong to a kind: a new kind starts again from Other.
+                    setCategory(DEFAULT_CATEGORY);
+                  }}
+                  style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
+                  <Feather name={KIND_ICONS[option]} size={IconSize.medium} color={selected ? theme.onAccent : theme.kindInk[option]} />
+                  <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
+                    {KIND_LABELS[option]}
+                  </ThemedText>
+                </PressableScale>
+              );
+            })}
           </View>
 
           <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Category">
@@ -189,7 +198,7 @@ function EntryForm({
             ))}
           </View>
 
-          <TextField label="Note (optional)" placeholder="Cinema" value={note} onChangeText={setNote} maxLength={80} />
+          <TextField label="Note (optional)" placeholder={NOTE_EXAMPLES[kind]} value={note} onChangeText={setNote} maxLength={80} />
 
           <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
             <IconButton
@@ -198,7 +207,14 @@ function EntryForm({
               disabled={date <= firstDay}
               onPress={() => setDate(addDays(date, -1))}
             />
-            <ThemedText type="smallBold">{date === todayKey ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Date: ${formatDay(date)}. Pick a day`}
+              hitSlop={Layout.itemGap}
+              onPress={pickDate}
+              style={({ pressed }) => (pressed ? styles.pressed : undefined)}>
+              <ThemedText type="smallBold">{date === todayKey ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
+            </Pressable>
             <IconButton
               icon="chevron-right"
               accessibilityLabel="Next day"
@@ -239,9 +255,6 @@ const styles = StyleSheet.create({
     padding: 0,
     textAlign: 'center',
   },
-  centered: {
-    textAlign: 'center',
-  },
   kindRow: {
     flexDirection: 'row',
     gap: Layout.itemGap,
@@ -258,6 +271,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Layout.itemGap,
+  },
+  pressed: {
+    opacity: Opacity.pressed,
   },
   dateRow: {
     alignItems: 'center',

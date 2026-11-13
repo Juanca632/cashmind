@@ -6,7 +6,7 @@
 
 **Status**: Implemented
 
-**Input**: Migrated from the OpenSpec `expenses` capability; updated by 007-recorded-income, 008-simple-plan, 014-activity-screen and 015-categories. History is in `docs/openspec-archive/`.
+**Input**: Migrated from the OpenSpec `expenses` capability; updated by 007-recorded-income, 008-simple-plan, 014-activity-screen, 015-categories and 017-entry-and-daily-budget. History is in `docs/openspec-archive/`.
 
 This is a baseline spec: it describes the current behavior of the app and is kept up to date when a later feature changes that behavior.
 
@@ -125,7 +125,7 @@ Lets the user record what they earn, save or spend, in any month, and see that m
 
 ### Functional Requirements
 
-- **FR-001** (Record an expense): The system SHALL let the user record an entry with an amount in EUR greater than zero (cent precision), one kind (income, savings or expense) chosen in the form, one category of that kind (Other by default and after changing the kind, see FR-010), an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the entry is recorded.
+- **FR-001** (Record an expense): The system SHALL let the user record an entry with an amount in EUR greater than zero (cent precision), one kind (income, savings or expense) chosen in the form, one category of that kind (Other by default and after changing the kind, see FR-010), an optional note and a date. The date SHALL default to today, SHALL NOT be after today and stays within the month where the entry is recorded; it moves one day at a time or is picked from Android's calendar by tapping it (see 017). The note field's example fits the kind: Cinema, Salary or Emergency fund.
 - **FR-002** (Savings entries count towards the savings goal): Savings entries SHALL be money set aside and SHALL show as progress towards the month's savings goal (see 002).
 - **FR-003** (Edit and delete an expense): The system SHALL let the user change any field of an entry or delete it, in any month. Deleting SHALL ask for confirmation, and leaving the form with unsaved changes SHALL ask before discarding them.
 - **FR-004** (Past months can be corrected): The system SHALL let the user add, edit and delete entries in any month up to today. There is no editable period.

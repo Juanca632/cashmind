@@ -11,7 +11,7 @@ import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
 import { categorySplit, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
 import { addEntry } from '@/features/entries/service';
-import { monthSummary } from '@/features/home/month-summary';
+import { dailyAllowance, monthSummary, type DailyAllowance } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
@@ -116,7 +116,7 @@ export default function HomeScreen() {
           <View style={styles.monthCard}>
             <OverspentLayer visible={overspent} />
             {hasIncome ? (
-              <LeftToSpend left={summary.left} month={month} />
+              <LeftToSpend left={summary.left} month={month} daily={dailyAllowance(summary.left, today, month)} />
             ) : (
               <View style={styles.askIncome}>
                 <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
@@ -224,11 +224,18 @@ function OverspentLayer({ visible }: { visible: boolean }) {
 }
 
 /** The month in brief: what can still be spent after expenses and the savings goal. */
-function LeftToSpend({ left, month }: { left: number; month: string }) {
+function LeftToSpend({ left, month, daily }: { left: number; month: string; daily: DailyAllowance | null }) {
   const shown = useCountUp(left, month);
   const [whole, decimals] = formatEuros(shown).split(',');
+  const dailyText =
+    daily === null
+      ? null
+      : daily.daysLeft === 1
+        ? `Today: ${formatEuros(daily.cents)}`
+        : `≈ ${formatEuros(daily.cents)} / day · ${daily.daysLeft} days left`;
+  const label = `Left to spend: ${formatEuros(left)}${dailyText ? `. ${dailyText}` : ''}`;
   return (
-    <View style={styles.brief} accessible accessibilityLabel={`Left to spend: ${formatEuros(left)}`}>
+    <View style={styles.brief} accessible accessibilityLabel={label}>
       <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Left to spend</ThemedText>
       <View style={styles.figure}>
         <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.figureWhole, { color: Hero.text }]}>
@@ -236,6 +243,11 @@ function LeftToSpend({ left, month }: { left: number; month: string }) {
         </ThemedText>
         <ThemedText style={[styles.figureDecimals, { color: Hero.label }]}>,{decimals}</ThemedText>
       </View>
+      {dailyText ? (
+        <ThemedText type="small" style={{ color: Hero.label }}>
+          {dailyText}
+        </ThemedText>
+      ) : null}
     </View>
   );
 }
