@@ -6,7 +6,7 @@ const nov7 = new Date(2026, 10, 7);
 const dec3 = new Date(2026, 11, 3);
 const dec6 = new Date(2026, 11, 6);
 
-const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema' };
+const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema', category: 'leisure' };
 
 describe('day helpers', () => {
   it('builds day keys and moves across months and years', () => {
@@ -46,7 +46,7 @@ describe('validateEntry', () => {
   });
 
   it.each(['income', 'savings', 'expense'] as const)('accepts an entry of kind %s', (kind) => {
-    expect(validateEntry({ ...cinema, kind }, nov7)).toEqual([]);
+    expect(validateEntry({ ...cinema, kind, category: 'other' }, nov7)).toEqual([]);
   });
 
   it.each(['fixed', 'leisure', ''])('rejects the old or empty kind %p: only income, savings and expense exist', (kind) => {

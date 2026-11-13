@@ -89,7 +89,10 @@ describe('Three kinds of entry', () => {
     await startApp({ today: TODAY, entries: [salary] });
     await press('Add expense');
 
-    expect(screen.getAllByRole('radio').map((radio) => radio.props.accessibilityLabel)).toEqual(['Income', 'Savings', 'Expense']);
+    const radios = screen.getAllByRole('radio').map((radio) => radio.props.accessibilityLabel);
+    // The kinds come first; the rest are the categories of the kind (015-categories).
+    expect(radios.slice(0, 3)).toEqual(['Income', 'Savings', 'Expense']);
+    expect(radios.slice(3)).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other']);
   });
 
   it('The submit button follows the kind chosen', async () => {

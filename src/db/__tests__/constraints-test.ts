@@ -50,6 +50,50 @@ describe("The database rejects invalid data", () => {
     await expect(db.execAsync(entry("'2026-11-05'", kind, "100"))).rejects.toThrow();
   });
 
+  const categorized = (kind: string, category: string) =>
+    `INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', '${kind}', 100, 'x', '${category}')`;
+
+  it.each([
+    ["an unknown category", "expense", "food"],
+    ["an empty category", "expense", ""],
+    ["an income category on an expense", "expense", "salary"],
+    ["an expense category on income", "income", "groceries"],
+    ["a savings category on income", "income", "goal"],
+    ["an expense category on savings", "savings", "housing"],
+    ["a display label instead of the key", "expense", "Eating out"],
+  ])("A category that does not belong to the kind is refused: %s", async (_name, kind, category) => {
+    const db = await newDb();
+    await expect(db.execAsync(categorized(kind, category))).rejects.toThrow();
+    expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
+  });
+
+  it("Every category of every kind is accepted", async () => {
+    const db = await newDb();
+    const lists: Record<string, string[]> = {
+      expense: ["housing", "groceries", "transport", "eating_out", "leisure", "health", "subscriptions", "other"],
+      income: ["salary", "freelance", "benefits", "gifts", "other"],
+      savings: ["emergency_fund", "investments", "travel", "goal", "other"],
+    };
+    for (const [kind, categories] of Object.entries(lists)) {
+      for (const category of categories) await db.execAsync(categorized(kind, category));
+    }
+    expect(await db.getAllAsync("SELECT * FROM entry")).toHaveLength(18);
+  });
+
+  it("An entry written without a category is stored in Other", async () => {
+    const db = await newDb();
+    await db.execAsync(entry("'2026-11-05'", "'income'", "100"));
+    expect(await db.getAllAsync("SELECT category FROM entry")).toEqual([{ category: "other" }]);
+  });
+
+  it("A category cannot be changed to one of another kind or to nothing", async () => {
+    const db = await newDb();
+    await db.execAsync(categorized("expense", "groceries"));
+    await expect(db.execAsync("UPDATE entry SET category = 'salary'")).rejects.toThrow();
+    await expect(db.execAsync("UPDATE entry SET category = NULL")).rejects.toThrow();
+    expect(await db.getAllAsync("SELECT category FROM entry")).toEqual([{ category: "groceries" }]);
+  });
+
   it("Refused values leave nothing stored", async () => {
     const db = await newDb();
     await expect(db.execAsync(plan("'2026-07'", "101"))).rejects.toThrow();
@@ -86,6 +130,6 @@ describe("The database rejects invalid data", () => {
     const db = await newDb();
     const cols = async (t: string) => (await db.getAllAsync(`PRAGMA table_info(${t})`)).map((c: any) => c.name);
     expect(await cols("plan_version")).toEqual(["effective_month", "savings_pct"]);
-    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at"]);
+    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category"]);
   });
 });

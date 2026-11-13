@@ -6,10 +6,11 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
-import { defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
+import { categorySplit, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
 import { addEntry } from '@/features/entries/service';
 import { monthSummary } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
@@ -65,12 +66,13 @@ export default function HomeScreen() {
   const summary = monthSummary(totalsByKind(monthEntries), percent);
   const hasIncome = summary.income > 0;
   const list = firstEntries(entriesOfKind(monthEntries, selected), HOME_LIST_SIZE);
+  const split = selected ? categorySplit(monthEntries, selected) : [];
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
     repeatedFor.current = repeatKey;
     setRepeatedKey(repeatKey);
-    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income' } as const;
+    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income', category: 'other' } as const;
     const result = await addEntry(db, entry, new Date());
     if (result.ok) {
       hapticSuccess();
@@ -175,6 +177,7 @@ export default function HomeScreen() {
               onPress={() => openNewEntry(selected ?? undefined)}
             />
           </View>
+          {selected && split.length > 0 ? <CategorySplit kind={selected} shares={split} /> : null}
           <ThemedView type="backgroundElement" style={styles.activity}>
             <EntryList
               entries={list.shown}

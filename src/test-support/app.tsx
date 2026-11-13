@@ -3,10 +3,14 @@ import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testin
 import { insertEntry } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
 import { savePlanFromMonth } from '@/features/plan/repository';
+import type { EntryCategory } from '@/features/entries/categories';
 import type { EntryInput } from '@/features/entries/rules';
 
 import { resetDevice, seedDevice } from './fake-sqlite';
 import { RELEASED_SCHEMAS } from './released-schemas';
+
+/** An entry to seed; without a category it is recorded in Other, as entries from before categories were. */
+export type SeedEntry = Omit<EntryInput, 'category'> & { category?: EntryCategory };
 
 type Setup = {
   /** Local date the app thinks it is. */
@@ -14,7 +18,7 @@ type Setup = {
   /** Plans saved on the device: [savings percentage, month it applies from]. */
   plans?: [number, string][];
   /** Entries (income, savings and expenses) already recorded on the device. */
-  entries?: EntryInput[];
+  entries?: SeedEntry[];
   /** Raw SQL run last, to store rows the app itself would never write (damaged data). */
   raw?: string[];
 };
@@ -27,7 +31,7 @@ export async function startApp({ today, plans = [], entries = [], raw = [] }: Se
   await seedDevice(async (db) => {
     await migrateDbIfNeeded(db);
     for (const [percent, month] of plans) await savePlanFromMonth(db, percent, month);
-    for (const entry of entries) await insertEntry(db, entry);
+    for (const entry of entries) await insertEntry(db, { category: 'other', ...entry });
     for (const sql of raw) await db.execAsync(sql);
   });
   return renderRouter('./src/app');

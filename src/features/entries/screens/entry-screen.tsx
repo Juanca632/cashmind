@@ -4,6 +4,8 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
+import { CATEGORIES, CATEGORY_LABELS, DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
+import { categoryIcon } from '@/features/entries/components/category-icons';
 import { useEntry } from '@/features/entries/hooks/use-entry';
 import {
   ENTRY_MISSING,
@@ -79,9 +81,10 @@ function EntryForm({
   const theme = useTheme();
   const [amountText, setAmountText] = useState(entry ? centsToInput(entry.amountCents) : '');
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? defaultKind);
+  const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
   const [note, setNote] = useState(entry?.note ?? '');
   const [date, setDate] = useState(entry?.date ?? defaultDate);
-  const form = JSON.stringify({ amountText, kind, note, date });
+  const form = JSON.stringify({ amountText, kind, category, note, date });
   const [savedForm] = useState(form);
   const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
   const { dialog: confirmDialog, ask } = useConfirm();
@@ -92,7 +95,7 @@ function EntryForm({
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
-  const input: EntryInput = { date, kind, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim() };
+  const input: EntryInput = { date, kind, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim(), category };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
@@ -149,8 +152,11 @@ function EntryForm({
                   accessibilityLabel={KIND_LABELS[option]}
                   accessibilityState={{ selected }}
                   onPress={() => {
-                    if (option !== kind) hapticTick();
+                    if (option === kind) return;
+                    hapticTick();
                     setKind(option);
+                    // Categories belong to a kind: a new kind starts again from Other.
+                    setCategory(DEFAULT_CATEGORY);
                   }}
                   style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
                   <Feather name={KIND_ICONS[option]} size={18} color={selected ? theme.onAccent : theme.kindInk[option]} />
@@ -164,6 +170,33 @@ function EntryForm({
           <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
             {KIND_DESCRIPTIONS[kind]}
           </ThemedText>
+
+          <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Category">
+            {CATEGORIES[kind].map((option) => {
+              const selected = option === category;
+              return (
+                <PressableScale
+                  key={option}
+                  accessibilityRole="radio"
+                  accessibilityLabel={CATEGORY_LABELS[option]}
+                  accessibilityState={{ selected }}
+                  onPress={() => {
+                    if (option === category) return;
+                    hapticTick();
+                    setCategory(option);
+                  }}
+                  style={[
+                    styles.category,
+                    { backgroundColor: selected ? theme.kindTint[kind] : theme.backgroundElement, borderColor: selected ? theme.kindInk[kind] : 'transparent' },
+                  ]}>
+                  <Feather name={categoryIcon(kind, option)} size={16} color={theme.kindInk[kind]} />
+                  <ThemedText type="small" style={selected ? { color: theme.kindInk[kind] } : undefined}>
+                    {CATEGORY_LABELS[option]}
+                  </ThemedText>
+                </PressableScale>
+              );
+            })}
+          </View>
 
           <TextField label="Note (optional)" placeholder="Cinema" value={note} onChangeText={setNote} maxLength={80} />
 
@@ -229,6 +262,20 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     justifyContent: 'center',
     minHeight: 72,
+  },
+  categories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  category: {
+    alignItems: 'center',
+    borderRadius: Radius.full,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    gap: Spacing.one,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: Spacing.three,
   },
   dateRow: {
     alignItems: 'center',

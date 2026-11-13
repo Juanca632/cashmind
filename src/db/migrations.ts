@@ -194,4 +194,17 @@ export const MIGRATIONS: readonly Migration[] = [
         DROP TABLE expense;
       `),
   },
+  {
+    // Every entry gets a category from its kind's fixed list (specs/015-categories). Existing entries
+    // become 'other'; no row is changed in any other way.
+    version: 6,
+    up: (db) =>
+      db.execAsync(`
+        ALTER TABLE entry ADD COLUMN category TEXT NOT NULL DEFAULT 'other' CHECK (
+          (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+          OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+          OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+        );
+      `),
+  },
 ];
