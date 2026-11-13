@@ -1,7 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, type ListRenderItem } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EntryRow } from '@/features/entries/components/entry-list';
 import { KindFilter } from '@/features/entries/components/kind-filter';
@@ -10,14 +9,16 @@ import { EMPTY_KIND_TEXTS, entriesOfKind, isEntryKind, type Entry } from '@/feat
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
 import { formatMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { Spacing } from '@/shared/theme/theme';
+import { Layout } from '@/shared/theme/theme';
+import { EdgeFades } from '@/shared/ui/edge-fades';
+import { useScreenContent } from '@/shared/ui/screen-scroll';
 import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
 /** The whole month's entries, with a filter by kind. */
 export default function ActivityScreen() {
-  const insets = useSafeAreaInsets();
+  const content = useScreenContent();
   const today = useToday();
   const params = useLocalSearchParams<{ month?: string; kind?: string }>();
   const currentMonth = monthKey(today);
@@ -50,8 +51,9 @@ export default function ActivityScreen() {
             {kind ? EMPTY_KIND_TEXTS[kind] : 'Nothing was recorded this month.'}
           </ThemedText>
         }
-        contentContainerStyle={[styles.content, { paddingBottom: Spacing.five + insets.bottom }]}
+        contentContainerStyle={[content, styles.list]}
       />
+      <EdgeFades />
     </ThemedView>
   );
 }
@@ -64,14 +66,14 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  content: {
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+  /** The filters sit close under the header, so more of the list shows. */
+  list: {
+    paddingTop: Layout.itemGap,
   },
   header: {
-    marginBottom: Spacing.two,
+    marginBottom: Layout.itemGap,
   },
   empty: {
-    paddingVertical: Spacing.two,
+    paddingVertical: Layout.itemGap,
   },
 });

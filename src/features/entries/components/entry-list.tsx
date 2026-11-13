@@ -8,7 +8,7 @@ import { type Entry } from '@/features/entries/rules';
 import { KIND_LABELS } from '@/shared/kinds';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
-import { Radius, Spacing } from '@/shared/theme/theme';
+import { Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -97,17 +97,17 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
 
 const styles = StyleSheet.create({
   empty: {
-    paddingVertical: Spacing.two,
+    paddingVertical: Layout.itemGap,
   },
   row: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Layout.rowGap,
     justifyContent: 'space-between',
-    marginHorizontal: -Spacing.two,
-    minHeight: 62,
-    paddingHorizontal: Spacing.two,
+    marginHorizontal: -Layout.itemGap,
+    minHeight: Size.row,
+    paddingHorizontal: Layout.itemGap,
   },
   text: {
     flex: 1,

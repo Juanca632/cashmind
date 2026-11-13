@@ -2,7 +2,7 @@ import { Feather } from '@react-native-vector-icons/feather';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { KeyboardAvoidingView, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, TextInput, View } from 'react-native';
 
 import { CATEGORIES, CATEGORY_LABELS, DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { categoryIcon } from '@/features/entries/components/category-icons';
@@ -23,14 +23,17 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { FontFamily, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { IconButton } from '@/shared/ui/icon-button';
+import { Pill } from '@/shared/ui/pill';
 import { PressableScale } from '@/shared/ui/pressable-scale';
+import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { hapticTick } from '@/shared/haptics';
 import { DataError } from '@/shared/ui/data-error';
+import { MessageScreen } from '@/shared/ui/message-screen';
 import { ErrorText } from '@/shared/ui/error-text';
 import { TextField } from '@/shared/ui/text-field';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -44,7 +47,7 @@ export default function EntryScreen() {
   if (loaded.status === 'error') return <DataError />;
   if (loaded.status === 'loading') return <ThemedView style={styles.screen} />;
   const entry = loaded.data;
-  if (id !== null && !entry) return <Message text={ENTRY_MISSING} />;
+  if (id !== null && !entry) return <MessageScreen title={ENTRY_MISSING} />;
 
   const today = new Date();
 
@@ -55,14 +58,6 @@ export default function EntryScreen() {
       defaultDate={defaultEntryDate(params.month, today)}
       today={today}
     />
-  );
-}
-
-function Message({ text }: { text: string }) {
-  return (
-    <ThemedView style={[styles.screen, styles.content]}>
-      <ThemedText>{text}</ThemedText>
-    </ThemedView>
   );
 }
 
@@ -123,79 +118,75 @@ function EntryForm({
         <Stack.Screen options={{ title: entry ? 'Edit entry' : ADD_LABELS[kind] }} />
         {discardDialog}
         {confirmDialog}
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <View style={styles.amount}>
-            <TextInput
-              accessibilityLabel="Amount"
-              keyboardType="decimal-pad"
-              placeholder="0,00"
-              placeholderTextColor={theme.textSecondary}
-              maxLength={10}
-              autoFocus={!entry}
-              value={amountText}
-              onChangeText={setAmountText}
-              style={[styles.amountInput, { color: theme.text }]}
-            />
-            <ThemedText type="heading" themeColor="textSecondary">
-              €
+        <ScreenScroll>
+          <View style={styles.group}>
+            <View style={styles.amount}>
+              <TextInput
+                accessibilityLabel="Amount"
+                keyboardType="decimal-pad"
+                placeholder="0,00"
+                placeholderTextColor={theme.textSecondary}
+                maxLength={10}
+                autoFocus={!entry}
+                value={amountText}
+                onChangeText={setAmountText}
+                style={[styles.amountInput, { color: theme.text }]}
+              />
+              <ThemedText type="heading" themeColor="textSecondary">
+                €
+              </ThemedText>
+            </View>
+            {amountText.trim() !== '' && amountError ? <ErrorText>{entryErrorMessage(amountError)}</ErrorText> : null}
+          </View>
+
+          <View style={styles.group}>
+            <View style={styles.kindRow}>
+              {ENTRY_KINDS.map((option) => {
+                const selected = option === kind;
+                return (
+                  <PressableScale
+                    key={option}
+                    accessibilityRole="radio"
+                    accessibilityLabel={KIND_LABELS[option]}
+                    accessibilityState={{ selected }}
+                    onPress={() => {
+                      if (option === kind) return;
+                      hapticTick();
+                      setKind(option);
+                      // Categories belong to a kind: a new kind starts again from Other.
+                      setCategory(DEFAULT_CATEGORY);
+                    }}
+                    style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
+                    <Feather name={KIND_ICONS[option]} size={IconSize.medium} color={selected ? theme.onAccent : theme.kindInk[option]} />
+                    <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
+                      {KIND_LABELS[option]}
+                    </ThemedText>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
+              {KIND_DESCRIPTIONS[kind]}
             </ThemedText>
           </View>
-          {amountText.trim() !== '' && amountError ? <ErrorText>{entryErrorMessage(amountError)}</ErrorText> : null}
-
-          <View style={styles.kindRow}>
-            {ENTRY_KINDS.map((option) => {
-              const selected = option === kind;
-              return (
-                <PressableScale
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityLabel={KIND_LABELS[option]}
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    if (option === kind) return;
-                    hapticTick();
-                    setKind(option);
-                    // Categories belong to a kind: a new kind starts again from Other.
-                    setCategory(DEFAULT_CATEGORY);
-                  }}
-                  style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
-                  <Feather name={KIND_ICONS[option]} size={18} color={selected ? theme.onAccent : theme.kindInk[option]} />
-                  <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
-                    {KIND_LABELS[option]}
-                  </ThemedText>
-                </PressableScale>
-              );
-            })}
-          </View>
-          <ThemedText type="caption" themeColor="textSecondary" style={styles.centered}>
-            {KIND_DESCRIPTIONS[kind]}
-          </ThemedText>
 
           <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Category">
-            {CATEGORIES[kind].map((option) => {
-              const selected = option === category;
-              return (
-                <PressableScale
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityLabel={CATEGORY_LABELS[option]}
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    if (option === category) return;
-                    hapticTick();
-                    setCategory(option);
-                  }}
-                  style={[
-                    styles.category,
-                    { backgroundColor: selected ? theme.kindTint[kind] : theme.backgroundElement, borderColor: selected ? theme.kindInk[kind] : 'transparent' },
-                  ]}>
-                  <Feather name={categoryIcon(kind, option)} size={16} color={theme.kindInk[kind]} />
-                  <ThemedText type="small" style={selected ? { color: theme.kindInk[kind] } : undefined}>
-                    {CATEGORY_LABELS[option]}
-                  </ThemedText>
-                </PressableScale>
-              );
-            })}
+            {CATEGORIES[kind].map((option) => (
+              <Pill
+                key={option}
+                label={CATEGORY_LABELS[option]}
+                icon={categoryIcon(kind, option)}
+                accessibilityRole="radio"
+                weight="regular"
+                selected={option === category}
+                colors={{ fill: theme.kindTint[kind], ink: theme.kindInk[kind] }}
+                onPress={() => {
+                  if (option === category) return;
+                  hapticTick();
+                  setCategory(option);
+                }}
+              />
+            ))}
           </View>
 
           <TextField label="Note (optional)" placeholder="Cinema" value={note} onChangeText={setNote} maxLength={80} />
@@ -219,7 +210,7 @@ function EntryForm({
 
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
           {entry ? <Button label="Delete" variant="destructive" disabled={submitting} onPress={onDelete} /> : null}
-        </ScrollView>
+        </ScreenScroll>
       </ThemedView>
     </KeyboardAvoidingView>
   );
@@ -229,22 +220,22 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  content: {
-    gap: Spacing.three,
-    padding: Spacing.three,
+  /** A field with its error, or the kind choices with their description. */
+  group: {
+    gap: Layout.sectionGap,
   },
   amount: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
     justifyContent: 'center',
-    paddingVertical: Spacing.three,
+    paddingVertical: Layout.sectionGap,
   },
   amountInput: {
     fontFamily: FontFamily.bold,
     fontSize: 40,
     fontVariant: ['tabular-nums'],
-    minWidth: 120,
+    minWidth: Size.amountInput,
     padding: 0,
     textAlign: 'center',
   },
@@ -253,35 +244,26 @@ const styles = StyleSheet.create({
   },
   kindRow: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
   },
   kind: {
     alignItems: 'center',
-    borderRadius: Radius.field,
+    borderRadius: Radius.card,
     flex: 1,
-    gap: Spacing.one,
+    gap: Layout.tightGap,
     justifyContent: 'center',
-    minHeight: 72,
+    minHeight: Size.choice,
   },
   categories: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  category: {
-    alignItems: 'center',
-    borderRadius: Radius.full,
-    borderWidth: 1.5,
-    flexDirection: 'row',
-    gap: Spacing.one,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: Spacing.three,
+    gap: Layout.itemGap,
   },
   dateRow: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: MIN_TOUCH + Spacing.one,
+    minHeight: Size.control,
   },
 });

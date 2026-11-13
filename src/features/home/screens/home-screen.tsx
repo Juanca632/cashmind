@@ -2,9 +2,8 @@ import { Feather } from '@react-native-vector-icons/feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
@@ -19,7 +18,7 @@ import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { formatEuros, formatEurosCompact } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { FontFamily, Hero, MIN_TOUCH, Radius, Spacing } from '@/shared/theme/theme';
+import { BORDER_WIDTH, elevation, FontFamily, Hero, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { hapticSuccess, hapticTick } from '@/shared/haptics';
 import { useCountUp } from '@/shared/hooks/use-count-up';
@@ -27,13 +26,16 @@ import { PressableScale } from '@/shared/ui/pressable-scale';
 import { useToday } from '@/shared/hooks/use-today';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
+import { Card } from '@/shared/ui/card';
+import { LinkButton } from '@/shared/ui/link-button';
+import { Pill } from '@/shared/ui/pill';
+import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
-  const insets = useSafeAreaInsets();
   const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
@@ -55,7 +57,7 @@ export default function HomeScreen() {
   const repeatedFor = useRef<string | null>(null);
   const [repeatedKey, setRepeatedKey] = useState<string | null>(null);
 
-  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error') return <DataError />;
+  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error') return <DataError topInset />;
   if (plan.status === 'loading' || entries.status === 'loading' || previousIncome.status === 'loading') {
     return <ThemedView style={styles.screen} />;
   }
@@ -89,20 +91,16 @@ export default function HomeScreen() {
   };
   const openNewEntry = (kind?: EntryKind) => router.push({ pathname: '/entry', params: { month, kind } });
   const savingsDone = summary.goal > 0 && summary.saved >= summary.goal;
+  const overspent = hasIncome && summary.left < 0;
 
   return (
     <ThemedView style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Spacing.five + insets.bottom, paddingTop: Spacing.two + insets.top },
-        ]}>
+      <ScreenScroll topInset>
         <View style={styles.topRow}>
-          <Button
+          <Pill
             label={formatMonth(month)}
             icon="calendar"
             accessibilityLabel={`Month: ${formatMonth(month)}`}
-            variant="pill"
             onPress={() => router.push({ pathname: '/month-picker', params: { month } })}
           />
           {IS_DEMO ? (
@@ -110,31 +108,35 @@ export default function HomeScreen() {
               Demo data
             </ThemedText>
           ) : null}
-          {isPast ? null : <Button label="My plan" variant="pill" onPress={() => router.push('/plan')} />}
+          {isPast ? null : <Pill label="My plan" onPress={() => router.push('/plan')} />}
         </View>
 
-        <View style={styles.monthCard}>
-          <OverspentLayer visible={hasIncome && summary.left < 0} />
-          {hasIncome ? (
-            <LeftToSpend left={summary.left} month={month} />
-          ) : (
-            <View style={styles.askIncome}>
-              <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
-                Add this month&apos;s income
-              </ThemedText>
-              <View style={styles.cardActions}>
-                <CardPill label="Add income" onPress={() => openNewEntry('income')} />
-                {previousIncome.data !== null ? (
-                  <CardPill
-                    label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
-                    accessibilityLabel="Repeat last income"
-                    disabled={repeatedKey === repeatKey}
-                    onPress={() => repeatIncome(previousIncome.data as number)}
-                  />
-                ) : null}
+        {/* The shadow sits on its own view: the card clips its content to its rounded corners. */}
+        <View style={[styles.monthShadow, elevation(theme, overspent ? 'heroOverspent' : 'hero')]}>
+          <View style={styles.monthCard}>
+            <OverspentLayer visible={overspent} />
+            {hasIncome ? (
+              <LeftToSpend left={summary.left} month={month} />
+            ) : (
+              <View style={styles.askIncome}>
+                <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
+                  Add this month&apos;s income
+                </ThemedText>
+                <View style={styles.cardActions}>
+                  <Pill variant="hero" label="Add income" onPress={() => openNewEntry('income')} />
+                  {previousIncome.data !== null ? (
+                    <Pill
+                      variant="hero"
+                      label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
+                      accessibilityLabel="Repeat last income"
+                      disabled={repeatedKey === repeatKey}
+                      onPress={() => repeatIncome(previousIncome.data as number)}
+                    />
+                  ) : null}
+                </View>
               </View>
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         {hasIncome ? (
@@ -158,34 +160,24 @@ export default function HomeScreen() {
               <ThemedText type="smallBold" themeColor="textSecondary">
                 {selected ? TILE_TITLES[selected] : 'Activity'}
               </ThemedText>
-              {selected ? (
-                <Pressable
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.showAll, pressed && styles.disabled]}
-                  onPress={() => setSelected(null)}>
-                  <ThemedText type="small" style={{ color: theme.accentInk }}>
-                    Show all
-                  </ThemedText>
-                </Pressable>
-              ) : null}
+              {selected ? <LinkButton label="Show all" onPress={() => setSelected(null)} /> : null}
             </View>
-            <Button
+            <Pill
               label="Add"
               icon="plus"
               accessibilityLabel={ADD_LABELS[selected ?? 'expense']}
-              variant="pill"
               onPress={() => openNewEntry(selected ?? undefined)}
             />
           </View>
           {selected && split.length > 0 ? <CategorySplit kind={selected} shares={split} /> : null}
-          <ThemedView type="backgroundElement" style={styles.activity}>
+          <Card style={styles.activity}>
             <EntryList
               entries={list.shown}
               today={today}
               emptyText={emptyListText(selected, isPast)}
               onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
             />
-          </ThemedView>
+          </Card>
           {list.total > HOME_LIST_SIZE ? (
             <Button
               label={`See all (${list.total})`}
@@ -199,7 +191,7 @@ export default function HomeScreen() {
         {isPast ? (
           <Button label="Back to current month" variant="secondary" onPress={() => router.setParams({ month: currentMonth })} />
         ) : null}
-      </ScrollView>
+      </ScreenScroll>
     </ThemedView>
   );
 }
@@ -210,32 +202,6 @@ const TILE_TITLES: Record<EntryKind, string> = {
   savings: KIND_LABELS.savings,
   expense: 'Spent',
 };
-
-function CardPill({
-  label,
-  accessibilityLabel,
-  disabled = false,
-  onPress,
-}: {
-  label: string;
-  accessibilityLabel?: string;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.cardPill, disabled && styles.disabled]}>
-      <ThemedText type="smallBold" style={{ color: Hero.text }}>
-        {label}
-      </ThemedText>
-    </PressableScale>
-  );
-}
 
 function emptyListText(selected: EntryKind | null, isPast: boolean): string {
   if (selected) return EMPTY_KIND_TEXTS[selected];
@@ -296,9 +262,14 @@ function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, se
       accessibilityValue={{ text: `${value}, ${detail}` }}
       accessibilityState={{ selected: kind === selected }}
       onPress={() => onSelect(kind)}
-      style={[styles.tile, { backgroundColor: theme.kindTint[kind], borderColor: kind === selected ? color : 'transparent' }]}>
+      style={[
+        styles.tile,
+        // Tapped to filter the list, so they float like the other things you press.
+        elevation(theme, 'raised'),
+        { backgroundColor: theme.kindTint[kind], borderColor: kind === selected ? color : 'transparent' },
+      ]}>
       <View style={styles.tileTitle}>
-        <Feather name={KIND_ICONS[kind]} size={16} color={color} />
+        <Feather name={KIND_ICONS[kind]} size={IconSize.small} color={color} />
         <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
           {title}
         </ThemedText>
@@ -346,19 +317,18 @@ const styles = StyleSheet.create({
   centeredText: {
     textAlign: 'center',
   },
-  content: {
-    gap: Spacing.two + Spacing.one,
-    paddingHorizontal: Spacing.two + Spacing.one,
+  monthShadow: {
+    borderRadius: Radius.hero,
   },
   monthCard: {
     backgroundColor: Hero.background,
     overflow: 'hidden',
     borderRadius: Radius.hero,
     experimental_backgroundImage: Hero.gradient,
-    gap: Spacing.three,
+    gap: Layout.sectionGap,
     justifyContent: 'center',
-    minHeight: 168,
-    padding: Spacing.three,
+    minHeight: Size.hero,
+    padding: Layout.cardPadding,
   },
   overspent: {
     ...StyleSheet.absoluteFill,
@@ -366,8 +336,8 @@ const styles = StyleSheet.create({
   },
   goalTrack: {
     borderRadius: Radius.full,
-    height: 6,
-    marginTop: Spacing.one,
+    height: Size.progress,
+    marginTop: Layout.tightGap,
     overflow: 'hidden',
   },
   goalFill: {
@@ -382,27 +352,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  cardPill: {
-    backgroundColor: Hero.control,
-    borderRadius: Radius.full,
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: Spacing.three,
-  },
   askIncome: {
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.two,
+    gap: Layout.sectionGap,
+    paddingVertical: Layout.itemGap,
   },
   cardActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
     justifyContent: 'center',
   },
   brief: {
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: Layout.tightGap,
   },
   briefLabel: {
     fontFamily: FontFamily.semiBold,
@@ -428,15 +391,15 @@ const styles = StyleSheet.create({
   },
   tiles: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
   },
   tile: {
     borderRadius: Radius.card,
-    borderWidth: 1.5,
+    borderWidth: BORDER_WIDTH,
     flex: 1,
-    gap: Spacing.one,
+    gap: Layout.tightGap,
     minWidth: 0,
-    padding: Spacing.two + Spacing.one,
+    padding: Layout.tilePadding,
   },
   tileValue: {
     fontSize: 18,
@@ -445,33 +408,25 @@ const styles = StyleSheet.create({
   tileTitle: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.one,
+    gap: Layout.tightGap,
   },
   section: {
-    gap: Spacing.one,
+    gap: Layout.itemGap,
   },
   titleGroup: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.three,
+    gap: Layout.sectionGap,
   },
   activity: {
-    borderRadius: Radius.card,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    gap: 0,
+    paddingVertical: Layout.itemGap,
   },
   sectionTitle: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: MIN_TOUCH,
-    paddingLeft: Spacing.one,
-  },
-  showAll: {
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH,
-  },
-  disabled: {
-    opacity: 0.6,
+    // As tall as the pill it holds: a taller row would add space above the section.
+    minHeight: Size.pill,
   },
 });

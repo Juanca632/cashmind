@@ -31,8 +31,16 @@ const zone = (files, patterns) => ({
   rules: { 'no-restricted-imports': ['error', { patterns }] },
 });
 
-/** Screens receive the database only to hand it to services, so they may not query it themselves. */
-const noDirectQueries = {
+const SPACING_PROPS = 'Property[key.name=/^(padding|margin|gap|rowGap|columnGap|minHeight)/]';
+const TOKENS = '/^(Spacing|Layout|Size)$/';
+const USE_TOKENS = 'Use the shared Layout and Size tokens from src/shared/theme/theme.ts (add one there if needed).';
+
+/**
+ * Screens receive the database only to hand it to services, so they may not query it themselves.
+ * Screens and components also take every spacing and minimum height from the shared tokens, so the
+ * app keeps one rhythm. Flat config replaces this rule's options per block, so both live here.
+ */
+const screenRules = {
   files: ['src/app/**', 'src/features/*/screens/**', 'src/features/*/components/**', 'src/shared/ui/**'],
   ignores: TESTS,
   rules: {
@@ -43,6 +51,20 @@ const noDirectQueries = {
           'CallExpression[callee.property.name=/^(runAsync|execAsync|getAllAsync|getFirstAsync|withTransactionAsync|withExclusiveTransactionAsync|prepareAsync)$/]',
         message: 'Screens and components read through hooks and write through services.',
       },
+      { selector: `${SPACING_PROPS} > Literal[value!=0]`, message: USE_TOKENS },
+      {
+        selector: `Property[key.name=/^(width|height|minWidth|maxWidth|maxHeight|borderWidth|opacity|size)$/] > Literal[raw=/^[0-9.]+$/][value!=0][value!=1]`,
+        message: USE_TOKENS,
+      },
+      { selector: 'JSXAttribute[name.name="size"] > JSXExpressionContainer > Literal', message: USE_TOKENS },
+      { selector: "MemberExpression[object.name='Spacing']", message: USE_TOKENS },
+      { selector: `${SPACING_PROPS} > UnaryExpression > Literal`, message: USE_TOKENS },
+      {
+        selector: `${SPACING_PROPS} > BinaryExpression[left.object.name=${TOKENS}][right.object.name=${TOKENS}]`,
+        message: USE_TOKENS,
+      },
+      // A token plus a number is a new value in disguise; adding a safe-area inset is fine.
+      { selector: `${SPACING_PROPS} > BinaryExpression:has(> Literal)`, message: USE_TOKENS },
     ],
   },
 };
@@ -67,5 +89,5 @@ module.exports = defineConfig([
   ...featureZones('entries', [noFeatures('plan', 'home')]),
   ...featureZones('plan', [noFeatures('entries', 'home')]),
   ...featureZones('home', []),
-  noDirectQueries,
+  screenRules,
 ]);

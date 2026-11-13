@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { ThemedText } from '@/shared/ui/themed-text';
-import { FontFamily, Radius, Spacing } from '@/shared/theme/theme';
+import { FontFamily, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 type TextFieldProps = Omit<TextInputProps, 'style'> & {
@@ -32,19 +32,19 @@ export function TextField({ label, suffix, ...inputProps }: TextFieldProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.one,
+    gap: Layout.tightGap,
   },
   inputRow: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
-    minHeight: 52,
-    paddingHorizontal: Spacing.three,
+    minHeight: Size.control,
+    paddingHorizontal: Layout.cardPadding,
   },
   input: {
     flex: 1,
     fontFamily: FontFamily.medium,
     fontSize: 16,
-    paddingVertical: Spacing.two,
+    paddingVertical: Layout.itemGap,
   },
 });

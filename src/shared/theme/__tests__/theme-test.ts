@@ -1,4 +1,4 @@
-import { DARK, Hero, LIGHT, type Theme } from '@/shared/theme/theme';
+import { DARK, elevation, Hero, LIGHT, type Theme } from '@/shared/theme/theme';
 
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {
@@ -97,7 +97,6 @@ describe('The app follows the phone\'s theme', () => {
       savingsTrack: 'rgba(6, 95, 70, 0.3)',
       error: '#C92A2A',
       errorFill: '#C92A2A',
-      cardShadow: '0 2px 8px rgba(14, 17, 22, 0.06)',
     });
   });
 
@@ -119,6 +118,56 @@ describe('The app follows the phone\'s theme', () => {
       overspentGradient: 'linear-gradient(145deg, #8F1D16 0%, #B42318 60%, #C4320A 100%)',
       text: '#FFFFFF',
       label: '#DFF7EF',
+    });
+  });
+
+  describe('One rule for shadows', () => {
+    it('Three levels: every theme defines a non-empty shadow for raised, hero and heroOverspent', () => {
+      for (const t of [LIGHT, DARK]) {
+        for (const level of ['raised', 'hero', 'heroOverspent'] as const) {
+          expect(typeof t.shadow[level]).toBe('string');
+          expect(t.shadow[level].length).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it('Three levels: flat adds no style; the other levels give the theme shadow', () => {
+      for (const t of [LIGHT, DARK]) {
+        expect(elevation(t, 'flat')).toEqual({});
+        expect(elevation(t, 'raised')).toEqual({ boxShadow: t.shadow.raised });
+        expect(elevation(t, 'hero')).toEqual({ boxShadow: t.shadow.hero });
+        expect(elevation(t, 'heroOverspent')).toEqual({ boxShadow: t.shadow.heroOverspent });
+      }
+    });
+
+    it('Three levels: the month card shadow is stronger than the raised one (larger blur or larger offset)', () => {
+      const geometry = (shadow: string) => {
+        const [, y = 0, blur = 0] = shadow.replace(/rgba?\([^)]*\)/g, '').match(/-?[\d.]+/g)?.map(Number) ?? [];
+        return { y, blur };
+      };
+      const hero = geometry(LIGHT.shadow.hero);
+      const raised = geometry(LIGHT.shadow.raised);
+      expect(hero.blur > raised.blur || hero.y > raised.y).toBe(true);
+    });
+
+    it('Month card: the shadow is green, and red while overspent', () => {
+      const rgb = (s: string) => (s.match(/rgba?\(([^)]*)\)/)?.[1] ?? '').split(',').map((x) => parseFloat(x));
+      const [hr, hg, hb] = rgb(LIGHT.shadow.hero);
+      expect(hg).toBeGreaterThan(hr);
+      expect(hg).toBeGreaterThan(hb);
+      const [or, og, ob] = rgb(LIGHT.shadow.heroOverspent);
+      expect(or).toBeGreaterThan(og);
+      expect(or).toBeGreaterThan(ob);
+    });
+
+    it('Dark mode: shadows are dark and subtle (low-opacity near-black)', () => {
+      for (const level of ['raised', 'hero', 'heroOverspent'] as const) {
+        const m = DARK.shadow[level].match(/rgba\(([^)]*)\)/);
+        expect(m).not.toBeNull();
+        const [r, g, b, a] = (m as RegExpMatchArray)[1].split(',').map((x) => parseFloat(x));
+        expect(Math.max(r, g, b)).toBeLessThan(80);
+        expect(a).toBeLessThanOrEqual(0.6);
+      }
     });
   });
 });

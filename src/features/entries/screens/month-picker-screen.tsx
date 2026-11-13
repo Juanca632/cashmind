@@ -7,7 +7,7 @@ import { IconButton } from '@/shared/ui/icon-button';
 import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
-import { Radius, Spacing } from '@/shared/theme/theme';
+import { BORDER_WIDTH, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
 import { formatShortMonth, isValidMonthKey, monthKey, monthsOfYear, yearOf } from '@/shared/months';
 import { useFirstEntryMonth } from '@/features/entries/hooks/use-first-entry-month';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -59,7 +59,7 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
               style={[
                 styles.cell,
                 { backgroundColor: isSelected ? theme.accent : theme.backgroundElement },
-                isCurrent && !isSelected && { borderColor: theme.accentInk, borderWidth: 2 },
+                isCurrent && !isSelected && { borderColor: theme.accentInk, borderWidth: BORDER_WIDTH },
                 isSelected && { outlineColor: theme.accentOutline, outlineWidth: 1 },
                 isFuture && styles.disabled,
               ]}>
@@ -77,8 +77,8 @@ function MonthPicker({ currentMonth, minYear }: { currentMonth: string; minYear:
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    gap: Spacing.four,
-    padding: Spacing.three,
+    gap: Layout.looseGap,
+    padding: Layout.screenPadding,
   },
   yearRow: {
     alignItems: 'center',
@@ -88,16 +88,17 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: Layout.itemGap,
   },
   cell: {
     alignItems: 'center',
     borderRadius: Radius.card,
     flexBasis: '30%',
     flexGrow: 1,
-    paddingVertical: Spacing.four,
+    justifyContent: 'center',
+    minHeight: Size.choice,
   },
   disabled: {
-    opacity: 0.3,
+    opacity: Opacity.disabled,
   },
 });
