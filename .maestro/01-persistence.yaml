@@ -1,0 +1,38 @@
+appId: com.juancrestrepo.cashmind
+# Smoke: entries and totals survive an app restart (real database). Specs 001, 002, 015.
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow:
+    file: subflows/add-first-income.yaml
+    env:
+      AMOUNT: "2000"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Expense
+      CATEGORY: Groceries
+      AMOUNT: "12,50"
+      NOTE: "Cinema"
+      SUBMIT: "Add expense"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Savings
+      CATEGORY: Other
+      AMOUNT: "50"
+      NOTE: "Piggy bank"
+      SUBMIT: "Add to savings"
+# 2000 - 12,50 - max(400, 50) = 1 587,50.
+- assertVisible: ".*Left to spend.*1.587,50.€.*"
+# Restart without clearing the data.
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 15000
+- assertVisible: "Cinema.*"
+- assertVisible: "Piggy bank.*"
+- assertVisible: ".*12,50.€.*"
+- assertVisible: ".*of 400.€.*"
+- assertVisible: ".*Left to spend.*1.587,50.€.*"

@@ -1,0 +1,13 @@
+appId: com.juancrestrepo.cashmind
+---
+# Env: AMOUNT (e.g. "2000"). From an empty month: uses the "Add income" call to action.
+- tapOn: "Add income"
+- tapOn: "Amount"
+- inputText: ${AMOUNT}
+- hideKeyboard
+- tapOn:
+    text: "Add income"
+    index: 1
+- extendedWaitUntil:
+    visible: "Left to spend"
+    timeout: 10000

@@ -1,0 +1,46 @@
+appId: com.juancrestrepo.cashmind
+# Smoke: edit an entry's amount and category, then delete it through the confirm dialog (001 US3, 015).
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow:
+    file: subflows/add-first-income.yaml
+    env:
+      AMOUNT: "2000"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Expense
+      CATEGORY: Other
+      AMOUNT: "30"
+      NOTE: "Pizza"
+      SUBMIT: "Add expense"
+- assertVisible: "Pizza.*"
+- tapOn: "Pizza.*"
+- runFlow:
+    file: subflows/replace-text.yaml
+    env:
+      FIELD: "Amount"
+      VALUE: "45,00"
+- tapOn: "Health"
+- tapOn: "Save changes"
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 10000
+- assertVisible: ".*45,00.€.*"
+- assertNotVisible: ".*30,00.€.*"
+# 2000 - 45 - 400 = 1 555,00.
+- assertVisible: ".*Left to spend.*1.555,00.€.*"
+# Delete: cancel first, then confirm.
+- tapOn: "Pizza.*"
+- tapOn: "Delete"
+- assertVisible: "Delete this entry?"
+- tapOn: "Cancel"
+- assertNotVisible: "Delete this entry?"
+- tapOn: "Delete"
+- assertVisible: "Delete this entry?"
+- tapOn: "Delete"
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 10000
+- assertNotVisible: "Pizza.*"
+- assertVisible: ".*Left to spend.*1.600,00.€.*"
