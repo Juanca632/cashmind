@@ -149,6 +149,8 @@ export const Opacity = {
   /** Disabled on the month card's gradient, where 0.4 would almost vanish. */
   disabledOnHero: 0.6,
   pressed: 0.6,
+  /** The top of the soft fill under a chart's line; it fades to nothing at the bottom. */
+  chartFill: 0.25,
 } as const;
 
 /** Icon sizes: inside pills, buttons and lines; on badges and choices; standalone icon buttons. */
@@ -187,6 +189,10 @@ export const Size = {
   percentInput: 72,
   /** A right-aligned percentage column. */
   percentColumn: 44,
+  /** The drawing area of a chart. */
+  chart: 88,
+  /** The dot that marks a chart's last point. */
+  chartDot: 4,
 } as const;
 
 /** Minimum size of anything tappable. */
