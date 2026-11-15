@@ -195,9 +195,6 @@ export const Size = {
   chartDot: 4,
 } as const;
 
-/** Minimum size of anything tappable. */
-export const MIN_TOUCH = Size.control;
-
 /** Each Manrope weight is its own font family: use these instead of fontWeight. */
 export const FontFamily = {
   regular: 'Manrope_400Regular',

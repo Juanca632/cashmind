@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-15
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "On home, below the tiles, a section with a chart of the month's spending day by day, to see how steep the curve is for the day of the month I'm on, against the pace of my plan. Monthly fixed costs are always there, so they must be handled: both the curve and the pace line start from the fixed costs recorded on the 1st. The tiles get a section title like Activity has."
 

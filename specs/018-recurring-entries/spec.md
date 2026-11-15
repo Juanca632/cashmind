@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-15
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Mark any entry (income, savings or expense) as 'Repeat every month': it repeats every month until you stop it. When the app is opened in a new month, every recurring entry is recorded in it on the 1st. Skipped months are not filled and past months never change. A section in My plan lists what repeats every month, with a monthly total, to review, change or stop it."
 
