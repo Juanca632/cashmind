@@ -73,25 +73,31 @@ def page(name, w, h, body):
 
 
 # 1. Screen map
-b = box(50, 270, 280, 210, BLUE_L, BLUE, [
+b = box(50, 330, 280, 210, BLUE_L, BLUE, [
     ("Home", 34, 700, BLUE), ("index.tsx", 20, 400, MUTED, MONO),
-    ("Left to spend card", 21, 400, INK), ("Income, Spent, Savings", 21, 400, INK), ("Activity with Add", 21, 400, INK)])
+    ("Left to spend, per day", 21, 400, INK), ("Income, Spent, Savings", 21, 400, INK), ("Activity with Add", 21, 400, INK)])
 first_level = [
-    (115, "My plan", "plan.tsx", "One savings percentage", "My plan"),
-    (395, "Month picker", "month-picker.tsx", "Go to past months", "Tap month"),
-    (565, "Entry", "entry.tsx", "Add, edit or delete", "Add or tap"),
+    (40, "My plan", "plan.tsx", "Savings % and Every month", "My plan"),
+    (210, "Month picker", "month-picker.tsx", "Go to past months", "Tap month"),
+    (380, "Entry", "entry.tsx", "Add, edit or delete", "Add or tap"),
+    (550, "Activity", "activity.tsx", "All entries, filtered", "See all"),
 ]
 for y, t, f, d, l in first_level:
     b += box(560, y, 340, 140, TEAL_L, TEAL, [(t, 28, 700, TEAL), (f, 19, 400, MUTED, MONO), (d, 20, 400, INK)])
     b += arrow([(390, y + 70), (556, y + 70)], BLUE, "b")
     b += text(475, y + 56, l, 20, 500, BLUE)
-b += f'<polyline points="330,375 390,375" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
-b += f'<line x1="390" y1="185" x2="390" y2="635" stroke="{BLUE}" stroke-width="2.5"/>'
-b += rect(50, 740, 850, 160, SLATE_L, SLATE_L, 12, 0)
-b += text(80, 782, "No income yet: the card asks for it (Add income, Repeat last income).", 22, 500, INK, "start")
-b += text(80, 824, "All screens return to Home. The plan starts at 20 % until you save one.", 22, 500, INK, "start")
-b += text(80, 866, "Past month: My plan is hidden; its entries can still be corrected.", 22, 500, INK, "start")
-page("1-app-map", 960, 930, b)
+b += box(1020, 40, 300, 140, PURPLE_L, PURPLE, [
+    ("Every month", 28, 700, PURPLE), ("recurring.tsx", 19, 400, MUTED, MONO), ("Edit or stop an item", 20, 400, INK)])
+b += arrow([(900, 110), (1016, 110)], PURPLE, "p")
+b += text(958, 96, "Tap item", 18, 500, PURPLE)
+b += f'<polyline points="330,435 390,435" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
+b += f'<line x1="390" y1="110" x2="390" y2="620" stroke="{BLUE}" stroke-width="2.5"/>'
+b += rect(50, 760, 1270, 200, SLATE_L, SLATE_L, 12, 0)
+b += text(80, 802, "No income yet: the card asks for it (Add income, Repeat last income).", 22, 500, INK, "start")
+b += text(80, 844, "All screens return to Home. The plan starts at 20 % until you save one.", 22, 500, INK, "start")
+b += text(80, 886, "Past month: My plan is hidden; its entries can still be corrected.", 22, 500, INK, "start")
+b += text(80, 928, "Entry also opens from Activity (tap an entry) and from My plan (Add an every-month item).", 22, 500, INK, "start")
+page("1-app-map", 1360, 990, b)
 
 # 2. Monthly calculation
 cards = [
@@ -108,17 +114,19 @@ segs = [(40, 594, "Spent", "900 €", BLUE, BLUE_L), (634, 264, "Goal kept", "40
 for x, w, n, v, c, l in segs:
     b += box(x, 385, w, 120, l, c, [(n, 25, 700, c), (v, 28, 700, INK)])
 b += text(700, 540, "Income 2000 €", 20, 700, MUTED)
-b += rect(40, 570, 1320, 110, SLATE_L, SLATE_L, 12, 0)
+b += rect(40, 570, 1320, 190, SLATE_L, SLATE_L, 12, 0)
 b += text(70, 613, "Saved more than the goal: the saved amount counts instead (save 600 € → 2000 − 900 − 600 = 500 €).", 21, 500, INK, "start")
 b += text(70, 653, "Goal rounded down to the cent. Left to spend can be negative. No income yet: Home asks for it.", 21, 500, INK, "start")
-page("2-month-calculation", 1400, 710, b)
+b += text(70, 693, "Current month: Home also shows left ÷ days left, today included, rounded down (700 € ÷ 10 days = 70 € a day).", 21, 500, INK, "start")
+b += text(70, 733, "Every-month items are recorded on the 1st as normal entries, so they count like any other.", 21, 500, INK, "start")
+page("2-month-calculation", 1400, 790, b)
 
 # 3. Architecture
 b = rect(30, 30, 1050, 960, "#fafbfc", SLATE, 26, 3)
 b += text(70, 76, "Your Android phone", 26, 700, SLATE, "start")
 b += box(70, 100, 680, 170, BLUE_L, BLUE, [
     ("Screens", 30, 700, BLUE), ("src/app + features/*/screens", 20, 400, MUTED, MONO),
-    ("Home · My plan", 21, 400, INK), ("Month picker · Entry", 22, 400, INK)])
+    ("Home · My plan · Activity", 21, 400, INK), ("Month picker · Entry · Every month", 21, 400, INK)])
 b += box(70, 370, 320, 150, TEAL_L, TEAL, [
     ("Hooks", 28, 700, TEAL), ("features/*/hooks", 20, 400, MUTED, MONO), ("Read and reload", 21, 400, INK)])
 b += box(430, 370, 320, 150, PURPLE_L, PURPLE, [
@@ -127,7 +135,7 @@ b += box(70, 620, 680, 150, AMBER_L, AMBER, [
     ("Repositories", 28, 700, AMBER), ("features/*/repository.ts", 20, 400, MUTED, MONO),
     ("The only place with SQL", 22, 400, INK), ("Check the format of what they read", 20, 400, INK)])
 b += box(70, 870, 680, 110, SLATE_L, SLATE, [
-    ("SQLite: cashmind.db", 28, 700, SLATE), ("plan_version · entry", 20, 400, INK, MONO)])
+    ("SQLite: cashmind.db", 28, 700, SLATE), ("plan_version · entry · recurring", 20, 400, INK, MONO)])
 b += box(800, 100, 250, 670, PURPLE_L, PURPLE, [
     ("Rules", 30, 700, PURPLE), ("features/*/rules.ts", 18, 400, MUTED, MONO), (" ", 16, 400, INK),
     ("Pure rules", 23, 700, INK), ("no database", 20, 400, INK), ("no screens", 20, 400, INK), (" ", 16, 400, INK),
@@ -168,44 +176,48 @@ def table(x, y, w, title, sub, color, light, rows):
 
 
 b = box(30, 24, 330, 92, SLATE_L, SLATE, [("STRICT tables", 25, 700, SLATE), ("with CHECK rules", 19, 400, INK)])
-b += box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Everything links by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
-t1, h1 = table(200, 200, 430, "plan_version", "One row per plan change", BLUE, BLUE_L, [
+b += box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Entries link by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
+t1, h1 = table(30, 200, 360, "plan_version", "One row per plan change", BLUE, BLUE_L, [
     ("effective_month", "TEXT · PK", True), ("savings_pct", "INTEGER 0 to 100", False)])
-
-
-b = box(30, 24, 330, 92, SLATE_L, SLATE, [("STRICT tables", 25, 700, SLATE), ("with CHECK rules", 19, 400, INK)])
-b += box(440, 24, 520, 92, PURPLE_L, PURPLE, [("Everything links by month", 25, 700, PURPLE), ("'YYYY-MM', for example '2026-11'", 19, 400, INK, MONO)])
-t1, h1 = table(200, 200, 430, "plan_version", "One row per plan change", BLUE, BLUE_L, [
-    ("effective_month", "TEXT · PK", True), ("savings_pct", "INTEGER 0 to 100", False)])
-t3, h3 = table(760, 200, 340, "entry", "Each income, saving or expense", AMBER, AMBER_L, [
+t3, h3 = table(470, 200, 420, "entry", "Each income, saving or expense", AMBER, AMBER_L, [
     ("id", "INTEGER · PK", True), ("date", "'YYYY-MM-DD'", True), ("kind", "3 values", False),
-    ("amount_cents", "INTEGER > 0", False), ("note", "TEXT", False), ("created_at", "TEXT", False)])
-b += t1 + t3
-b += arrow([(500, 116), (425, 196)], BLUE, "b", dash="8 6")
-b += arrow([(860, 116), (930, 196)], AMBER, "a", dash="8 6")
-b += text(1060, 160, "first 7 chars of date", 17, 500, AMBER)
-b += text(415, 450, "A month with no row uses the latest", 18, 500, BLUE)
-b += text(415, 476, "earlier one, else 20 %", 18, 500, BLUE)
-b += rect(30, 640, 1340, 140, SLATE_L, SLATE_L, 12, 0)
+    ("category", "fixed list", False), ("amount_cents", "INTEGER > 0", False), ("note", "TEXT", False),
+    ("created_at", "TEXT", False), ("recurring_id", "FK or empty", False)])
+t4, h4 = table(1010, 200, 360, "recurring", "One row per every-month item", PURPLE, PURPLE_L, [
+    ("id", "INTEGER · PK", True), ("kind", "3 values", False), ("category", "fixed list", False),
+    ("amount_cents", "INTEGER > 0", False), ("note", "TEXT", False), ("active", "0 or 1", False),
+    ("last_month", "'YYYY-MM'", False)])
+b += t1 + t3 + t4
+b += arrow([(1006, 560), (894, 560)], PURPLE, "p", dash="8 6")
+b += text(950, 535, "recurring_id", 15, 500, PURPLE)
+b += arrow([(300, 116), (260, 196)], BLUE, "b", dash="8 6")
+b += arrow([(700, 116), (700, 196)], AMBER, "a", dash="8 6")
+b += text(850, 160, "first 7 chars of date", 17, 500, AMBER)
+b += text(210, 440, "A month with no row uses", 18, 500, BLUE)
+b += text(210, 466, "the latest earlier one,", 18, 500, BLUE)
+b += text(210, 492, "else 20 %", 18, 500, BLUE)
+b += rect(30, 740, 1340, 180, SLATE_L, SLATE_L, 12, 0)
 for i, s_ in enumerate(["Money is integer cents: 12,50 € is stored as 1250. kind: expense, savings or income.",
-                        "A month's income is the sum of its income rows. No foreign keys: the month is the link.",
-                        "Only what you type is stored: the goal and what is left to spend are computed."]):
-    b += text(60, 680 + i * 40, s_, 22, 500, INK, "start")
+                        "A month's income is the sum of its income rows. Plans link to entries by month, not by key.",
+                        "Only what you type is stored: the goal and what is left to spend are computed.",
+                        "Every-month items are copied into entry on the 1st, once per month, keeping recurring_id."]):
+    b += text(60, 780 + i * 40, s_, 22, 500, INK, "start")
 # Migration steps
-b += text(30, 850, "Migration steps (src/db/migrations.ts): each runs once, in order, in its own transaction", 23, 700, SLATE, "start")
-y0 = 935
-b += f'<line x1="170" y1="{y0}" x2="1170" y2="{y0}" stroke="{LINE}" stroke-width="4"/>'
+b += text(30, 970, "Migration steps (src/db/migrations.ts): each runs once, in order, in its own transaction", 23, 700, SLATE, "start")
+y0 = 1055
+b += f'<line x1="110" y1="{y0}" x2="1280" y2="{y0}" stroke="{LINE}" stroke-width="4"/>'
 nodes = [("v1", "Start", "first structure"), ("v2", "Fixed list", "fixed_item table"),
-         ("v3", "Income rows", "income in expense"), ("v4", "Simple plan", "savings_pct"), ("v5", "Rename", "expense to entry")]
+         ("v3", "Income rows", "income in expense"), ("v4", "Simple plan", "savings_pct"), ("v5", "Rename", "expense to entry"),
+         ("v6", "Categories", "entry.category"), ("v7", "Every month", "recurring table")]
 for i, (v, a_, c) in enumerate(nodes):
-    x = 170 + i * 250
-    now = i == 4
+    x = 110 + i * 195
+    now = i == 6
     b += f'<circle cx="{x}" cy="{y0}" r="44" fill="{TEAL_L if now else "#ffffff"}" stroke="{TEAL if now else LINE}" stroke-width="3"/>'
     b += text(x, y0 + 10, v, 28, 700, TEAL if now else MUTED)
-    b += text(x, y0 + 85, a_, 24, 700, INK) + text(x, y0 + 119, c, 21, 400, INK)
-b += text(1170, y0 - 60, "CURRENT", 18, 700, TEAL)
-b += rect(30, 1100, 1340, 100, RED_L, RED_L, 12, 0)
-b += text(60, 1140, "v5: the expense table became entry and bucket became kind; every row kept.", 20, 500, INK, "start")
-b += text(60, 1178, "A failed step is rolled back and the app shows a message. A database newer than the app also shows one.", 20, 500, INK, "start")
-page("4-database", 1400, 1230, b)
+    b += text(x, y0 + 85, a_, 22, 700, INK) + text(x, y0 + 119, c, 18, 400, INK)
+b += text(1280, y0 - 60, "CURRENT", 18, 700, TEAL)
+b += rect(30, 1210, 1340, 100, RED_L, RED_L, 12, 0)
+b += text(60, 1250, "Every step keeps the rows: v5 renamed expense to entry, v6 set old entries to Other, v7 left them not repeating.", 20, 500, INK, "start")
+b += text(60, 1288, "A failed step is rolled back and the app shows a message. A database newer than the app also shows one.", 20, 500, INK, "start")
+page("4-database", 1400, 1340, b)
 print(f"Diagrams written to {OUT}")
