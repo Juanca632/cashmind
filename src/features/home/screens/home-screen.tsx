@@ -1,7 +1,7 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 
@@ -10,7 +10,7 @@ import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
 import { categorySplit, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
-import { addEntry } from '@/features/entries/service';
+import { addEntry, recordRecurringEntries } from '@/features/entries/service';
 import { dailyAllowance, monthSummary, type DailyAllowance } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
@@ -34,12 +34,38 @@ import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
+/**
+ * Home first records the current month's monthly entries, then shows the month, so a new month
+ * opens with them already there. It runs again when the month changes while the app is open.
+ */
 export default function HomeScreen() {
+  const db = useSQLiteContext();
+  const today = useToday();
+  const currentMonth = monthKey(today);
+  const [recordedMonth, setRecordedMonth] = useState<string | null>(null);
+  // A ref, not state: the effect may run twice for one month, and the month is recorded once.
+  const recordingFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (recordingFor.current === currentMonth) return;
+    recordingFor.current = currentMonth;
+    // A failure leaves the month as it is and shows it; returning to the app tries again.
+    recordRecurringEntries(db, today)
+      .catch(() => {
+        recordingFor.current = null;
+      })
+      .then(() => setRecordedMonth(currentMonth));
+  }, [db, currentMonth, today]);
+
+  if (recordedMonth !== currentMonth) return <ThemedView style={styles.screen} />;
+  return <HomeMonth today={today} />;
+}
+
+function HomeMonth({ today }: { today: Date }) {
   const db = useSQLiteContext();
   const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
-  const today = useToday();
   const currentMonth = monthKey(today);
   // Ignore invalid or future months in the URL and fall back to the current month.
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;

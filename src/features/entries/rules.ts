@@ -15,9 +15,42 @@ export type Entry = {
   amountCents: number;
   note: string;
   category: EntryCategory;
+  /** The monthly item this entry was recorded by or marked from; null when it never repeated. */
+  recurringId: number | null;
 };
 
-export type EntryInput = Omit<Entry, 'id'>;
+export type EntryInput = Omit<Entry, 'id' | 'recurringId'>;
+
+/** An entry that is recorded again on the 1st of every new month until it is stopped. */
+export type RecurringItem = {
+  id: number;
+  kind: EntryKind;
+  category: EntryCategory;
+  amountCents: number;
+  note: string;
+  active: boolean;
+  /** The latest month 'YYYY-MM' that already has this item's entry. */
+  lastMonth: string;
+};
+
+/** What can change on a monthly item; its kind is fixed. */
+export type RecurringInput = Pick<RecurringItem, 'category' | 'amountCents' | 'note'>;
+
+export const RECURRING_MISSING = 'This monthly entry no longer exists.';
+
+/** The same amount and category checks as an entry, for the item's fixed kind. */
+export function validateRecurring(kind: EntryKind, input: RecurringInput): EntryError[] {
+  const errors: EntryError[] = [];
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
+  else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
+  if (!isCategoryOf(kind, input.category)) errors.push('category-invalid');
+  return errors;
+}
+
+/** What the monthly expenses add up to; repeating income and savings are not costs. */
+export function fixedCostsCents(items: readonly Pick<RecurringItem, 'kind' | 'amountCents' | 'active'>[]): number {
+  return items.reduce((sum, item) => (item.active && item.kind === 'expense' ? sum + item.amountCents : sum), 0);
+}
 
 export type EntryError = 'amount-not-positive' | 'amount-too-large' | 'kind-invalid' | 'date-invalid' | 'category-invalid';
 

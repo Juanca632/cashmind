@@ -3,11 +3,13 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { KeyboardAvoidingView, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
 
-import { CATEGORIES, CATEGORY_LABELS, DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
-import { categoryIcon } from '@/features/entries/components/category-icons';
+import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
+import { AmountField } from '@/features/entries/components/amount-field';
+import { CategoryChoices } from '@/features/entries/components/category-choices';
 import { useEntry } from '@/features/entries/hooks/use-entry';
+import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import {
   ENTRY_MISSING,
   defaultEntryDate,
@@ -20,33 +22,35 @@ import {
 import { addEntry, deleteEntry, editEntry } from '@/features/entries/service';
 import { ADD_LABELS, ENTRY_KINDS, KIND_LABELS, NOTE_EXAMPLES, type EntryKind } from '@/shared/kinds';
 import { addDays, dayKey, dayToDate, formatDay } from '@/shared/days';
+import { monthKey } from '@/shared/months';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { FontFamily, IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
+import { IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { IconButton } from '@/shared/ui/icon-button';
-import { Pill } from '@/shared/ui/pill';
 import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { hapticTick } from '@/shared/haptics';
 import { DataError } from '@/shared/ui/data-error';
 import { MessageScreen } from '@/shared/ui/message-screen';
 import { ErrorText } from '@/shared/ui/error-text';
+import { SwitchRow } from '@/shared/ui/switch-row';
 import { TextField } from '@/shared/ui/text-field';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
 export default function EntryScreen() {
-  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string }>();
+  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string }>();
   const id = params.id ? Number(params.id) : null;
   const loaded = useEntry(id);
+  const item = useRecurringItem(loaded.status === 'ready' ? (loaded.data?.recurringId ?? null) : null);
 
-  if (loaded.status === 'error') return <DataError />;
-  if (loaded.status === 'loading') return <ThemedView style={styles.screen} />;
+  if (loaded.status === 'error' || item.status === 'error') return <DataError />;
+  if (loaded.status === 'loading' || item.status === 'loading') return <ThemedView style={styles.screen} />;
   const entry = loaded.data;
   if (id !== null && !entry) return <MessageScreen title={ENTRY_MISSING} />;
 
@@ -57,6 +61,8 @@ export default function EntryScreen() {
       entry={entry}
       defaultKind={params.kind === 'savings' || params.kind === 'income' ? params.kind : 'expense'}
       defaultDate={defaultEntryDate(params.month, today)}
+      // An entry repeats while its item is active; Add from My plan starts with repeat on.
+      initialRepeat={entry ? item.data?.active === true : params.repeat === '1'}
       today={today}
     />
   );
@@ -66,11 +72,13 @@ function EntryForm({
   entry,
   defaultKind,
   defaultDate,
+  initialRepeat,
   today,
 }: {
   entry: Entry | null;
   defaultKind: EntryKind;
   defaultDate: string;
+  initialRepeat: boolean;
   today: Date;
 }) {
   const db = useSQLiteContext();
@@ -80,7 +88,8 @@ function EntryForm({
   const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
   const [note, setNote] = useState(entry?.note ?? '');
   const [date, setDate] = useState(entry?.date ?? defaultDate);
-  const form = JSON.stringify({ amountText, kind, category, note, date });
+  const [repeat, setRepeat] = useState(initialRepeat);
+  const form = JSON.stringify({ amountText, kind, category, note, date, repeat });
   const [savedForm] = useState(form);
   const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
   const { dialog: confirmDialog, ask } = useConfirm();
@@ -91,6 +100,8 @@ function EntryForm({
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
+  // Only this month's entries can repeat; past months never change.
+  const canRepeat = formMonth === monthKey(today);
   const input: EntryInput = { date, kind, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim(), category };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
@@ -99,7 +110,8 @@ function EntryForm({
 
   function onSave() {
     const now = new Date();
-    submit(() => (entry ? editEntry(db, entry.id, input, now) : addEntry(db, input, now)));
+    const choice = canRepeat ? { repeat } : {};
+    submit(() => (entry ? editEntry(db, entry.id, input, now, choice) : addEntry(db, input, now, choice)));
   }
 
   /** Android's calendar, limited to the entry's month and to today. */
@@ -133,25 +145,12 @@ function EntryForm({
         {discardDialog}
         {confirmDialog}
         <ScreenScroll>
-          <View style={styles.group}>
-            <View style={styles.amount}>
-              <TextInput
-                accessibilityLabel="Amount"
-                keyboardType="decimal-pad"
-                placeholder="0,00"
-                placeholderTextColor={theme.textSecondary}
-                maxLength={10}
-                autoFocus={!entry}
-                value={amountText}
-                onChangeText={setAmountText}
-                style={[styles.amountInput, { color: theme.text }]}
-              />
-              <ThemedText type="heading" themeColor="textSecondary">
-                €
-              </ThemedText>
-            </View>
-            {amountText.trim() !== '' && amountError ? <ErrorText>{entryErrorMessage(amountError)}</ErrorText> : null}
-          </View>
+          <AmountField
+            value={amountText}
+            onChangeText={setAmountText}
+            error={amountError ? entryErrorMessage(amountError) : null}
+            autoFocus={!entry}
+          />
 
           <View style={styles.kindRow}>
             {ENTRY_KINDS.map((option) => {
@@ -179,24 +178,7 @@ function EntryForm({
             })}
           </View>
 
-          <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Category">
-            {CATEGORIES[kind].map((option) => (
-              <Pill
-                key={option}
-                label={CATEGORY_LABELS[option]}
-                icon={categoryIcon(kind, option)}
-                accessibilityRole="radio"
-                weight="regular"
-                selected={option === category}
-                colors={{ fill: theme.kindTint[kind], ink: theme.kindInk[kind] }}
-                onPress={() => {
-                  if (option === category) return;
-                  hapticTick();
-                  setCategory(option);
-                }}
-              />
-            ))}
-          </View>
+          <CategoryChoices kind={kind} value={category} onChange={setCategory} />
 
           <TextField label="Note (optional)" placeholder={NOTE_EXAMPLES[kind]} value={note} onChangeText={setNote} maxLength={80} />
 
@@ -224,6 +206,8 @@ function EntryForm({
           </View>
           {errors.includes('date-invalid') ? <ErrorText>{entryErrorMessage('date-invalid')}</ErrorText> : null}
 
+          {canRepeat ? <SwitchRow label="Repeat every month" value={repeat} onValueChange={setRepeat} /> : null}
+
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
           {entry ? <Button label="Delete" variant="destructive" disabled={submitting} onPress={onDelete} /> : null}
         </ScreenScroll>
@@ -236,25 +220,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  /** A field with its error, or the kind choices with their description. */
-  group: {
-    gap: Layout.sectionGap,
-  },
-  amount: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Layout.itemGap,
-    justifyContent: 'center',
-    paddingVertical: Layout.sectionGap,
-  },
-  amountInput: {
-    fontFamily: FontFamily.bold,
-    fontSize: 40,
-    fontVariant: ['tabular-nums'],
-    minWidth: Size.amountInput,
-    padding: 0,
-    textAlign: 'center',
-  },
   kindRow: {
     flexDirection: 'row',
     gap: Layout.itemGap,
@@ -266,11 +231,6 @@ const styles = StyleSheet.create({
     gap: Layout.tightGap,
     justifyContent: 'center',
     minHeight: Size.choice,
-  },
-  categories: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Layout.itemGap,
   },
   pressed: {
     opacity: Opacity.pressed,

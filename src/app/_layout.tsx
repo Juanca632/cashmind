@@ -50,6 +50,7 @@ export default function RootLayout() {
             <Stack.Screen name="month-picker" options={{ title: 'Pick a month' }} />
             <Stack.Screen name="entry" options={{ title: 'Entry' }} />
             <Stack.Screen name="activity" options={{ title: 'Activity' }} />
+            <Stack.Screen name="recurring" options={{ title: 'Every month' }} />
           </Stack>
         </ThemeProvider>
       </SQLiteProvider>

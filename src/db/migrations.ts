@@ -207,4 +207,26 @@ export const MIGRATIONS: readonly Migration[] = [
         );
       `),
   },
+  {
+    // Entries can repeat every month (specs/018-recurring-entries). Adds a table and a link column;
+    // existing entries keep every value and do not repeat.
+    version: 7,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE recurring (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+          category TEXT NOT NULL CHECK (
+            (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+            OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+            OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+          ),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          note TEXT NOT NULL DEFAULT '',
+          active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+          last_month TEXT NOT NULL CHECK (last_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]')
+        ) STRICT;
+        ALTER TABLE entry ADD COLUMN recurring_id INTEGER REFERENCES recurring(id);
+      `),
+  },
 ];

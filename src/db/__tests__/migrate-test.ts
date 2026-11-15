@@ -241,6 +241,13 @@ describe("Updates never lose or break data (real list)", () => {
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
     `,
+    7: `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 20);
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-10-01', 'income', 150000, 'Pay', 'salary');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
+    `,
   };
   const monthly = (date: string, cents: number) => ({ date, kind: "income", amount_cents: cents, note: "Monthly income", category: "other" });
   /** The entries every released version ends with, once the clock says it is 9 November 2026. */
@@ -265,10 +272,11 @@ describe("Updates never lose or break data (real list)", () => {
     5: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "other" }],
     // Version 6 already has categories: they are kept as they are.
     6: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
+    7: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
   };
   const expectedRest = (released: number) => [
-    { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema", category: released === 6 ? "leisure" : "other" },
-    { date: "2026-11-06", kind: "expense", amount_cents: 90000, note: "", category: released === 6 ? "housing" : "other" },
+    { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema", category: released >= 6 ? "leisure" : "other" },
+    { date: "2026-11-06", kind: "expense", amount_cents: 90000, note: "", category: released >= 6 ? "housing" : "other" },
   ];
   const entriesOf = (db: any) =>
     db.getAllAsync("SELECT date, kind, amount_cents, note, category FROM entry ORDER BY date, id");
@@ -413,7 +421,7 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version")).toEqual([
         { effective_month: "2026-07", savings_pct: 30 },
       ]);
-      expect(await version(db)).toBe(6);
+      expect(await version(db)).toBe(7);
     });
 
     it("A database with no entries upgrades to an empty entry table", async () => {
@@ -421,12 +429,61 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
     });
 
-    it("The structure of a new install is the saved released structure of version 6", async () => {
+    it("The structure of a new install is the saved released structure of version 7", async () => {
       const fresh = createFakeDb() as any;
       await runMigrations(fresh, MIGRATIONS);
       const saved = createFakeDb() as any;
-      await saved.execAsync(RELEASED_SCHEMAS[6]);
+      await saved.execAsync(RELEASED_SCHEMAS[7]);
       expect(await structure(saved)).toEqual(await structure(fresh));
+    });
+  });
+
+  describe("Existing data is kept (step 7: recurring entries)", () => {
+    const upgradeFromV6 = async (data: string) => {
+      const db = createFakeDb() as any;
+      await db.execAsync(RELEASED_SCHEMAS[6]);
+      await db.execAsync(data);
+      await db.execAsync("PRAGMA user_version = 6");
+      await runMigrations(db, MIGRATIONS);
+      return db;
+    };
+    const old = `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 0);
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (3, '2026-10-01', 'income', 200000, 'Salary', '2026-10-01 07:00:00', 'salary');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (8, '2026-10-02', 'expense', 1250, 'Cinema', '2026-10-02 08:15:00', 'leisure');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (9, '2026-10-03', 'savings', 30000, '', '2026-10-03 09:30:00', 'goal');
+    `;
+
+    it("Every entry and plan is kept unchanged and no entry repeats", async () => {
+      const db = await upgradeFromV6(old);
+      expect(await db.getAllAsync("SELECT id, date, kind, amount_cents, note, created_at, category, recurring_id FROM entry ORDER BY id")).toEqual([
+        { id: 3, date: "2026-10-01", kind: "income", amount_cents: 200000, note: "Salary", created_at: "2026-10-01 07:00:00", category: "salary", recurring_id: null },
+        { id: 8, date: "2026-10-02", kind: "expense", amount_cents: 1250, note: "Cinema", created_at: "2026-10-02 08:15:00", category: "leisure", recurring_id: null },
+        { id: 9, date: "2026-10-03", kind: "savings", amount_cents: 30000, note: "", created_at: "2026-10-03 09:30:00", category: "goal", recurring_id: null },
+      ]);
+      expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version ORDER BY effective_month")).toEqual([
+        { effective_month: "2026-07", savings_pct: 30 },
+        { effective_month: "2026-09", savings_pct: 0 },
+      ]);
+      expect(await version(db)).toBe(7);
+    });
+
+    it("The recurring table exists and is empty", async () => {
+      const db = await upgradeFromV6(old);
+      expect(await db.getAllAsync("SELECT * FROM recurring")).toEqual([]);
+    });
+
+    it("A database with no data upgrades to empty tables", async () => {
+      const db = await upgradeFromV6("");
+      expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
+      expect(await db.getAllAsync("SELECT * FROM recurring")).toEqual([]);
+    });
+
+    it("New entries continue after the old ids", async () => {
+      const db = await upgradeFromV6(old);
+      await db.runAsync("INSERT INTO entry (date, kind, amount_cents) VALUES ('2026-10-04', 'expense', 100)");
+      expect((await db.getAllAsync("SELECT id FROM entry ORDER BY id")).map((r: any) => r.id)).toEqual([3, 8, 9, 10]);
     });
   });
 

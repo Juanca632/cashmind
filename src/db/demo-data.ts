@@ -10,7 +10,7 @@ function monthAt(today: Date, offset: number): string {
 
 type Entry = [day: number, kind: 'income' | 'savings' | 'expense', cents: number, note: string, category: EntryCategory];
 
-/** Bills every month has, recorded as ordinary expenses. */
+/** Bills every month has. Rent repeats every month (see seedDemoData); the others are ordinary expenses. */
 const BILLS: Entry[] = [
   [2, 'expense', 70000, 'Rent', 'housing'],
   [4, 'expense', 6000, 'Transport', 'transport'],
@@ -33,7 +33,13 @@ const MONTHS: Entry[][] = [
  */
 export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM entry; DELETE FROM plan_version;');
+    await db.execAsync('DELETE FROM entry; DELETE FROM recurring; DELETE FROM plan_version;');
+
+    // Rent repeats every month, so My plan shows a monthly entry; this month already has it.
+    const rent = await db.runAsync(
+      "INSERT INTO recurring (kind, category, amount_cents, note, last_month) VALUES ('expense', 'housing', 70000, 'Rent', ?)",
+      monthAt(today, 0),
+    );
 
     const plans: [string, number][] = [
       [monthAt(today, -5), 20],
@@ -50,12 +56,13 @@ export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<voi
         // The current month only goes up to today, so nothing is dated in the future.
         const safeDay = offset === 0 ? Math.min(day, today.getDate()) : day;
         await db.runAsync(
-          'INSERT INTO entry (date, kind, amount_cents, note, category) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO entry (date, kind, amount_cents, note, category, recurring_id) VALUES (?, ?, ?, ?, ?, ?)',
           `${month}-${String(safeDay).padStart(2, '0')}`,
           kind,
           cents,
           note,
           category,
+          note === 'Rent' ? rent.lastInsertRowId : null,
         );
       }
     }
