@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-13
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Show on the month card how much can be spent per day for the rest of the month. In the entry form, pick the date from Android's calendar instead of only stepping day by day, show a note example that fits the kind, and remove the kind description under the kind choices, which categories made redundant."
 

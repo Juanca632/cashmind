@@ -1,7 +1,7 @@
 import { Feather } from '@react-native-vector-icons/feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { useReducedMotion } from 'react-native-reanimated';
 
@@ -10,8 +10,9 @@ import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
 import { categorySplit, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
-import { addEntry } from '@/features/entries/service';
-import { dailyAllowance, monthSummary, type DailyAllowance } from '@/features/home/month-summary';
+import { addEntry, recordRecurringEntries } from '@/features/entries/service';
+import { SpendingPaceChart } from '@/features/home/components/spending-pace-chart';
+import { dailyAllowance, monthSummary, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
@@ -34,12 +35,38 @@ import { DataError } from '@/shared/ui/data-error';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
+/**
+ * Home first records the current month's monthly entries, then shows the month, so a new month
+ * opens with them already there. It runs again when the month changes while the app is open.
+ */
 export default function HomeScreen() {
+  const db = useSQLiteContext();
+  const today = useToday();
+  const currentMonth = monthKey(today);
+  const [recordedMonth, setRecordedMonth] = useState<string | null>(null);
+  // A ref, not state: the effect may run twice for one month, and the month is recorded once.
+  const recordingFor = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (recordingFor.current === currentMonth) return;
+    recordingFor.current = currentMonth;
+    // A failure leaves the month as it is and shows it; returning to the app tries again.
+    recordRecurringEntries(db, today)
+      .catch(() => {
+        recordingFor.current = null;
+      })
+      .then(() => setRecordedMonth(currentMonth));
+  }, [db, currentMonth, today]);
+
+  if (recordedMonth !== currentMonth) return <ThemedView style={styles.screen} />;
+  return <HomeMonth today={today} />;
+}
+
+function HomeMonth({ today }: { today: Date }) {
   const db = useSQLiteContext();
   const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
-  const today = useToday();
   const currentMonth = monthKey(today);
   // Ignore invalid or future months in the URL and fall back to the current month.
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
@@ -140,18 +167,28 @@ export default function HomeScreen() {
         </View>
 
         {hasIncome ? (
-          <View style={styles.tiles}>
-            <KindTile kind="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
-            <KindTile kind="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
-            <KindTile
-              kind="savings"
-              value={formatEurosCompact(summary.saved)}
-              detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
-              progress={summary.goal > 0 ? Math.min(summary.saved / summary.goal, 1) : undefined}
-              selected={selected}
-              onSelect={toggle}
-            />
+          <View style={styles.section}>
+            <SectionTitle>Overview</SectionTitle>
+            <View style={styles.tiles}>
+              <KindTile kind="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
+              <KindTile kind="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
+              <KindTile
+                kind="savings"
+                value={formatEurosCompact(summary.saved)}
+                detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
+                progress={summary.goal > 0 ? Math.min(summary.saved / summary.goal, 1) : undefined}
+                selected={selected}
+                onSelect={toggle}
+              />
+            </View>
           </View>
+        ) : null}
+
+        {hasIncome ? (
+          <SpendingPaceSection
+            pace={spendingPace(monthEntries, summary.income - Math.max(summary.goal, summary.saved), month, today)}
+            month={month}
+          />
         ) : null}
 
         <View style={styles.section}>
@@ -193,6 +230,37 @@ export default function HomeScreen() {
         ) : null}
       </ScreenScroll>
     </ThemedView>
+  );
+}
+
+/** The small title above each block of home. */
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <ThemedText type="smallBold" themeColor="textSecondary">
+      {children}
+    </ThemedText>
+  );
+}
+
+/**
+ * The month's spending against the plan's pace. In the current month the chart is headed by one
+ * sentence saying how it stands today; what was spent is already on the Spent tile.
+ */
+function SpendingPaceSection({ pace, month }: { pace: SpendingPace; month: string }) {
+  const today = pace.paceTodayCents;
+  const line = `The plan's pace goes from ${formatEuros(pace.startCents)} to ${formatEuros(pace.endCents)}.`;
+  const label =
+    today === null
+      ? `Spending pace: ${formatEuros(pace.spentCents)} spent this month, the plan allowed ${formatEuros(pace.endCents)}. ${line}`
+      : `Spending pace: ${formatEuros(pace.spentCents)} spent so far, your pace today is ${formatEuros(today)}. ${line}`;
+  return (
+    <View style={styles.section}>
+      <SectionTitle>Spending pace</SectionTitle>
+      <Card>
+        {today === null ? null : <ThemedText type="smallBold">{paceSentence(pace.spentCents, today, formatEuros)}</ThemedText>}
+        <SpendingPaceChart pace={pace} month={month} accessibilityLabel={label} />
+      </Card>
+    </View>
   );
 }
 

@@ -49,6 +49,10 @@ Only test files and test helpers. Never edit anything else in `src/`, the specs,
 - For navigation use `renderRouter`, `screen` and `testRouter` from `expo-router/testing-library`, and await them. Matchers such as `expect(screen).toHavePathname()` are available.
 - Tests use invented data only.
 
+## Maestro E2E flows
+
+A small smoke suite of Maestro flows in `.maestro/` (read its README) runs on the release APK and covers only what Jest cannot see: the real database across restarts, the native date picker, the keyboard, the back button and dialogs. Keep it to a handful of flows and a few minutes in total; behavior belongs in Jest. When a feature adds something only a real device can show, add it to a flow, from the spec, with the same black-box rules. Every flow starts with `- runFlow: subflows/launch-clean.yaml`, which clears the app data. Flows run on the emulator's real date, so never hard-code dates. Amounts use a no-break space before "€" and a narrow no-break space between thousands, so match those spaces with `.`. On a new entry the amount field opens the keyboard, and Android's first back only closes it: `hideKeyboard` before `back`. Do not run flows on a device yourself; the `e2e-tester` runs them.
+
 ## When a test fails
 
 Check first that the test itself is right: setup, async handling, and a correct reading of the scenario. If it is right, leave it failing and report it. Do not change the expectation to match the code, skip the test, or use `it.failing`.

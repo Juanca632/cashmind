@@ -122,4 +122,37 @@ export const RELEASED_SCHEMAS: Record<number, string> = {
       )
     ) STRICT;
   `,
+  7: `
+    CREATE TABLE "plan_version" (
+      effective_month TEXT PRIMARY KEY NOT NULL CHECK (effective_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+      savings_pct INTEGER NOT NULL CHECK (savings_pct BETWEEN 0 AND 100)
+    ) STRICT;
+    CREATE TABLE entry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+      kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+      amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      category TEXT NOT NULL DEFAULT 'other' CHECK (
+        (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+        OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+        OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+      ),
+      recurring_id INTEGER REFERENCES recurring(id)
+    ) STRICT;
+    CREATE TABLE recurring (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+      category TEXT NOT NULL CHECK (
+        (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+        OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+        OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+      ),
+      amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+      note TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+      last_month TEXT NOT NULL CHECK (last_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]')
+    ) STRICT;
+  `,
 };

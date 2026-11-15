@@ -117,12 +117,12 @@ describe("The database rejects invalid data", () => {
     ]);
   });
 
-  it("All tables enforce column types and only the entry and plan tables exist", async () => {
+  it("All tables enforce column types and only the entry, plan and recurring tables exist", async () => {
     const db = await newDb();
     const tables = await db.getAllAsync(
       "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     );
-    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version"]);
+    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version", "recurring"]);
     for (const t of tables) expect(t.sql).toMatch(/STRICT\s*$/i);
   });
 
@@ -130,6 +130,62 @@ describe("The database rejects invalid data", () => {
     const db = await newDb();
     const cols = async (t: string) => (await db.getAllAsync(`PRAGMA table_info(${t})`)).map((c: any) => c.name);
     expect(await cols("plan_version")).toEqual(["effective_month", "savings_pct"]);
-    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category"]);
+    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category", "recurring_id"]);
+    expect(await cols("recurring")).toEqual(["id", "kind", "category", "amount_cents", "note", "active", "last_month"]);
+  });
+});
+
+describe("The database rejects invalid recurring items", () => {
+  const item = (over: Partial<Record<string, string>> = {}) => {
+    const v = { kind: "'expense'", category: "'housing'", amount: "90000", active: "1", month: "'2026-11'", ...over };
+    return `INSERT INTO recurring (kind, category, amount_cents, note, active, last_month) VALUES (${v.kind}, ${v.category}, ${v.amount}, 'Rent', ${v.active}, ${v.month})`;
+  };
+
+  it("A valid item is accepted, active by default, with no note by default", async () => {
+    const db = await newDb();
+    await db.execAsync(item());
+    await db.execAsync("INSERT INTO recurring (kind, category, amount_cents, last_month) VALUES ('income', 'salary', 100, '2026-11')");
+    expect(await db.getAllAsync("SELECT kind, category, amount_cents, note, active, last_month FROM recurring ORDER BY id")).toEqual([
+      { kind: "expense", category: "housing", amount_cents: 90000, note: "Rent", active: 1, last_month: "2026-11" },
+      { kind: "income", category: "salary", amount_cents: 100, note: "", active: 1, last_month: "2026-11" },
+    ]);
+  });
+
+  it.each([
+    ["zero amount", { amount: "0" }],
+    ["negative amount", { amount: "-5" }],
+    ["decimal amount", { amount: "12.5" }],
+    ["text amount", { amount: "'abc'" }],
+    ["an income category on an expense", { category: "'salary'" }],
+    ["an unknown category", { category: "'food'" }],
+    ["an expense category on income", { kind: "'income'", category: "'housing'" }],
+    ["a savings category on income", { kind: "'income'", category: "'goal'" }],
+    ["an expense category on savings", { kind: "'savings'", category: "'housing'" }],
+    ["an unknown kind", { kind: "'fixed'" }],
+    ["active 2", { active: "2" }],
+    ["active -1", { active: "-1" }],
+    ["a month without a dash", { month: "'202611'" }],
+    ["a month with letters", { month: "'2026-ab'" }],
+    ["a month with a day", { month: "'2026-11-01'" }],
+  ])("Refused: %s", async (_name, over) => {
+    const db = await newDb();
+    await expect(db.execAsync(item(over))).rejects.toThrow();
+    expect(await db.getAllAsync("SELECT * FROM recurring")).toEqual([]);
+  });
+
+  it("A category cannot be changed to one of another kind", async () => {
+    const db = await newDb();
+    await db.execAsync(item());
+    await expect(db.execAsync("UPDATE recurring SET category = 'salary'")).rejects.toThrow();
+  });
+
+  it("An entry can link to an item and a link to a missing item is refused", async () => {
+    const db = await newDb();
+    await db.execAsync(item());
+    await db.execAsync("INSERT INTO entry (date, kind, amount_cents, recurring_id) VALUES ('2026-11-01', 'expense', 100, 1)");
+    expect(await db.getAllAsync("SELECT recurring_id FROM entry")).toEqual([{ recurring_id: 1 }]);
+    await expect(
+      db.execAsync("INSERT INTO entry (date, kind, amount_cents, recurring_id) VALUES ('2026-11-01', 'expense', 100, 99)"),
+    ).rejects.toThrow();
   });
 });

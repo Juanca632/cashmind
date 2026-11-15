@@ -1,0 +1,12 @@
+appId: com.juancrestrepo.cashmind
+---
+# Env: FIELD (label of the text field), VALUE (new text). Replaces the whole content.
+# A plain tap can leave the cursor in the middle of the text, and eraseText only deletes
+# backwards from the cursor. Tapping at 95 % of the field's width, beyond the text,
+# puts the cursor at the end, so eraseText (up to 30 characters) clears everything.
+- tapOn:
+    text: ${FIELD}
+    point: "95%,50%"
+- eraseText: 30
+- inputText: ${VALUE}
+- hideKeyboard

@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-13
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Styles are scattered: every screen picks its own padding, gaps and control sizes, and the same pill style is copied in several places. Centralize the styles so the whole app looks symmetric and coherent, building new screens is easier, and a style changes in one place. The home Add pill looks too padded, and the See all / Back to current month buttons and the gaps around them do not match the rest."
 

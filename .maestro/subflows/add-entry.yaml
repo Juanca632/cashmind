@@ -1,0 +1,24 @@
+appId: com.juancrestrepo.cashmind
+---
+# Env: KIND (Income | Savings | Expense), CATEGORY ("Other" by default), AMOUNT, NOTE ("" for none),
+# SUBMIT (button text: "Add income" | "Add to savings" | "Add expense").
+# Starts on home of a month that already has income.
+- tapOn: "Add expense"
+- tapOn: ${KIND}
+- tapOn: ${CATEGORY}
+- tapOn: "Amount"
+- inputText: ${AMOUNT}
+- hideKeyboard
+- runFlow:
+    when:
+      true: ${NOTE.length > 0}
+    commands:
+      - tapOn: "Note (optional)"
+      - inputText: ${NOTE}
+      - hideKeyboard
+- tapOn:
+    text: ${SUBMIT}
+    index: 1
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 10000

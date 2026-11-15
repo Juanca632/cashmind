@@ -1,0 +1,32 @@
+appId: com.juancrestrepo.cashmind
+# Smoke: tapping Spent lists only expenses and shows the split by category (001 US8, 015 US2).
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow:
+    file: subflows/add-first-income.yaml
+    env:
+      AMOUNT: "2000"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Expense
+      CATEGORY: Housing
+      AMOUNT: "650"
+      NOTE: "Rent"
+      SUBMIT: "Add expense"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Expense
+      CATEGORY: Groceries
+      AMOUNT: "350"
+      NOTE: ""
+      SUBMIT: "Add expense"
+- tapOn: "Spent"
+- assertVisible: "By category"
+- assertVisible: "Show all"
+# 650 of 1000 and 350 of 1000.
+- assertVisible: ".*65.*%.*"
+- assertVisible: ".*35.*%.*"
+- tapOn: "Spent"
+- assertNotVisible: "By category"

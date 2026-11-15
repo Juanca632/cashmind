@@ -1,3 +1,4 @@
+import { Feather } from '@react-native-vector-icons/feather';
 import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
@@ -8,7 +9,7 @@ import { type Entry } from '@/features/entries/rules';
 import { KIND_LABELS } from '@/shared/kinds';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
-import { Layout, Radius, Size } from '@/shared/theme/theme';
+import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -70,9 +71,15 @@ function entryTitle(entry: Entry): string {
 /** One entry: category icon, title, day and amount. Memoized for long lists. */
 export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
   const theme = useTheme();
+  const amount = `${entry.kind === 'income' ? '+' : ''}${formatEuros(entry.amountCents)}`;
+  const repeats = entry.recurringId !== null;
   return (
     <Pressable
       accessibilityRole="button"
+      // A repeating entry says so; the others read their texts as they are.
+      accessibilityLabel={
+        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, repeats every month` : undefined
+      }
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
@@ -81,15 +88,17 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
         <ThemedText type="smallBold" numberOfLines={1}>
           {entryTitle(entry)}
         </ThemedText>
-        <ThemedText type="caption" themeColor="textSecondary">
-          {dayTitle(entry.date, today)}
-        </ThemedText>
+        <View style={styles.day}>
+          <ThemedText type="caption" themeColor="textSecondary">
+            {dayTitle(entry.date, today)}
+          </ThemedText>
+          {repeats ? <Feather name="repeat" size={IconSize.small} color={theme.textSecondary} /> : null}
+        </View>
       </View>
       <ThemedText
         type="smallBold"
         style={entry.kind === 'savings' || entry.kind === 'income' ? { color: theme.kindInk[entry.kind] } : undefined}>
-        {entry.kind === 'income' ? '+' : ''}
-        {formatEuros(entry.amountCents)}
+        {amount}
       </ThemedText>
     </Pressable>
   );
@@ -111,5 +120,10 @@ const styles = StyleSheet.create({
   },
   text: {
     flex: 1,
+  },
+  day: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Layout.tightGap,
   },
 });

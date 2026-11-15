@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-13
 
-**Status**: Draft
+**Status**: Implemented
 
 **Input**: User description: "Every entry gets a category from a fixed list for its kind, so the user can see what the money of each kind is made of. Expenses: Housing, Groceries, Transport, Eating out, Leisure, Health, Subscriptions, Other. Income: Salary, Freelance, Benefits, Gifts, Other. Savings: Emergency fund, Investments, Travel, Goal, Other. The form only offers the categories of the chosen kind. On home, selecting a kind's tile shows that kind split by category. Entries recorded before this change become Other. Fixed lists for now, no custom categories."
 

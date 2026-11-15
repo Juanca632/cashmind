@@ -1,10 +1,12 @@
 name: CI
 
-# Runs on every pull request into main, before it can be merged. Everything reaches main
-# through a pull request, so pushes are not checked on their own.
+# Runs on every pull request into main, before it can be merged, and on every push to develop,
+# right after a feature branch is merged into it, so a problem shows up then and not at release.
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [develop]
 
 permissions:
   contents: read

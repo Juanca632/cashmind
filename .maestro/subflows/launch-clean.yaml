@@ -1,0 +1,7 @@
+appId: com.juancrestrepo.cashmind
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 15000

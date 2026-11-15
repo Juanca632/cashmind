@@ -1,0 +1,57 @@
+appId: com.juancrestrepo.cashmind
+# Smoke: change the savings plan, then visit a past month and come back (002 US4, 003).
+---
+- runFlow: subflows/launch-clean.yaml
+- runFlow:
+    file: subflows/add-first-income.yaml
+    env:
+      AMOUNT: "2000"
+- runFlow:
+    file: subflows/add-entry.yaml
+    env:
+      KIND: Expense
+      CATEGORY: Other
+      AMOUNT: "900"
+      NOTE: "Rent"
+      SUBMIT: "Add expense"
+# 2000 - 900 - 400 = 700,00.
+- assertVisible: ".*Left to spend.*700,00.€.*"
+- tapOn: "My plan"
+- runFlow:
+    file: subflows/replace-text.yaml
+    env:
+      FIELD: "Savings percentage"
+      VALUE: "30"
+- assertVisible: ".*600.€ of this month.*2.000.*"
+- tapOn: "Save plan"
+- extendedWaitUntil:
+    visible: "Left to spend"
+    timeout: 10000
+# 2000 - 900 - 600 = 500,00.
+- assertVisible: ".*of 600.€.*"
+- assertVisible: ".*Left to spend.*500,00.€.*"
+# Past month: Previous year, then December (always in the past).
+- tapOn: "Month:.*"
+- tapOn: "Previous year"
+- tapOn: "Dec"
+- assertVisible: "December .*"
+- assertVisible: "Back to current month"
+- assertNotVisible: "My plan"
+- assertVisible: "Add this month's income"
+- tapOn: "Add income"
+- tapOn: "Amount"
+- inputText: "1500"
+- hideKeyboard
+- tapOn:
+    text: "Add income"
+    index: 1
+# My plan is not shown in a past month, so wait for the way back.
+- extendedWaitUntil:
+    visible: "Back to current month"
+    timeout: 10000
+- assertVisible: ".*of 300.€.*"
+- tapOn: "Back to current month"
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 10000
+- assertVisible: ".*Left to spend.*500,00.€.*"
