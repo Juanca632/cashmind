@@ -81,6 +81,7 @@ first_level = [
     (210, "Month picker", "month-picker.tsx", "Go to past months", "Tap month"),
     (380, "Entry", "entry.tsx", "Add, edit or delete", "Add or tap"),
     (550, "Activity", "activity.tsx", "All entries, filtered", "See all"),
+    (720, "Trends", "trends.tsx", "Last 6 months, by category", "See trends"),
 ]
 for y, t, f, d, l in first_level:
     b += box(560, y, 340, 140, TEAL_L, TEAL, [(t, 28, 700, TEAL), (f, 19, 400, MUTED, MONO), (d, 20, 400, INK)])
@@ -90,14 +91,18 @@ b += box(1020, 40, 300, 140, PURPLE_L, PURPLE, [
     ("Every month", 28, 700, PURPLE), ("recurring.tsx", 19, 400, MUTED, MONO), ("Edit or stop an item", 20, 400, INK)])
 b += arrow([(900, 110), (1016, 110)], PURPLE, "p")
 b += text(958, 96, "Tap item", 18, 500, PURPLE)
+b += box(1020, 720, 300, 140, PURPLE_L, PURPLE, [
+    ("Category", 28, 700, PURPLE), ("trend-category.tsx", 19, 400, MUTED, MONO), ("One category, 6 months", 20, 400, INK)])
+b += arrow([(900, 790), (1016, 790)], PURPLE, "p")
+b += text(958, 776, "Tap one", 18, 500, PURPLE)
 b += f'<polyline points="330,435 390,435" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
-b += f'<line x1="390" y1="110" x2="390" y2="620" stroke="{BLUE}" stroke-width="2.5"/>'
-b += rect(50, 760, 1270, 200, SLATE_L, SLATE_L, 12, 0)
-b += text(80, 802, "No income yet: the card asks for it (Add income, Repeat last income).", 22, 500, INK, "start")
-b += text(80, 844, "All screens return to Home. The plan starts at 20 % until you save one.", 22, 500, INK, "start")
-b += text(80, 886, "Past month: My plan is hidden; its entries can still be corrected.", 22, 500, INK, "start")
-b += text(80, 928, "Entry also opens from Activity (tap an entry) and from My plan (Add an every-month item).", 22, 500, INK, "start")
-page("1-app-map", 1360, 990, b)
+b += f'<line x1="390" y1="110" x2="390" y2="790" stroke="{BLUE}" stroke-width="2.5"/>'
+b += rect(50, 900, 1270, 200, SLATE_L, SLATE_L, 12, 0)
+b += text(80, 942, "No income yet: the card asks for it (Add income, Repeat last income).", 22, 500, INK, "start")
+b += text(80, 984, "All screens return to Home. The plan starts at 20 % until you save one.", 22, 500, INK, "start")
+b += text(80, 1026, "Past month: My plan is hidden; its entries can still be corrected.", 22, 500, INK, "start")
+b += text(80, 1068, "Entry also opens from Activity (tap an entry) and from My plan (Add an every-month item).", 22, 500, INK, "start")
+page("1-app-map", 1360, 1130, b)
 
 # 2. Monthly calculation
 cards = [
@@ -127,7 +132,7 @@ b = rect(30, 30, 1050, 960, "#fafbfc", SLATE, 26, 3)
 b += text(70, 76, "Your Android phone", 26, 700, SLATE, "start")
 b += box(70, 100, 680, 170, BLUE_L, BLUE, [
     ("Screens", 30, 700, BLUE), ("src/app + features/*/screens", 20, 400, MUTED, MONO),
-    ("Home · My plan · Activity", 21, 400, INK), ("Month picker · Entry · Every month", 21, 400, INK)])
+    ("Home · My plan · Activity · Trends", 21, 400, INK), ("Month picker · Entry · Every month", 21, 400, INK)])
 b += box(70, 370, 320, 150, TEAL_L, TEAL, [
     ("Hooks", 28, 700, TEAL), ("features/*/hooks", 20, 400, MUTED, MONO), ("Read and reload", 21, 400, INK)])
 b += box(430, 370, 320, 150, PURPLE_L, PURPLE, [
