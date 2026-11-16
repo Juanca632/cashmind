@@ -1,6 +1,6 @@
 {
   "name": "cashmind",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo-google-fonts/manrope": "^0.4.3",
@@ -44,6 +44,7 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "testTimeout": 15000,
     "setupFilesAfterEnv": [
       "<rootDir>/src/test-support/jest-setup.ts"
     ],

@@ -75,7 +75,7 @@ def page(name, w, h, body):
 # 1. Screen map
 b = box(50, 330, 280, 210, BLUE_L, BLUE, [
     ("Home", 34, 700, BLUE), ("index.tsx", 20, 400, MUTED, MONO),
-    ("Left to spend, per day", 21, 400, INK), ("Income, Spent, Savings", 21, 400, INK), ("Activity with Add", 21, 400, INK)])
+    ("Left to spend, per day", 21, 400, INK), ("Income, Spent, Savings", 21, 400, INK), ("Spending pace chart", 21, 400, INK), ("Activity with Add", 21, 400, INK)])
 first_level = [
     (40, "My plan", "plan.tsx", "Savings % and Every month", "My plan"),
     (210, "Month picker", "month-picker.tsx", "Go to past months", "Tap month"),
@@ -114,12 +114,13 @@ segs = [(40, 594, "Spent", "900 €", BLUE, BLUE_L), (634, 264, "Goal kept", "40
 for x, w, n, v, c, l in segs:
     b += box(x, 385, w, 120, l, c, [(n, 25, 700, c), (v, 28, 700, INK)])
 b += text(700, 540, "Income 2000 €", 20, 700, MUTED)
-b += rect(40, 570, 1320, 190, SLATE_L, SLATE_L, 12, 0)
+b += rect(40, 570, 1320, 230, SLATE_L, SLATE_L, 12, 0)
 b += text(70, 613, "Saved more than the goal: the saved amount counts instead (save 600 € → 2000 − 900 − 600 = 500 €).", 21, 500, INK, "start")
 b += text(70, 653, "Goal rounded down to the cent. Left to spend can be negative. No income yet: Home asks for it.", 21, 500, INK, "start")
 b += text(70, 693, "Current month: Home also shows left ÷ days left, today included, rounded down (700 € ÷ 10 days = 70 € a day).", 21, 500, INK, "start")
 b += text(70, 733, "Every-month items are recorded on the 1st as normal entries, so they count like any other.", 21, 500, INK, "start")
-page("2-month-calculation", 1400, 790, b)
+b += text(70, 773, "Spending pace chart: the pace line runs from the every-month expenses (day 1) to income − max(goal, saved) (last day).", 21, 500, INK, "start")
+page("2-month-calculation", 1400, 830, b)
 
 # 3. Architecture
 b = rect(30, 30, 1050, 960, "#fafbfc", SLATE, 26, 3)
