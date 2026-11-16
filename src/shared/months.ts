@@ -37,6 +37,13 @@ export function formatMonth(month: string): string {
   return monthFormatter.format(monthStart(month));
 }
 
+const monthNameFormatter = new Intl.DateTimeFormat('en-GB', { month: 'long' });
+
+/** 'November' */
+export function formatMonthName(month: string): string {
+  return monthNameFormatter.format(monthStart(month));
+}
+
 /** 'Nov' */
 export function formatShortMonth(month: string): string {
   return SHORT_MONTHS[Number(month.slice(5, 7)) - 1];
@@ -44,4 +51,11 @@ export function formatShortMonth(month: string): string {
 
 export function previousMonth(month: string): string {
   return monthKey(new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 2, 1));
+}
+
+/** The `count` months ending at `month`, oldest first: lastMonths('2026-11', 3) → Sep, Oct, Nov. */
+export function lastMonths(month: string, count: number): string[] {
+  const months = [month];
+  while (months.length < count) months.unshift(previousMonth(months[0]));
+  return months;
 }

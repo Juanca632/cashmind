@@ -51,6 +51,8 @@ export default function RootLayout() {
             <Stack.Screen name="entry" options={{ title: 'Entry' }} />
             <Stack.Screen name="activity" options={{ title: 'Activity' }} />
             <Stack.Screen name="recurring" options={{ title: 'Every month' }} />
+            <Stack.Screen name="trends" options={{ title: 'Trends' }} />
+            <Stack.Screen name="trend-category" options={{ title: 'Category' }} />
           </Stack>
         </ThemeProvider>
       </SQLiteProvider>

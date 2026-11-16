@@ -255,7 +255,10 @@ function SpendingPaceSection({ pace, month }: { pace: SpendingPace; month: strin
       : `Spending pace: ${formatEuros(pace.spentCents)} spent so far, your pace today is ${formatEuros(today)}. ${line}`;
   return (
     <View style={styles.section}>
-      <SectionTitle>Spending pace</SectionTitle>
+      <View style={styles.sectionTitle}>
+        <SectionTitle>Spending pace</SectionTitle>
+        <LinkButton label="See trends ›" accessibilityLabel="See trends" onPress={() => router.push('/trends')} />
+      </View>
       <Card>
         {today === null ? null : <ThemedText type="smallBold">{paceSentence(pace.spentCents, today, formatEuros)}</ThemedText>}
         <SpendingPaceChart pace={pace} month={month} accessibilityLabel={label} />

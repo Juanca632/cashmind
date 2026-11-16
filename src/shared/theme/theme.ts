@@ -139,6 +139,8 @@ export const Radius = {
   card: 20,
   /** Text fields, the date row and list rows' press highlight. */
   field: 16,
+  /** The top corners of a Trends bar and the ends of a category bar. */
+  bar: 4,
   /** Pills and buttons. */
   full: 999,
 } as const;
@@ -151,6 +153,8 @@ export const Opacity = {
   pressed: 0.6,
   /** The top of the soft fill under a chart's line; it fades to nothing at the bottom. */
   chartFill: 0.25,
+  /** The bars of Trends that are not the selected month: still 3:1 against the card. */
+  fadedBar: 0.45,
 } as const;
 
 /** Icon sizes: inside pills, buttons and lines; on badges and choices; standalone icon buttons. */
@@ -193,6 +197,20 @@ export const Size = {
   chart: 88,
   /** The dot that marks a chart's last point. */
   chartDot: 4,
+  /** The drawing area of the six bars of Trends. */
+  trendBars: 120,
+  /** Widest one bar of Trends gets. */
+  trendBarWidth: 28,
+  /** Thickness of the savings goal mark on a Trends bar, its outline included. */
+  goalMark: 6,
+  /** Width of the goal mark: wider than a bar, so it reads as a target. */
+  goalMarkWidth: 38,
+  /** Lowest a Trends bar with an amount is drawn, so a small amount still shows. */
+  trendBarMin: 8,
+  /** The sample line or mark in a chart's key. */
+  keySample: 14,
+  /** Thickness of a horizontal category bar on Trends. */
+  categoryBar: 6,
 } as const;
 
 /** Each Manrope weight is its own font family: use these instead of fontWeight. */
