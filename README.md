@@ -12,6 +12,7 @@ All data stays on the device: no account, no bank access, no backend. The only c
 - **Left to spend:** income − expenses − the larger of the savings goal and what was saved. It can go negative; the month card then turns red.
 - **Daily budget:** in the current month, left to spend shared over the days left ("≈ X / day").
 - **Spending pace:** a chart of the month's spending day by day against the plan's pace, with one sentence saying whether you are over or under it.
+- **Trends:** the last six months of spending, savings or income side by side, against your usual, with each month's categories, a category's own history, and how often the savings goal was reached.
 - **By category:** tap Income, Spent or Savings on home to see that kind split by category.
 - **Savings goal bar:** the savings tile fills up as you save towards the month's goal.
 - **Repeat last income:** a new month asks for its income and can repeat last month's in one tap.

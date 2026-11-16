@@ -47,6 +47,16 @@ export async function getEntriesOfMonth(db: SQLiteDatabase, month: string): Prom
   return rows.map(toEntry);
 }
 
+/** Entries from the start of `fromMonth` to the end of `toMonth` ('YYYY-MM'), oldest first. */
+export async function getEntriesBetween(db: SQLiteDatabase, fromMonth: string, toMonth: string): Promise<Entry[]> {
+  const rows = await db.getAllAsync<EntryRow>(
+    `SELECT ${COLUMNS} FROM entry WHERE substr(date, 1, 7) BETWEEN ? AND ? ORDER BY date, id`,
+    fromMonth,
+    toMonth,
+  );
+  return rows.map(toEntry);
+}
+
 /**
  * Total income of the most recent month before `month`, or null when there is none. Every earlier
  * income is format-checked, like any other read.
