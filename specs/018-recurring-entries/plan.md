@@ -46,7 +46,7 @@ Re-checked after design: no change.
 - **Entry form**: `SwitchRow` "Repeat every month" under the note when the form's month is the current month; initial value = linked to an active item; part of the unsaved-changes check. Route param `repeat=1` turns it on (Add from My plan).
 - **My plan**: below "Save plan", a section "Every month" (heading, rows with category icon, label = note or category name, signed amount via `formatEuros`, "+" for income), "Fixed costs: X a month", "Nothing repeats yet." when empty, and an `Add` link button → `/entry?repeat=1`. Tapping a row → `/recurring?id=`.
 - **`/recurring` screen** (`entries/screens/recurring-screen.tsx`): title "Every month", the kind as a badge (not editable), amount, the kind's categories, note, "Save changes", and "Stop repeating" (destructive, asks "Stop repeating?" / "Past entries stay." via the shared confirm dialog); unsaved-changes guard as the entry form. Applies from next month (the current month is already recorded).
-- **Lists**: `EntryRow` shows a small `repeat` icon (`IconSize` token) next to the date when `recurringId !== null`, and the row's accessibility label ends with ", repeats every month".
+- **Lists**: `EntryRow` shows a small `repeat` icon (`IconSize` token) next to the date when `recurringId !== null`, and the row's accessibility label ends with ", recorded by a repeat" (true whether the item is active or stopped).
 - **Demo data**: the demo Rent becomes a repeating item so `npm run demo` shows the section.
 
 ## Project Structure

@@ -24,8 +24,8 @@ appId: com.juancrestrepo.cashmind
 - extendedWaitUntil:
     visible: "My plan"
     timeout: 10000
-# The row's accessible name ends with ", repeats every month" (the repeat icon has no text).
-- assertVisible: "Rent.*repeats every month"
+# The row's accessible name ends with ", recorded by a repeat" (the repeat icon has no text).
+- assertVisible: "Rent.*recorded by a repeat"
 # My plan lists it under "Every month" with the monthly fixed costs.
 - tapOn: "My plan"
 - scrollUntilVisible:
@@ -39,7 +39,7 @@ appId: com.juancrestrepo.cashmind
 - extendedWaitUntil:
     visible: "My plan"
     timeout: 15000
-- assertVisible: "Rent.*repeats every month"
+- assertVisible: "Rent.*recorded by a repeat"
 - tapOn: "My plan"
 - scrollUntilVisible:
     element: "Every month"

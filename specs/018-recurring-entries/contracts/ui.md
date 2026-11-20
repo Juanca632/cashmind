@@ -25,4 +25,4 @@ Exact texts and accessible names, so tests and flows can find them.
 
 ## Lists (home, Activity)
 
-- A linked entry's row shows the repeat icon and its accessible name ends with ", repeats every month".
+- A linked entry's row shows the repeat icon and its accessible name ends with ", recorded by a repeat" (active or stopped).

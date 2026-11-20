@@ -38,7 +38,7 @@ const NETFLIX = [item(3, 'expense', 'subscriptions', 1299, 'Netflix'), linked('2
 const money = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\u00a0\\u202f]'));
 /** An entry row on a list, by the start of its accessible name. */
 const row = (label: string) => screen.queryByRole('button', { name: new RegExp(label) });
-const repeating = (label: string) => screen.queryByRole('button', { name: new RegExp(`^${label}, .*, repeats every month$`) });
+const repeating = (label: string) => screen.queryByRole('button', { name: new RegExp(`^${label}, .*, recorded by a repeat$`) });
 const rowsOf = (label: string) => screen.queryAllByRole('button', { name: new RegExp(label) });
 const repeatSwitch = () => screen.queryByRole('switch', { name: 'Repeat every month' });
 const toggleRepeat = () => {
@@ -86,7 +86,7 @@ describe('US1 Mark an entry as monthly', () => {
     await press('Add expense');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByRole('button', { name: /^Rent, Today, 900,00.€, repeats every month$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Rent, Today, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.getByText(money('900,00 €'))).toBeOnTheScreen();
 
     await openPlan();
@@ -119,7 +119,7 @@ describe('US1 Mark an entry as monthly', () => {
     expect(screen.getByRole('button', { name: /^Rent, 900,00.€, every month$/ })).toBeOnTheScreen();
 
     await reopenApp(DEC_4);
-    expect(screen.getAllByRole('button', { name: /^Rent, Tue 1 Dec, 900,00.€, repeats every month$/ })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Rent, Tue 1 Dec, 900,00.€, recorded by a repeat$/ })).toHaveLength(1);
   });
 
   it('Past months: the form of a past month does not show the switch, when adding or editing', async () => {
@@ -173,8 +173,8 @@ describe('US2 New month starts filled in', () => {
     await reopenApp(DEC_4);
 
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Rent, Tue 1 Dec, 900,00.€, repeats every month$/ })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Salary, Tue 1 Dec, \+2.000,00.€, repeats every month$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Rent, Tue 1 Dec, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Salary, Tue 1 Dec, \+2.000,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
 
     await press(/Rent/);
@@ -214,7 +214,7 @@ describe('US2 New month starts filled in', () => {
     expect(row('Salary')).toBeOnTheScreen();
 
     await reopenApp(JAN_9);
-    expect(screen.getByRole('button', { name: /^Rent, Fri 1 Jan, 900,00.€, repeats every month$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Rent, Fri 1 Jan, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
   });
 
   it('Edited stays edited: changing December Rent to 950,00 € leaves January Rent at 900,00 €', async () => {
@@ -458,8 +458,8 @@ describe('US2 New month starts filled in (while the app stays open)', () => {
     });
 
     expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Rent, Today, 900,00.€, repeats every month$/ })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /^Salary, Today, \+2.000,00.€, repeats every month$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Rent, Today, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Salary, Today, \+2.000,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
     expect(rowsOf('Rent')).toHaveLength(1);
     listen.mockRestore();

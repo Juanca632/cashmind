@@ -76,9 +76,9 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
   return (
     <Pressable
       accessibilityRole="button"
-      // A repeating entry says so; the others read their texts as they are.
+      // An entry recorded by a repeat (active or stopped) says so; the others read their texts as they are.
       accessibilityLabel={
-        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, repeats every month` : undefined
+        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, recorded by a repeat` : undefined
       }
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
