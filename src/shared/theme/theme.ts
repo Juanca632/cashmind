@@ -213,6 +213,9 @@ export const Size = {
   categoryBar: 6,
 } as const;
 
+/** The one big figure of a screen: My plan's percentage and the entry form's amount. */
+export const BIG_FIGURE = { fontSize: 56, letterSpacing: -1 } as const;
+
 /** Each Manrope weight is its own font family: use these instead of fontWeight. */
 export const FontFamily = {
   regular: 'Manrope_400Regular',

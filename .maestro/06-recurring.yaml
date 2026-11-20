@@ -1,5 +1,5 @@
 appId: com.juancrestrepo.cashmind
-# Smoke: mark an expense as "Repeat every month", see it in My plan and keep it after a restart (018 US1, US3).
+# Smoke: mark an expense as "Repeat every month", see it in My plan and keep it after a restart (018 US1, US3, 022).
 # The month rollover is covered by Jest: it cannot be checked on the emulator's real date.
 ---
 - runFlow: subflows/launch-clean.yaml
@@ -12,11 +12,11 @@ appId: com.juancrestrepo.cashmind
 - inputText: "900"
 - hideKeyboard
 - tapOn: "Housing"
+# The note field is always visible on the form; tapping it opens the keyboard.
 - tapOn: "Note (optional)"
 - inputText: "Rent"
 - hideKeyboard
-- scrollUntilVisible:
-    element: "Repeat every month"
+# "Repeat every month" is a switch row in the card with Date and Note.
 - tapOn: "Repeat every month"
 - tapOn:
     text: "Add expense"
@@ -24,8 +24,8 @@ appId: com.juancrestrepo.cashmind
 - extendedWaitUntil:
     visible: "My plan"
     timeout: 10000
-# The row's accessible name ends with ", repeats every month" (the repeat icon has no text).
-- assertVisible: "Rent.*repeats every month"
+# The row's accessible name ends with ", recorded by a repeat" (the repeat icon has no text).
+- assertVisible: "Rent.*recorded by a repeat"
 # My plan lists it under "Every month" with the monthly fixed costs.
 - tapOn: "My plan"
 - scrollUntilVisible:
@@ -39,7 +39,7 @@ appId: com.juancrestrepo.cashmind
 - extendedWaitUntil:
     visible: "My plan"
     timeout: 15000
-- assertVisible: "Rent.*repeats every month"
+- assertVisible: "Rent.*recorded by a repeat"
 - tapOn: "My plan"
 - scrollUntilVisible:
     element: "Every month"

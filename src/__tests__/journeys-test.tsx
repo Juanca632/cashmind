@@ -10,6 +10,8 @@ import {
   reopenApp,
   startApp,
   type,
+
+  typeNote,
 } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
@@ -29,7 +31,7 @@ describe('Journey: first use, recording income, savings and expenses, changing t
     expect(screen).toHavePathname('/entry');
     expect(screen.getByRole('radio', { name: 'Income' })).toBeSelected();
     await type('Amount', '2000');
-    await type('Note (optional)', 'Salary');
+    await typeNote('Salary');
     await press('Add income');
 
     expect(screen).toHavePathname('/');

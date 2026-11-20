@@ -3,10 +3,8 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
-import { CATEGORY_LABELS } from '@/features/entries/categories';
 import { categoryIcon } from '@/features/entries/components/category-icons';
-import { type Entry } from '@/features/entries/rules';
-import { KIND_LABELS } from '@/shared/kinds';
+import { entryTitle, type Entry } from '@/features/entries/rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { formatEuros } from '@/shared/money';
 import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
@@ -62,12 +60,6 @@ type EntryRowProps = {
   onPress: (entry: Entry) => void;
 };
 
-/** What a row is called: its note, else its category, else (Other) its kind. */
-function entryTitle(entry: Entry): string {
-  if (entry.note) return entry.note;
-  return entry.category === 'other' ? KIND_LABELS[entry.kind] : CATEGORY_LABELS[entry.category];
-}
-
 /** One entry: category icon, title, day and amount. Memoized for long lists. */
 export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
   const theme = useTheme();
@@ -76,9 +68,9 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
   return (
     <Pressable
       accessibilityRole="button"
-      // A repeating entry says so; the others read their texts as they are.
+      // An entry recorded by a repeat (active or stopped) says so; the others read their texts as they are.
       accessibilityLabel={
-        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, repeats every month` : undefined
+        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, recorded by a repeat` : undefined
       }
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.

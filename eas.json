@@ -16,6 +16,12 @@
       "android": {
         "buildType": "apk"
       }
+    },
+    "demo": {
+      "extends": "production",
+      "env": {
+        "EXPO_PUBLIC_DEMO": "1"
+      }
     }
   }
 }

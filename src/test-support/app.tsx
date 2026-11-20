@@ -51,6 +51,10 @@ export function partialText(text: string): RegExp {
 
 export const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 export const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
+/** Types the note; the field is always visible on the entry form (022). */
+export async function typeNote(text: string) {
+  await fireEvent.changeText(screen.getByLabelText('Note (optional)'), text);
+}
 export const choose = (name: string) => fireEvent.press(screen.getByRole('radio', { name }));
 
 /**
@@ -70,7 +74,7 @@ export async function record(kind: 'Income' | 'Savings' | 'Expense', amount: str
   await press('Add expense');
   await choose(kind);
   await type('Amount', amount);
-  if (note) await type('Note (optional)', note);
+  if (note) await typeNote(note);
   await press(kind === 'Income' ? 'Add income' : kind === 'Savings' ? 'Add to savings' : 'Add expense');
 }
 

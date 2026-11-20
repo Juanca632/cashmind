@@ -22,7 +22,8 @@ const RECURRING: [kind: Kind, cents: number, note: string, category: EntryCatego
 /**
  * One list per month, oldest first, so Trends has six varied months: a holiday month, a month
  * with a bonus that spends more than it allows (left to spend is negative), freelance income in
- * some months, and a savings goal reached in four of the six months.
+ * some months, a savings goal reached in four of the six months, and a coffee bought often lately so
+ * the entry form has something to suggest.
  */
 const MONTHS: Entry[][] = [
   // Five months ago: a calm month at 20 %.
@@ -91,6 +92,7 @@ const MONTHS: Entry[][] = [
     [1, 'income', 230000, 'Salary', 'salary'],
     [3, 'expense', 5480, 'Supermarket', 'groceries'],
     [4, 'expense', 6000, 'Transport pass', 'transport'],
+    [6, 'expense', 250, 'Coffee', 'eating_out'],
     [7, 'expense', 3250, 'Sushi', 'eating_out'],
     [10, 'expense', 6230, 'Supermarket', 'groceries'],
     [11, 'income', 42000, 'Logo design', 'freelance'],
@@ -99,20 +101,23 @@ const MONTHS: Entry[][] = [
     [15, 'expense', 5500, 'Concert', 'leisure'],
     [17, 'expense', 5810, 'Supermarket', 'groceries'],
     [18, 'expense', 2300, 'Books', 'leisure'],
+    [20, 'expense', 250, 'Coffee', 'eating_out'],
     [21, 'expense', 2870, 'Lunch out', 'eating_out'],
     [24, 'expense', 5200, 'Gift for mum', 'other'],
     [25, 'expense', 6040, 'Supermarket', 'groceries'],
+    [27, 'expense', 250, 'Coffee', 'eating_out'],
     [30, 'expense', 4100, 'Dinner out', 'eating_out'],
   ],
   // This month, up to mid-month: saving has started but the goal is not reached yet.
   [
     [1, 'income', 230000, 'Salary', 'salary'],
-    [2, 'expense', 1500, 'Coffee', 'eating_out'],
+    [2, 'expense', 250, 'Coffee', 'eating_out'],
     [3, 'expense', 5420, 'Supermarket', 'groceries'],
     [4, 'expense', 6000, 'Transport pass', 'transport'],
     [6, 'savings', 30000, 'Monthly saving', 'emergency_fund'],
     [7, 'expense', 4200, 'Dinner out', 'eating_out'],
     [8, 'expense', 2750, 'Cinema', 'leisure'],
+    [9, 'expense', 250, 'Coffee', 'eating_out'],
     [10, 'expense', 6380, 'Supermarket', 'groceries'],
     [12, 'expense', 1890, 'Pharmacy', 'health'],
     [14, 'expense', 2850, 'Lunch out', 'eating_out'],
