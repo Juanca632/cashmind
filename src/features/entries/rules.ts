@@ -2,10 +2,10 @@
  * Entry domain logic. Pure functions, no React and no storage.
  * Dates are local-time day keys 'YYYY-MM-DD'; months are 'YYYY-MM'. Money is integer cents.
  */
-import { CATEGORIES, isCategoryOf, type EntryCategory } from '@/features/entries/categories';
-import { ENTRY_KINDS, type EntryKind } from '@/shared/kinds';
+import { CATEGORIES, CATEGORY_LABELS, isCategoryOf, type EntryCategory } from '@/features/entries/categories';
+import { ENTRY_KINDS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { AMOUNT_TOO_LARGE, isValidCents } from '@/shared/money';
-import { dayKey, isValidDayKey } from '@/shared/days';
+import { addDays, dayKey, dayToDate, isValidDayKey } from '@/shared/days';
 import { isValidMonthKey, monthKey } from '@/shared/months';
 
 export type Entry = {
@@ -141,4 +141,51 @@ export function categorySplit(entries: readonly Pick<Entry, 'kind' | 'amountCent
   return [...cents]
     .map(([category, sum]) => ({ category, cents: sum, percent: Math.round((sum * 100) / total) }))
     .sort((a, b) => b.cents - a.cents || order.indexOf(a.category) - order.indexOf(b.category));
+}
+
+/** What a row is called: its note, else its category, else (Other) its kind. */
+export function entryTitle(entry: Pick<Entry, 'kind' | 'category' | 'note'>): string {
+  if (entry.note) return entry.note;
+  return entry.category === 'other' ? KIND_LABELS[entry.kind] : CATEGORY_LABELS[entry.category];
+}
+
+/** How far back the form looks for expenses to suggest, in days including today. */
+export const QUICK_ADD_DAYS = 60;
+/** How many times an expense must have been recorded in that period to be suggested. */
+export const QUICK_ADD_MIN = 2;
+/** How many suggestions the form shows at most. */
+export const QUICK_ADD_MAX = 4;
+
+/** An expense the user records often: the values the form is filled with, and how often it was recorded. */
+export type QuickAddSuggestion = Pick<Entry, 'category' | 'amountCents' | 'note'> & { count: number; lastDate: string };
+
+/**
+ * The expenses recorded at least QUICK_ADD_MIN times in the last QUICK_ADD_DAYS days (same category,
+ * amount and exact note), most often first, then most recent; at most QUICK_ADD_MAX. Entries recorded
+ * by a monthly repeat are left out, since the app records them by itself.
+ */
+export function quickAddSuggestions(entries: readonly Entry[], today: Date): QuickAddSuggestion[] {
+  const last = dayKey(today);
+  const first = addDays(last, -(QUICK_ADD_DAYS - 1));
+  const groups = new Map<string, QuickAddSuggestion>();
+  for (const entry of entries) {
+    if (entry.kind !== 'expense' || entry.recurringId !== null || entry.date < first || entry.date > last) continue;
+    const key = JSON.stringify([entry.category, entry.amountCents, entry.note]);
+    const group = groups.get(key);
+    if (group) {
+      group.count += 1;
+      if (entry.date > group.lastDate) group.lastDate = entry.date;
+    } else {
+      groups.set(key, { category: entry.category, amountCents: entry.amountCents, note: entry.note, count: 1, lastDate: entry.date });
+    }
+  }
+  return [...groups.values()]
+    .filter((group) => group.count >= QUICK_ADD_MIN)
+    .sort((a, b) => b.count - a.count || (a.lastDate < b.lastDate ? 1 : a.lastDate > b.lastDate ? -1 : 0))
+    .slice(0, QUICK_ADD_MAX);
+}
+
+/** The months ('YYYY-MM') that hold the days quickAddSuggestions looks at. */
+export function quickAddRange(today: Date): { from: string; to: string } {
+  return { from: monthKey(dayToDate(addDays(dayKey(today), -(QUICK_ADD_DAYS - 1)))), to: monthKey(today) };
 }
