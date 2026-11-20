@@ -2,8 +2,6 @@
 
 const euroFormatter = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 
-const percentFormatter = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
-
 export function formatEuros(cents: number): string {
   return euroFormatter.format(cents / 100);
 }
@@ -25,12 +23,6 @@ export const AMOUNT_TOO_LARGE = `Amounts cannot be above ${formatEuros(MAX_CENTS
 
 export function isValidCents(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0 && value <= MAX_CENTS;
-}
-
-/** Share of `totalCents` as a display string like "37 %" or "37,5 %". */
-export function formatPercentOf(cents: number, totalCents: number): string {
-  const pct = totalCents > 0 ? (cents / totalCents) * 100 : 0;
-  return `${percentFormatter.format(pct)} %`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { DEFAULT_SAVINGS_PERCENT, isValidPercent, savingsGoal, savingsPercentFor, type PlanVersion } from '../rules';
-import { formatEuros, formatPercentOf, parseEurosToCents, parsePercent } from '@/shared/money';
+import { formatEuros, parseEurosToCents, parsePercent } from '@/shared/money';
 import { formatMonth, formatShortMonth, isPastMonth, isValidMonthKey, monthKey, monthsOfYear, monthStart, yearOf } from '@/shared/months';
 
 const normalizeSpaces = (text: string) => text.replace(/\s/g, ' ');
@@ -26,12 +26,6 @@ describe('formatting', () => {
     expect(normalizeSpaces(formatEuros(250050))).toBe('2 500,50 €');
   });
 
-  it('formats a share of the income with up to one decimal', () => {
-    expect(normalizeSpaces(formatPercentOf(100000, 200000))).toBe('50 %');
-    expect(normalizeSpaces(formatPercentOf(100000, 270000))).toBe('37 %');
-    expect(normalizeSpaces(formatPercentOf(37500, 100000))).toBe('37,5 %');
-    expect(normalizeSpaces(formatPercentOf(100, 0))).toBe('0 %');
-  });
 });
 
 describe('amounts', () => {
