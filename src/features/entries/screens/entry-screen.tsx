@@ -8,6 +8,8 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native'
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { QuickAddRow } from '@/features/entries/components/quick-add-row';
+import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
 import { useEntry } from '@/features/entries/hooks/use-entry';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import {
@@ -15,9 +17,12 @@ import {
   defaultEntryDate,
   entryErrorMessage,
   lastDayOfMonth,
+  quickAddRange,
+  quickAddSuggestions,
   validateEntry,
   type Entry,
   type EntryInput,
+  type QuickAddSuggestion,
 } from '@/features/entries/rules';
 import { addEntry, deleteEntry, editEntry } from '@/features/entries/service';
 import { ADD_LABELS, ENTRY_KINDS, KIND_LABELS, NOTE_EXAMPLES, type EntryKind } from '@/shared/kinds';
@@ -48,13 +53,18 @@ export default function EntryScreen() {
   const id = params.id ? Number(params.id) : null;
   const loaded = useEntry(id);
   const item = useRecurringItem(loaded.status === 'ready' ? (loaded.data?.recurringId ?? null) : null);
+  const today = new Date();
+  const range = quickAddRange(today);
+  const recent = useEntriesBetween(range.from, range.to);
 
   if (loaded.status === 'error' || item.status === 'error') return <DataError />;
-  if (loaded.status === 'loading' || item.status === 'loading') return <ThemedView style={styles.screen} />;
+  if (loaded.status === 'loading' || item.status === 'loading' || recent.status === 'loading') {
+    return <ThemedView style={styles.screen} />;
+  }
   const entry = loaded.data;
   if (id !== null && !entry) return <MessageScreen title={ENTRY_MISSING} />;
-
-  const today = new Date();
+  // Suggestions only help when adding; if recent entries cannot be read the form works without them.
+  const suggestions = entry === null && recent.status === 'ready' ? quickAddSuggestions(recent.data, today) : [];
 
   return (
     <EntryForm
@@ -64,6 +74,7 @@ export default function EntryScreen() {
       // An entry repeats while its item is active; Add from My plan starts with repeat on.
       initialRepeat={entry ? item.data?.active === true : params.repeat === '1'}
       today={today}
+      suggestions={suggestions}
     />
   );
 }
@@ -74,12 +85,15 @@ function EntryForm({
   defaultDate,
   initialRepeat,
   today,
+  suggestions,
 }: {
   entry: Entry | null;
   defaultKind: EntryKind;
   defaultDate: string;
   initialRepeat: boolean;
   today: Date;
+  /** Expenses recorded often lately, offered while adding an expense. */
+  suggestions: readonly QuickAddSuggestion[];
 }) {
   const db = useSQLiteContext();
   const theme = useTheme();
@@ -107,6 +121,14 @@ function EntryForm({
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
   const submitLabel = entry ? 'Save changes' : ADD_LABELS[kind];
+
+  /** Fills the form from a suggestion; the kind, the date and the repeat switch stay as they are. */
+  function fillFrom(suggestion: QuickAddSuggestion) {
+    hapticTick();
+    setAmountText(centsToInput(suggestion.amountCents));
+    setCategory(suggestion.category);
+    setNote(suggestion.note);
+  }
 
   function onSave() {
     const now = new Date();
@@ -151,6 +173,8 @@ function EntryForm({
             error={amountError ? entryErrorMessage(amountError) : null}
             autoFocus={!entry}
           />
+
+          {kind === 'expense' ? <QuickAddRow suggestions={suggestions} onPick={fillFrom} /> : null}
 
           <View style={styles.kindRow}>
             {ENTRY_KINDS.map((option) => {
