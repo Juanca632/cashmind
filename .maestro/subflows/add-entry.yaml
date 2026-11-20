@@ -2,10 +2,16 @@ appId: com.juancrestrepo.cashmind
 ---
 # Env: KIND (Income | Savings | Expense), CATEGORY ("Other" by default), AMOUNT, NOTE ("" for none),
 # SUBMIT (button text: "Add income" | "Add to savings" | "Add expense").
-# Starts on home of a month that already has income.
+# Starts on home of a month that already has income. The form opens with the keyboard closed:
+# the amount field is tapped before typing.
 - tapOn: "Add expense"
 - tapOn: ${KIND}
-- tapOn: ${CATEGORY}
+# Other is selected by default; the categories are a grid, so every one is visible.
+- runFlow:
+    when:
+      true: ${CATEGORY != 'Other'}
+    commands:
+      - tapOn: ${CATEGORY}
 - tapOn: "Amount"
 - inputText: ${AMOUNT}
 - hideKeyboard
@@ -13,6 +19,7 @@ appId: com.juancrestrepo.cashmind
     when:
       true: ${NOTE.length > 0}
     commands:
+      # The note field is always visible; tapping it opens the keyboard.
       - tapOn: "Note (optional)"
       - inputText: ${NOTE}
       - hideKeyboard

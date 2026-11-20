@@ -13,6 +13,8 @@ import {
   press,
   startApp,
   type,
+
+  typeNote,
 } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
@@ -54,17 +56,6 @@ describe('Pick the date from a calendar', () => {
     expect(dayKey(args.value as Date)).toBe('2026-11-25');
   });
 
-  it('Open: after stepping back a day the calendar opens on that day', async () => {
-    const open = fakeCalendar('dismiss');
-    await startApp({ today: NOV25, entries: [salary] });
-    await press('Add expense');
-    await press('Previous day');
-
-    await press(/^Date: Tue 24 Nov/);
-
-    expect(dayKey(open.mock.calls[0][0].value as Date)).toBe('2026-11-24');
-  });
-
   it('Limits: in the current month the calendar allows from the 1st up to today', async () => {
     const open = fakeCalendar('dismiss');
     await startApp({ today: NOV25, entries: [salary] });
@@ -96,7 +87,7 @@ describe('Pick the date from a calendar', () => {
     await startApp({ today: NOV25, entries: [salary] });
     await press('Add expense');
     await type('Amount', '12,50');
-    await type('Note (optional)', 'Cinema');
+    await typeNote('Cinema');
 
     await press(/^Date: /);
 
@@ -115,7 +106,7 @@ describe('Pick the date from a calendar', () => {
     await startApp({ today: NOV25, entries: [salary] });
     await press('Add expense');
     await type('Amount', '9');
-    await type('Note (optional)', 'Bakery');
+    await typeNote('Bakery');
     await press(/^Date: /);
     await press('Add expense');
 
@@ -132,31 +123,21 @@ describe('Pick the date from a calendar', () => {
     await press(/^Date: /);
 
     expect(screen.getByRole('button', { name: /^Date: Wed 25 Nov/ })).toBeOnTheScreen();
-    expect(screen.getByText(/Today/)).toBeOnTheScreen();
+    expect(screen.getByText('Today')).toBeOnTheScreen();
   });
 
-  it('Steps stay: the previous and next day buttons still work', async () => {
-    await startApp({ today: NOV25, entries: [salary] });
-    await press('Add expense');
-    expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
-
-    await press('Previous day');
-    expect(screen.getByRole('button', { name: /^Date: Tue 24 Nov/ })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Next day' })).toBeEnabled();
-
-    await press('Next day');
-    expect(screen.getByRole('button', { name: /^Date: Wed 25 Nov/ })).toBeOnTheScreen();
-  });
-
-  it('Steps stay: after picking a day with the calendar the day buttons move from it', async () => {
+  it('Date chip: reads "Today" for today and the day, "Tue 3 Nov", after picking another; no one-day arrows', async () => {
     fakeCalendar({ pick: new Date(2026, 10, 3) });
     await startApp({ today: NOV25, entries: [salary] });
     await press('Add expense');
+    expect(screen.getByText('Today')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Previous day' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Next day' })).not.toBeOnTheScreen();
+
     await press(/^Date: /);
 
-    await press('Next day');
-
-    expect(screen.getByRole('button', { name: /^Date: Wed 4 Nov/ })).toBeOnTheScreen();
+    expect(screen.getByText('Tue 3 Nov')).toBeOnTheScreen();
+    expect(screen.queryByText('Today')).not.toBeOnTheScreen();
   });
 
   it('Unsaved change: leaving after changing only the date with the calendar asks before discarding', async () => {
@@ -197,17 +178,17 @@ describe('A cleaner form', () => {
     }
   });
 
-  it('Note example: the note field reads "Cinema" for an expense, "Salary" for income and "Emergency fund" for savings, and changes with the kind', async () => {
+  it('Note example: the note placeholder reads "Note, e.g. Cinema" for an expense, "Salary" for income and "Emergency fund" for savings, and changes with the kind', async () => {
     await startApp({ today: NOV25, entries: [salary] });
     await press('Add expense');
     const note = () => screen.getByLabelText('Note (optional)').props.placeholder;
 
-    expect(note()).toBe('Cinema');
+    expect(note()).toBe('Note, e.g. Cinema');
     await choose('Income');
-    expect(note()).toBe('Salary');
+    expect(note()).toBe('Note, e.g. Salary');
     await choose('Savings');
-    expect(note()).toBe('Emergency fund');
+    expect(note()).toBe('Note, e.g. Emergency fund');
     await choose('Expense');
-    expect(note()).toBe('Cinema');
+    expect(note()).toBe('Note, e.g. Cinema');
   });
 });

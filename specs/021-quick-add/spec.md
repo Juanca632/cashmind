@@ -20,7 +20,7 @@ Most daily expenses repeat (a coffee, the bus, the supermarket). Typing the same
 
 **Acceptance Scenarios**:
 
-1. *Shown*: **Given** today is 20 November 2026 and the user recorded the expense "Café", Eating out, 2,50 € on 3, 10 and 18 November, **When** they open the form to add an expense, **Then** above the kind choice a "Recent" row shows a suggestion with the Eating out icon, "Café" and "2,50 €"
+1. *Shown*: **Given** today is 20 November 2026 and the user recorded the expense "Café", Eating out, 2,50 € on 3, 10 and 18 November, **When** they open the form to add an expense, **Then** under the kind and categories a row shows a suggestion with the Eating out icon, "Café" and "2,50 €"
 2. *Fill*: **When** the user taps that suggestion, **Then** the amount is 2,50, the category is Eating out and the note is "Café"; the kind stays Expense, and the date and the "Repeat every month" switch keep their values
 3. *Nothing saved by the tap*: **Then** nothing is recorded until the user taps the add button, and the entry saved then is an ordinary expense with the form's date
 4. *Still editable*: **Given** the form was filled from a suggestion, **When** the user changes the amount to 3,00 and saves, **Then** the expense is recorded with 3,00 €
@@ -53,7 +53,7 @@ Most daily expenses repeat (a coffee, the bus, the supermarket). Typing the same
 ### Edge Cases
 
 - **Unreadable data**: if the recent entries cannot be read, no suggestions show and the form works as usual; nothing is changed or deleted.
-- **Long notes**: a long note is cut with an ellipsis so each suggestion stays on one line; the row wraps to a second line instead of scrolling sideways.
+- **Long notes**: a long note is cut with an ellipsis so each suggestion stays short; the row scrolls sideways (see 022).
 - **Changes**: an expense saved, edited or deleted counts the next time the form opens.
 - **Accessibility**: each suggestion is a button whose name reads "Fill with Café, Eating out, 2,50 €".
 
@@ -61,7 +61,7 @@ Most daily expenses repeat (a coffee, the bus, the supermarket). Typing the same
 
 ### Functional Requirements
 
-- **FR-001** (Where): The form to add a new entry MUST show, above the kind choice and only while the kind is Expense, a "Recent" row of suggestions. It MUST NOT show when editing an entry or when there is no suggestion.
+- **FR-001** (Where): The form to add a new entry MUST show, only while the kind is Expense, one sideways-scrolling row of suggestions under the title "Often recorded" (placed by 022). It MUST NOT show when editing an entry or when there is no suggestion.
 - **FR-002** (Which): A suggestion is a group of expenses with the same note, category and amount, dated from 59 days before today up to today, not recorded by a monthly repeat, with at least 2 expenses. At most 4 show, ordered by number of expenses, most first, then by most recent date.
 - **FR-003** (Looks): Each suggestion MUST show its category icon, its title (the note, else the category name, else "Expense" for Other, as FR-006 of 001) and its amount.
 - **FR-004** (Fill): Tapping a suggestion MUST set the form's amount, category and note to its values and change nothing else. It MUST NOT save; the form saves, validates and asks before discarding as before.

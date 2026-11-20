@@ -1,5 +1,5 @@
 appId: com.juancrestrepo.cashmind
-# Smoke: mark an expense as "Repeat every month", see it in My plan and keep it after a restart (018 US1, US3).
+# Smoke: mark an expense as "Repeat every month", see it in My plan and keep it after a restart (018 US1, US3, 022).
 # The month rollover is covered by Jest: it cannot be checked on the emulator's real date.
 ---
 - runFlow: subflows/launch-clean.yaml
@@ -12,11 +12,11 @@ appId: com.juancrestrepo.cashmind
 - inputText: "900"
 - hideKeyboard
 - tapOn: "Housing"
+# The note field is always visible on the form; tapping it opens the keyboard.
 - tapOn: "Note (optional)"
 - inputText: "Rent"
 - hideKeyboard
-- scrollUntilVisible:
-    element: "Repeat every month"
+# "Repeat every month" is a switch row in the card with Date and Note.
 - tapOn: "Repeat every month"
 - tapOn:
     text: "Add expense"

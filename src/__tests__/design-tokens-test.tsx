@@ -52,11 +52,11 @@ describe('One look for each kind of control', () => {
     }
   });
 
-  it('Compact but easy to tap: category options in the form reach 48 to the touch', async () => {
+  it('Compact but easy to tap: category options in the form (a grid, not pills) reach 48 to the touch', async () => {
     await startApp({ today: TODAY, entries: [] });
     await press('Add expense');
     for (const name of ['Housing', 'Groceries', 'Other']) {
-      expectPill(screen.getByRole('radio', { name }));
+      expect(touchHeight(screen.getByRole('radio', { name }))).toBeGreaterThanOrEqual(Size.control);
     }
   });
 });

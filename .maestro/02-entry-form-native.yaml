@@ -1,5 +1,5 @@
 appId: com.juancrestrepo.cashmind
-# Smoke: Android calendar, keyboard and back button on the entry form (017 US2, 001 US3-4).
+# Smoke: Android calendar, keyboard and back button on the entry form (017 US2, 001 US3-4, 022).
 ---
 - runFlow: subflows/launch-clean.yaml
 - runFlow:
@@ -16,14 +16,13 @@ appId: com.juancrestrepo.cashmind
 - tapOn: "Date: .*"
 - tapOn: "Cancel"
 - assertVisible: "Date: .* 1 .*"
-# Only the date changed: leaving asks first. The amount field autofocuses, so the keyboard
-# is open and must be closed before back (the first back would only close the keyboard).
-- hideKeyboard
+# Only the date changed: leaving asks first. The form opens with the keyboard closed (022) and
+# nothing was typed, so the first back is not spent on closing a keyboard.
 - back
 - assertVisible: "Discard changes?"
 - tapOn: "Keep editing"
 - assertVisible: "Date: .* 1 .*"
-# The keyboard stays closed after "Keep editing"; hideKeyboard here would act as a back press.
+# The keyboard stays closed after "Keep editing", so the next back asks again.
 - back
 - assertVisible: "Discard changes?"
 - tapOn: "Discard"

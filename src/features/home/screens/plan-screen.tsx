@@ -14,7 +14,7 @@ import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { formatEuros, formatEurosCompact, parsePercent } from '@/shared/money';
 import { monthKey } from '@/shared/months';
-import { FontFamily, Layout, Size } from '@/shared/theme/theme';
+import { BIG_FIGURE, FontFamily, Layout, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
@@ -178,10 +178,9 @@ const styles = StyleSheet.create({
     gap: Layout.tightGap,
   },
   percent: {
+    ...BIG_FIGURE,
     fontFamily: FontFamily.bold,
-    fontSize: 56,
     fontVariant: ['tabular-nums'],
-    letterSpacing: -1,
     minWidth: Size.percentInput,
     padding: 0,
     textAlign: 'center',

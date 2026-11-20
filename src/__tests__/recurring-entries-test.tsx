@@ -10,6 +10,8 @@ import {
   reopenApp,
   startApp,
   type,
+
+  typeNote,
 } from '../test-support/app';
 import { seedDevice } from '../test-support/fake-sqlite';
 
@@ -80,7 +82,7 @@ describe('US1 Mark an entry as monthly', () => {
     await press('Add expense');
     await type('Amount', '900');
     await choose('Housing');
-    await type('Note (optional)', 'Rent');
+    await typeNote('Rent');
     await toggleRepeat();
     expect(repeatSwitch()).toBeChecked();
     await press('Add expense');
@@ -97,7 +99,7 @@ describe('US1 Mark an entry as monthly', () => {
     await startApp({ today: NOV_15, entries: [plainSalary] });
     await press('Add expense');
     await type('Amount', '20');
-    await type('Note (optional)', 'Lunch');
+    await typeNote('Lunch');
     await press('Add expense');
     expect(repeating('Lunch')).not.toBeOnTheScreen();
     await openPlan();
@@ -323,11 +325,11 @@ describe('US3 Review what repeats', () => {
     await press('Add a monthly entry');
 
     expect(screen).toHavePathname('/entry');
-    expect(screen.getByText(/Sun 15 Nov/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Date: Sun 15 Nov/ })).toBeOnTheScreen();
     expect(repeatSwitch()).toBeChecked();
     await type('Amount', '12,99');
     await choose('Subscriptions');
-    await type('Note (optional)', 'Netflix');
+    await typeNote('Netflix');
     await press('Add expense');
 
     // Back where it came from, with the item listed.
@@ -359,7 +361,7 @@ describe('US3 Review what repeats', () => {
     await openPlan();
     await press(/^Rent, .*every month$/);
     await choose('Leisure');
-    await type('Note (optional)', 'Gym');
+    await typeNote('Gym');
     await press('Save changes');
     expect(screen.getByRole('button', { name: /^Gym, 900,00.€, every month$/ })).toBeOnTheScreen();
 
