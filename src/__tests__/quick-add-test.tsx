@@ -1,6 +1,6 @@
 import { fireEvent, screen, testRouter } from 'expo-router/testing-library';
 
-import { answerDialog, choose, expectDialog, press, startApp, type } from '../test-support/app';
+import { answerDialog, choose, expectDialog, press, startApp, type, typeNote } from '../test-support/app';
 import { seedDevice } from '../test-support/fake-sqlite';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
@@ -26,11 +26,11 @@ const amountField = () => screen.getByLabelText('Amount');
 const noteField = () => screen.getByLabelText('Note (optional)');
 
 describe('US1 Fill a new expense from one I often record', () => {
-  it('Shown: with Café 2,50 € on 3, 10 and 18 November, adding an expense shows a "Recent" row with the suggestion', async () => {
+  it('Shown: with Café 2,50 € on 3, 10 and 18 November, adding an expense shows "Often recorded" with the suggestion', async () => {
     await startApp({ today: NOV_20, entries: CAFES });
     await press('Add expense');
 
-    expect(screen.getByText('Recent')).toBeOnTheScreen();
+    expect(screen.getByText('Often recorded')).toBeOnTheScreen();
     expect(suggestion(FILL_CAFE)).toBeOnTheScreen();
     expect(screen.getByText(/Café · 2,50/)).toBeOnTheScreen();
   });
@@ -38,17 +38,17 @@ describe('US1 Fill a new expense from one I often record', () => {
   it('Fill: tapping it sets amount, category and note; kind, date and the repeat switch keep their values', async () => {
     await startApp({ today: NOV_20, entries: CAFES });
     await press('Add expense');
-    expect(screen.getByText(/Fri 20 Nov/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Date: Fri 20 Nov/ })).toBeOnTheScreen();
     await type('Amount', '99');
     await choose('Transport');
-    await type('Note (optional)', 'Bus');
+    await typeNote('Bus');
     await press(FILL_CAFE);
 
     expect(amountField().props.value).toMatch(/^2[,.]50$/);
     expect(screen.getByRole('radio', { name: 'Eating out' })).toBeSelected();
     expect(noteField().props.value).toBe('Café');
     expect(screen.getByRole('radio', { name: 'Expense' })).toBeSelected();
-    expect(screen.getByText(/Fri 20 Nov/)).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Date: Fri 20 Nov/ })).toBeOnTheScreen();
     expect(screen.getByRole('switch', { name: 'Repeat every month' })).not.toBeChecked();
   });
 
@@ -92,7 +92,7 @@ describe('US1 Fill a new expense from one I often record', () => {
     await press('Add expense');
     await type('Amount', '77');
     await choose('Health');
-    await type('Note (optional)', 'Pharmacy');
+    await typeNote('Pharmacy');
     await press(FILL_CAFE);
     await press('Add expense');
 
@@ -158,7 +158,8 @@ describe('US2 Which suggestions show (form)', () => {
   it('Last 60 days: an expense from 21 September does not count', async () => {
     await startApp({ today: NOV_20, entries: [cafe('2026-09-21'), cafe('2026-11-01')] });
     await press('Add expense');
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+    expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
   });
 
   it('Order and count: most recorded first, at most 4 show', async () => {
@@ -190,7 +191,8 @@ describe('US2 Which suggestions show (form)', () => {
     await startApp({ today: NOV_20, raw: [item, linked('2026-11-02'), linked('2026-10-02')] });
     await press('Add expense');
 
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+    expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
   });
 
   it('Expenses only: income and savings entries are not suggested, and switching kind hides and restores the row', async () => {
@@ -200,13 +202,14 @@ describe('US2 Which suggestions show (form)', () => {
     expect(fillButtons()).toHaveLength(1);
 
     await choose('Income');
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
     expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
     await choose('Savings');
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
     expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
     await choose('Expense');
-    expect(screen.getByText('Recent')).toBeOnTheScreen();
+    expect(screen.getByText('Often recorded')).toBeOnTheScreen();
+    expect(fillButtons()).toHaveLength(1);
     expect(suggestion(FILL_CAFE)).toBeOnTheScreen();
   });
 
@@ -214,7 +217,8 @@ describe('US2 Which suggestions show (form)', () => {
     const sav = (date: string) => ({ date, kind: 'savings', amountCents: 5000, note: 'Piggy', category: 'other' }) as const;
     await startApp({ today: NOV_20, entries: [sav('2026-11-02'), sav('2026-11-03')] });
     await press('Add expense');
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+    expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
   });
 
   it('No note: a suggestion without a note reads the category name, or "Expense" for Other', async () => {
@@ -233,8 +237,9 @@ describe('US2 Which suggestions show (form)', () => {
     await startApp({ today: NOV_20, entries: [cafe('2026-11-03')] });
     await press('Add expense');
 
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
     expect(fillButtons()).toHaveLength(0);
+    expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
   });
 
   it('Editing: opening an existing entry shows no suggestions', async () => {
@@ -242,7 +247,8 @@ describe('US2 Which suggestions show (form)', () => {
     await fireEvent.press(screen.getAllByRole('button', { name: /Café/ })[0]);
 
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeOnTheScreen();
-    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
     expect(fillButtons()).toHaveLength(0);
+    expect(fillButtons()).toHaveLength(0);
+    expect(screen.queryByText('Often recorded')).not.toBeOnTheScreen();
   });
 });

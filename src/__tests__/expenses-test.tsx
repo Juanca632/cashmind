@@ -1,5 +1,8 @@
 import { Alert } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { fireEvent, screen, testRouter, within } from 'expo-router/testing-library';
+
+import { dayKey } from '@/shared/days';
 
 import {
   DELETE_DIALOG,
@@ -15,6 +18,7 @@ import {
   press,
   startApp,
   type,
+  typeNote,
 } from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
@@ -23,6 +27,7 @@ const alertSpy = jest.spyOn(Alert, 'alert');
 
 afterEach(() => {
   alertSpy.mockClear();
+  (DateTimePickerAndroid.open as Partial<jest.Mock>).mockRestore?.();
   jest.useRealTimers();
 });
 
@@ -40,7 +45,7 @@ describe('Record an expense', () => {
     expect(screen).toHavePathname('/entry');
     expect(screen.getByText(/Today/)).toBeOnTheScreen();
     await type('Amount', '12,50');
-    await type('Note (optional)', 'Cinema');
+    await typeNote('Cinema');
     await press('Add expense');
 
     expect(screen).toHavePathname('/');
@@ -91,7 +96,7 @@ describe('Three kinds of entry', () => {
 
     const radios = screen.getAllByRole('radio').map((radio) => radio.props.accessibilityLabel);
     // The kinds come first; the rest are the categories of the kind (015-categories).
-    expect(radios.slice(0, 3)).toEqual(['Income', 'Savings', 'Expense']);
+    expect(radios.slice(0, 3)).toEqual(['Expense', 'Income', 'Savings']);
     expect(radios.slice(3)).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other']);
   });
 
@@ -118,7 +123,7 @@ describe('Three kinds of entry', () => {
       await press('Add expense');
       await choose(kind);
       await type('Amount', amount);
-      await type('Note (optional)', note);
+      await typeNote(note);
       await press(button);
     }
 
@@ -244,8 +249,8 @@ describe('Edit and delete an expense', () => {
     await press(/Cinema/);
     await type('Amount', '99');
     await type('Amount', '12,50');
-    await type('Note (optional)', 'Cinemas');
-    await type('Note (optional)', 'Cinema');
+    await typeNote('Cinemas');
+    await typeNote('Cinema');
 
     await testRouter.back();
 
@@ -300,7 +305,6 @@ describe('Past months can be corrected', () => {
     await press('Nov');
     await press('Add expense');
     expect(screen.getByText(/Mon 30 Nov/)).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
     await type('Amount', '20');
     await press('Add expense');
 
@@ -333,10 +337,13 @@ describe('Past months can be corrected', () => {
     await answerDialog('Delete');
     expect(screen.queryByText('Lunch')).not.toBeOnTheScreen();
 
+    jest.spyOn(DateTimePickerAndroid, 'open').mockImplementation((args) => {
+      (args.onValueChange as unknown as (event: unknown, date: Date) => void)({}, new Date(2026, 10, 29));
+    });
     await press('Add expense');
     await type('Amount', '7');
-    await type('Note (optional)', 'Bakery');
-    await press('Previous day');
+    await typeNote('Bakery');
+    await press(/^Date: /);
     await press('Add expense');
     expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
     expect(screen.getByText('Bakery')).toBeOnTheScreen();
@@ -345,9 +352,11 @@ describe('Past months can be corrected', () => {
 
   it('Entries cannot be dated after today', async () => {
     await startApp({ today: TODAY, entries: [salary] });
+    const open = jest.spyOn(DateTimePickerAndroid, 'open').mockImplementation(() => {});
     await press('Add expense');
+    await press(/^Date: /);
 
-    expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
+    expect(dayKey(open.mock.calls[0][0].maximumDate as Date)).toBe('2026-11-07');
   });
 });
 
@@ -472,7 +481,7 @@ describe('Look inside one kind', () => {
     await press(addLabel);
     expect(screen.getByRole('radio', { name: kind })).toBeSelected();
     await type('Amount', '1');
-    await type('Note (optional)', 'Added inside');
+    await typeNote('Added inside');
     await press(addLabel);
 
     expect(screen.getByText('Added inside')).toBeOnTheScreen();

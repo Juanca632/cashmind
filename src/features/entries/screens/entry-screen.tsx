@@ -3,11 +3,12 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
 import { useEntry } from '@/features/entries/hooks/use-entry';
@@ -25,28 +26,24 @@ import {
   type QuickAddSuggestion,
 } from '@/features/entries/rules';
 import { addEntry, deleteEntry, editEntry } from '@/features/entries/service';
-import { ADD_LABELS, ENTRY_KINDS, KIND_LABELS, NOTE_EXAMPLES, type EntryKind } from '@/shared/kinds';
-import { addDays, dayKey, dayToDate, formatDay } from '@/shared/days';
+import { ADD_LABELS, NOTE_EXAMPLES, type EntryKind } from '@/shared/kinds';
+import { dayKey, dayToDate, formatDay } from '@/shared/days';
 import { monthKey } from '@/shared/months';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { centsToInput, parseEurosToCents } from '@/shared/money';
-import { IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
+import { FontFamily, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
-import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
-import { IconButton } from '@/shared/ui/icon-button';
-import { PressableScale } from '@/shared/ui/pressable-scale';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
+import { ThemedView } from '@/shared/ui/themed-view';
+import { Card } from '@/shared/ui/card';
 import { hapticTick } from '@/shared/haptics';
 import { DataError } from '@/shared/ui/data-error';
 import { MessageScreen } from '@/shared/ui/message-screen';
 import { ErrorText } from '@/shared/ui/error-text';
-import { SwitchRow } from '@/shared/ui/switch-row';
-import { TextField } from '@/shared/ui/text-field';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { ThemedView } from '@/shared/ui/themed-view';
 
 export default function EntryScreen() {
   const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string }>();
@@ -109,7 +106,7 @@ function EntryForm({
   const { dialog: confirmDialog, ask } = useConfirm();
   const { submit, submitting } = useSubmit(allowLeave);
 
-  // An entry stays in its month; the date moves within it, up to today.
+  // An entry stays in its month; the calendar picks within it, up to today.
   const formMonth = (entry?.date ?? defaultDate).slice(0, 7);
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
@@ -167,71 +164,86 @@ function EntryForm({
         {discardDialog}
         {confirmDialog}
         <ScreenScroll>
-          <AmountField
-            value={amountText}
-            onChangeText={setAmountText}
-            error={amountError ? entryErrorMessage(amountError) : null}
-            autoFocus={!entry}
+          <KindSegmented
+            kinds={FORM_KINDS}
+            value={kind}
+            onChange={(option) => {
+              setKind(option);
+              // Categories belong to a kind: a new kind starts again from Other.
+              setCategory(DEFAULT_CATEGORY);
+            }}
           />
+
+          {/* The one big figure, alone in its card like My plan's percentage, tinted with the kind's color. */}
+          <Card size="large" style={{ backgroundColor: theme.kindTint[kind] }}>
+            <AmountField
+              value={amountText}
+              onChangeText={setAmountText}
+              error={amountError ? entryErrorMessage(amountError) : null}
+              size="large"
+            />
+          </Card>
+
+          <View style={styles.section}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              Category
+            </ThemedText>
+            <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
+          </View>
 
           {kind === 'expense' ? <QuickAddRow suggestions={suggestions} onPick={fillFrom} /> : null}
 
-          <View style={styles.kindRow}>
-            {ENTRY_KINDS.map((option) => {
-              const selected = option === kind;
-              return (
-                <PressableScale
-                  key={option}
-                  accessibilityRole="radio"
-                  accessibilityLabel={KIND_LABELS[option]}
-                  accessibilityState={{ selected }}
-                  onPress={() => {
-                    if (option === kind) return;
-                    hapticTick();
-                    setKind(option);
-                    // Categories belong to a kind: a new kind starts again from Other.
-                    setCategory(DEFAULT_CATEGORY);
-                  }}
-                  style={[styles.kind, { backgroundColor: selected ? theme.kindFill[option] : theme.backgroundElement }]}>
-                  <Feather name={KIND_ICONS[option]} size={IconSize.medium} color={selected ? theme.onAccent : theme.kindInk[option]} />
-                  <ThemedText type="smallBold" style={selected ? { color: theme.onAccent } : undefined}>
-                    {KIND_LABELS[option]}
-                  </ThemedText>
-                </PressableScale>
-              );
-            })}
-          </View>
-
-          <CategoryChoices kind={kind} value={category} onChange={setCategory} />
-
-          <TextField label="Note (optional)" placeholder={NOTE_EXAMPLES[kind]} value={note} onChangeText={setNote} maxLength={80} />
-
-          <View style={[styles.dateRow, { backgroundColor: theme.backgroundElement }]}>
-            <IconButton
-              icon="chevron-left"
-              accessibilityLabel="Previous day"
-              disabled={date <= firstDay}
-              onPress={() => setDate(addDays(date, -1))}
-            />
+          {/* The details, as rows of one card: a value on the right, like a settings list. */}
+          <Card style={styles.details}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Date: ${formatDay(date)}. Pick a day`}
-              hitSlop={Layout.itemGap}
               onPress={pickDate}
-              style={({ pressed }) => (pressed ? styles.pressed : undefined)}>
-              <ThemedText type="smallBold">{date === todayKey ? `Today · ${formatDay(date)}` : formatDay(date)}</ThemedText>
+              style={({ pressed }) => [styles.detailRow, pressed && { backgroundColor: theme.pressed }]}>
+              <Feather name="calendar" size={IconSize.medium} color={theme.textSecondary} />
+              <ThemedText style={styles.detailLabel}>Date</ThemedText>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                {date === todayKey ? 'Today' : formatDay(date)}
+              </ThemedText>
+              <Feather name="chevron-right" size={IconSize.medium} color={theme.textSecondary} />
             </Pressable>
-            <IconButton
-              icon="chevron-right"
-              accessibilityLabel="Next day"
-              disabled={date >= lastDay}
-              onPress={() => setDate(addDays(date, 1))}
-            />
-          </View>
-          {errors.includes('date-invalid') ? <ErrorText>{entryErrorMessage('date-invalid')}</ErrorText> : null}
+            {errors.includes('date-invalid') ? <ErrorText>{entryErrorMessage('date-invalid')}</ErrorText> : null}
 
-          {canRepeat ? <SwitchRow label="Repeat every month" value={repeat} onValueChange={setRepeat} /> : null}
+            {canRepeat ? (
+              <>
+                <View style={[styles.divider, { backgroundColor: theme.background }]} />
+                <View style={styles.detailRow}>
+                  <Feather name="repeat" size={IconSize.medium} color={theme.textSecondary} />
+                  <ThemedText style={styles.detailLabel}>Repeat every month</ThemedText>
+                  <Switch
+                    accessibilityLabel="Repeat every month"
+                    accessibilityRole="switch"
+                    value={repeat}
+                    onValueChange={(value) => {
+                      hapticTick();
+                      setRepeat(value);
+                    }}
+                    thumbColor={theme.background}
+                    trackColor={{ false: theme.textSecondary, true: theme.accent }}
+                  />
+                </View>
+              </>
+            ) : null}
 
+            <View style={[styles.divider, { backgroundColor: theme.background }]} />
+            <View style={styles.detailRow}>
+              <Feather name="edit-3" size={IconSize.medium} color={theme.textSecondary} />
+              <TextInput
+                accessibilityLabel="Note (optional)"
+                placeholder={`Note, e.g. ${NOTE_EXAMPLES[kind]}`}
+                placeholderTextColor={theme.textSecondary}
+                value={note}
+                onChangeText={setNote}
+                maxLength={80}
+                style={[styles.noteInput, { color: theme.text }]}
+              />
+            </View>
+          </Card>
           <Button label={submitLabel} disabled={errors.length > 0 || submitting} onPress={onSave} />
           {entry ? <Button label="Delete" variant="destructive" disabled={submitting} onPress={onDelete} /> : null}
         </ScreenScroll>
@@ -240,30 +252,37 @@ function EntryForm({
   );
 }
 
+/** The kinds in the order the entry form offers them (ENTRY_KINDS has another order): expenses are the most common. */
+const FORM_KINDS: readonly EntryKind[] = ['expense', 'income', 'savings'];
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  kindRow: {
-    flexDirection: 'row',
+  section: {
     gap: Layout.itemGap,
   },
-  kind: {
-    alignItems: 'center',
-    borderRadius: Radius.card,
-    flex: 1,
-    gap: Layout.tightGap,
-    justifyContent: 'center',
-    minHeight: Size.choice,
+  details: {
+    gap: 0,
+    paddingVertical: Layout.tightGap,
   },
-  pressed: {
-    opacity: Opacity.pressed,
-  },
-  dateRow: {
+  detailRow: {
     alignItems: 'center',
     borderRadius: Radius.field,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: Layout.rowGap,
     minHeight: Size.control,
+  },
+  detailLabel: {
+    flex: 1,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
+  noteInput: {
+    flex: 1,
+    fontFamily: FontFamily.medium,
+    minHeight: Size.control,
+    padding: 0,
   },
 });

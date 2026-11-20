@@ -21,6 +21,7 @@ appId: com.juancrestrepo.cashmind
     env:
       FIELD: "Amount"
       VALUE: "45,00"
+# The categories are a grid: all of them are visible, no sideways scroll.
 - tapOn: "Health"
 - tapOn: "Save changes"
 - extendedWaitUntil:

@@ -1,6 +1,6 @@
 import { act, screen, testRouter, within } from 'expo-router/testing-library';
 
-import { dumpDevice, headerTitles, expectLeftToSpend, answerDialog, exactText, press, startApp, type } from '../test-support/app';
+import { dumpDevice, headerTitles, expectLeftToSpend, answerDialog, exactText, press, startApp, type, typeNote } from '../test-support/app';
 import { RELAX_TABLES } from '../test-support/damaged-data';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
@@ -71,7 +71,7 @@ describe('Home stays short', () => {
 
     await press('Add expense');
     await type('Amount', '3');
-    await type('Note (optional)', 'Brand new');
+    await typeNote('Brand new');
     await press('Add expense');
 
     expect(screen).toHavePathname('/');

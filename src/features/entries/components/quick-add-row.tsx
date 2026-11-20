@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { CATEGORY_LABELS } from '@/features/entries/categories';
 import { categoryIcon } from '@/features/entries/components/category-icons';
@@ -21,17 +21,17 @@ type QuickAddRowProps = {
   onPick: (suggestion: QuickAddSuggestion) => void;
 };
 
-/** "Recent": the expenses the user records most often, each filling the form when tapped. */
+/** "Often recorded": the expenses the user records most often, in one row that scrolls sideways; each fills the form when tapped. */
 export function QuickAddRow({ suggestions, onPick }: QuickAddRowProps) {
   const theme = useTheme();
   if (suggestions.length === 0) return null;
 
   return (
-    <View style={styles.container}>
-      <ThemedText type="small" themeColor="textSecondary">
-        Recent
+    <View style={styles.section}>
+      <ThemedText type="smallBold" themeColor="textSecondary">
+        Often recorded
       </ThemedText>
-      <View style={styles.pills}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.row}>
         {suggestions.map((suggestion) => {
           const title = entryTitle({ kind: 'expense', ...suggestion });
           const amount = formatEuros(suggestion.amountCents);
@@ -41,23 +41,23 @@ export function QuickAddRow({ suggestions, onPick }: QuickAddRowProps) {
               label={`${shortTitle(title)} · ${amount}`}
               accessibilityLabel={`Fill with ${title}, ${CATEGORY_LABELS[suggestion.category]}, ${amount}`}
               icon={categoryIcon('expense', suggestion.category)}
-              colors={{ fill: theme.kindFill.expense, ink: theme.kindInk.expense }}
+              // Flat and neutral like the other choices; only the icon carries the expense color.
+              selected={false}
+              colors={{ fill: theme.kindTint.expense, ink: theme.kindInk.expense }}
               onPress={() => onPick(suggestion)}
             />
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: Layout.tightGap,
+  section: {
+    gap: Layout.itemGap,
   },
-  pills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  row: {
     gap: Layout.itemGap,
   },
 });
