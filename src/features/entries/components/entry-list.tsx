@@ -6,7 +6,7 @@ import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } fr
 import { categoryIcon } from '@/features/entries/components/category-icons';
 import { entryTitle, type Entry } from '@/features/entries/rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
@@ -63,7 +63,8 @@ type EntryRowProps = {
 /** One entry: category icon, title, day and amount. Memoized for long lists. */
 export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
   const theme = useTheme();
-  const amount = `${entry.kind === 'income' ? '+' : ''}${formatEuros(entry.amountCents)}`;
+  const money = useMoney();
+  const amount = `${entry.kind === 'income' ? '+' : ''}${money.format(entry.amountCents)}`;
   const repeats = entry.recurringId !== null;
   return (
     <Pressable

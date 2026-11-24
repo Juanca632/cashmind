@@ -7,7 +7,7 @@ Personal budgeting app for Android. The user records what they earn, save and sp
 - **Privacy first:** all financial data stays on the device; the one exception is Android's encrypted auto backup to the user's Google account (`android.allowBackup`). No bank credentials, no open banking, no backend unless explicitly decided.
 - **Keep it simple:** build only what the current change needs. No speculative abstractions, layers or libraries "for later".
 - **Android first.** iOS is out of scope for now.
-- **Money:** amounts are EUR. Never use floating point for money; store integer cents.
+- **Money:** amounts are in the one currency chosen in Settings (EUR by default, or USD or COP); changing it never converts stored amounts. Never use floating point for money; store integer hundredths (cents).
 - **Language:** all code, comments, docs, specs and commit messages in English.
 - **Planning:** features are planned with GitHub Spec Kit (`.specify/`, `specs/`). For new work use `/speckit-specify`, `/speckit-plan` and `/speckit-tasks`, then `/speckit-implement` and `/speckit-converge`. Project principles are in `.specify/memory/constitution.md`. Keep specs short and state what is out of scope; break work into small tasks that can each be verified on the phone or with a test.
 - **Branches:** only `main` and `develop` are long-lived. Each piece of work gets its own branch made from an up-to-date `develop` (for example `feat/018-<name>`), which is merged into `develop` and then deleted, locally and on GitHub. Releases go through a pull request from `develop` to `main`, merged with a merge commit (not squash) so every commit reaches the release tagging; after it merges, `develop` is brought level with `main` again.

@@ -12,7 +12,8 @@ import { PERCENT_INVALID, savingsGoal, savingsPercentFor } from '@/features/plan
 import { savePlan } from '@/features/plan/service';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
-import { formatEuros, formatEurosCompact, parsePercent } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
+import { parsePercent } from '@/shared/money';
 import { monthKey } from '@/shared/months';
 import { BIG_FIGURE, FontFamily, Layout, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -51,6 +52,7 @@ export default function PlanScreen() {
 type PlanFormProps = { initialPercent: number; incomeCents: number; recurring: RecurringItem[] };
 
 function PlanForm({ initialPercent, incomeCents, recurring }: PlanFormProps) {
+  const money = useMoney();
   const db = useSQLiteContext();
   const theme = useTheme();
   const [percentText, setPercentText] = useState(String(initialPercent));
@@ -93,8 +95,8 @@ function PlanForm({ initialPercent, incomeCents, recurring }: PlanFormProps) {
                   {percent === null
                     ? ' '
                     : incomeCents > 0
-                      ? `${formatEurosCompact(savingsGoal(incomeCents, percent))} of this month's ${formatEurosCompact(incomeCents)}`
-                      : 'Add this month\'s income to see it in euros.'}
+                      ? `${money.formatCompact(savingsGoal(incomeCents, percent))} of this month's ${money.formatCompact(incomeCents)}`
+                      : 'Add this month\'s income to see the amount.'}
                 </ThemedText>
                 {percentText.trim() !== '' && percent === null ? <ErrorText>{PERCENT_INVALID}</ErrorText> : null}
               </View>
@@ -120,6 +122,7 @@ function PlanForm({ initialPercent, incomeCents, recurring }: PlanFormProps) {
 
 /** What is recorded on the 1st of every month, and what the monthly expenses add up to. */
 function EveryMonth({ items }: { items: RecurringItem[] }) {
+  const money = useMoney();
   const fixedCosts = fixedCostsCents(items);
   return (
     <View style={styles.section}>
@@ -139,7 +142,7 @@ function EveryMonth({ items }: { items: RecurringItem[] }) {
         <RecurringList items={items} onPress={(item) => router.push({ pathname: '/recurring', params: { id: item.id } })} />
         {fixedCosts > 0 ? (
           <ThemedText type="smallBold" themeColor="textSecondary">
-            {`Fixed costs: ${formatEuros(fixedCosts)} a month`}
+            {`Fixed costs: ${money.format(fixedCosts)} a month`}
           </ThemedText>
         ) : null}
       </Card>

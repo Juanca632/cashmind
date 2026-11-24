@@ -17,7 +17,8 @@ import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
-import { formatEuros, formatEurosCompact } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
+import { splitFraction } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
 import { BORDER_WIDTH, elevation, FontFamily, Hero, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -64,6 +65,7 @@ export default function HomeScreen() {
 }
 
 function HomeMonth({ today }: { today: Date }) {
+  const money = useMoney();
   const db = useSQLiteContext();
   const theme = useTheme();
   const plan = usePlanVersions();
@@ -158,7 +160,7 @@ function HomeMonth({ today }: { today: Date }) {
                   {previousIncome.data !== null ? (
                     <Pill
                       variant="hero"
-                      label={`Repeat ${formatEurosCompact(previousIncome.data)}`}
+                      label={`Repeat ${money.formatCompact(previousIncome.data)}`}
                       accessibilityLabel="Repeat last income"
                       disabled={repeatedKey === repeatKey}
                       onPress={() => repeatIncome(previousIncome.data as number)}
@@ -174,12 +176,12 @@ function HomeMonth({ today }: { today: Date }) {
           <View style={styles.section}>
             <SectionTitle>Overview</SectionTitle>
             <View style={styles.tiles}>
-              <KindTile kind="income" value={formatEurosCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
-              <KindTile kind="expense" title="Spent" value={formatEurosCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
+              <KindTile kind="income" value={money.formatCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
+              <KindTile kind="expense" title="Spent" value={money.formatCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
               <KindTile
                 kind="savings"
-                value={formatEurosCompact(summary.saved)}
-                detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${formatEurosCompact(summary.goal)}`}
+                value={money.formatCompact(summary.saved)}
+                detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${money.formatCompact(summary.goal)}`}
                 progress={summary.goal > 0 ? Math.min(summary.saved / summary.goal, 1) : undefined}
                 selected={selected}
                 onSelect={toggle}
@@ -251,12 +253,13 @@ function SectionTitle({ children }: { children: string }) {
  * sentence saying how it stands today; what was spent is already on the Spent tile.
  */
 function SpendingPaceSection({ pace, month }: { pace: SpendingPace; month: string }) {
+  const money = useMoney();
   const today = pace.paceTodayCents;
-  const line = `The plan's pace goes from ${formatEuros(pace.startCents)} to ${formatEuros(pace.endCents)}.`;
+  const line = `The plan's pace goes from ${money.format(pace.startCents)} to ${money.format(pace.endCents)}.`;
   const label =
     today === null
-      ? `Spending pace: ${formatEuros(pace.spentCents)} spent this month, the plan allowed ${formatEuros(pace.endCents)}. ${line}`
-      : `Spending pace: ${formatEuros(pace.spentCents)} spent so far, your pace today is ${formatEuros(today)}. ${line}`;
+      ? `Spending pace: ${money.format(pace.spentCents)} spent this month, the plan allowed ${money.format(pace.endCents)}. ${line}`
+      : `Spending pace: ${money.format(pace.spentCents)} spent so far, your pace today is ${money.format(today)}. ${line}`;
   return (
     <View style={styles.section}>
       <View style={styles.sectionTitle}>
@@ -264,7 +267,7 @@ function SpendingPaceSection({ pace, month }: { pace: SpendingPace; month: strin
         <LinkButton label="See trends ›" accessibilityLabel="See trends" onPress={() => router.push('/trends')} />
       </View>
       <Card>
-        {today === null ? null : <ThemedText type="smallBold">{paceSentence(pace.spentCents, today, formatEuros)}</ThemedText>}
+        {today === null ? null : <ThemedText type="smallBold">{paceSentence(pace.spentCents, today, money.format)}</ThemedText>}
         <SpendingPaceChart pace={pace} month={month} accessibilityLabel={label} />
       </Card>
     </View>
@@ -300,15 +303,18 @@ function OverspentLayer({ visible }: { visible: boolean }) {
 
 /** The month in brief: what can still be spent after expenses and the savings goal. */
 function LeftToSpend({ left, month, daily }: { left: number; month: string; daily: DailyAllowance | null }) {
-  const shown = useCountUp(left, month);
-  const [whole, decimals] = formatEuros(shown).split(',');
+  const money = useMoney();
+  const counted = useCountUp(left, month);
+  // A whole amount counts up in whole units, so pesos never flash decimals they do not have.
+  const shown = left % 100 === 0 ? Math.round(counted / 100) * 100 : counted;
+  const [whole, fraction] = splitFraction(money, money.format(shown));
   const dailyText =
     daily === null
       ? null
       : daily.daysLeft === 1
-        ? `Today: ${formatEuros(daily.cents)}`
-        : `≈ ${formatEuros(daily.cents)} / day · ${daily.daysLeft} days left`;
-  const label = `Left to spend: ${formatEuros(left)}${dailyText ? `. ${dailyText}` : ''}`;
+        ? `Today: ${money.format(daily.cents)}`
+        : `≈ ${money.format(daily.cents)} / day · ${daily.daysLeft} days left`;
+  const label = `Left to spend: ${money.format(left)}${dailyText ? `. ${dailyText}` : ''}`;
   return (
     <View style={styles.brief} accessible accessibilityLabel={label}>
       <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Left to spend</ThemedText>
@@ -316,7 +322,7 @@ function LeftToSpend({ left, month, daily }: { left: number; month: string; dail
         <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.figureWhole, { color: Hero.text }]}>
           {whole}
         </ThemedText>
-        <ThemedText style={[styles.figureDecimals, { color: Hero.label }]}>,{decimals}</ThemedText>
+        {fraction ? <ThemedText style={[styles.figureDecimals, { color: Hero.label }]}>{fraction}</ThemedText> : null}
       </View>
       {dailyText ? (
         <ThemedText type="small" style={{ color: Hero.label }}>

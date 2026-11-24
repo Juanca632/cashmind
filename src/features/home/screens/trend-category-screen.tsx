@@ -8,7 +8,7 @@ import { isEntryKind } from '@/features/entries/rules';
 import { TrendBars } from '@/features/home/components/trend-bars';
 import { averageSentence, monthsInUse, monthTotals, TREND_MONTHS, trendAverage } from '@/features/home/trends';
 import { useToday } from '@/shared/hooks/use-today';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { formatMonth, lastMonths, monthKey } from '@/shared/months';
 import { Layout } from '@/shared/theme/theme';
 import { Card } from '@/shared/ui/card';
@@ -20,6 +20,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
 
 /** One category of one kind over the same six months as Trends, against its own usual. */
 export default function TrendCategoryScreen() {
+  const money = useMoney();
   const params = useLocalSearchParams<{ kind?: string; category?: string; month?: string }>();
   const today = useToday();
   const currentMonth = monthKey(today);
@@ -51,12 +52,12 @@ export default function TrendCategoryScreen() {
               {formatMonth(selected)}
             </ThemedText>
             <ThemedText type="heading" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {formatEuros(cents)}
+              {money.format(cents)}
             </ThemedText>
             {average === null ? null : (
               <>
-                <ThemedText type="small">{averageSentence(cents, average, selected === currentMonth, formatEuros, 'usual')}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">{`Usually ${formatEuros(average)} / month`}</ThemedText>
+                <ThemedText type="small">{averageSentence(cents, average, selected === currentMonth, money.format, 'usual')}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">{`Usually ${money.format(average)} / month`}</ThemedText>
               </>
             )}
           </View>

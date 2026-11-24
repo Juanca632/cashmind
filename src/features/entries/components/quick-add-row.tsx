@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { CATEGORY_LABELS } from '@/features/entries/categories';
 import { categoryIcon } from '@/features/entries/components/category-icons';
 import { entryTitle, type QuickAddSuggestion } from '@/features/entries/rules';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { Layout } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Pill } from '@/shared/ui/pill';
@@ -24,6 +24,7 @@ type QuickAddRowProps = {
 /** "Often recorded": the expenses the user records most often, in one row that scrolls sideways; each fills the form when tapped. */
 export function QuickAddRow({ suggestions, onPick }: QuickAddRowProps) {
   const theme = useTheme();
+  const money = useMoney();
   if (suggestions.length === 0) return null;
 
   return (
@@ -34,7 +35,7 @@ export function QuickAddRow({ suggestions, onPick }: QuickAddRowProps) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.row}>
         {suggestions.map((suggestion) => {
           const title = entryTitle({ kind: 'expense', ...suggestion });
-          const amount = formatEuros(suggestion.amountCents);
+          const amount = money.format(suggestion.amountCents);
           return (
             <Pill
               key={`${suggestion.category}:${suggestion.amountCents}:${suggestion.note}`}

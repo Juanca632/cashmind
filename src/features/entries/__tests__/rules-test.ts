@@ -55,7 +55,8 @@ describe('validateEntry', () => {
 
   it('accepts the smallest amount (1 cent) and rejects one above the limit', () => {
     expect(validateEntry({ ...cinema, amountCents: 1 }, nov7)).toEqual([]);
-    expect(validateEntry({ ...cinema, amountCents: 90_000_001 }, nov7)).toEqual(['amount-too-large']);
+    expect(validateEntry({ ...cinema, amountCents: 90_000_000_001 }, nov7)).toEqual(['amount-too-large']);
+    expect(validateEntry({ ...cinema, amountCents: 90_000_000_000 }, nov7)).toEqual([]);
   });
 
   it('accepts today and rejects tomorrow', () => {

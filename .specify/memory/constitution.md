@@ -1,6 +1,6 @@
 # cashmind Constitution
 
-cashmind is a personal budgeting app for Android (Expo / React Native, TypeScript). Currency is EUR; the user lives in France.
+cashmind is a personal budgeting app for Android (Expo / React Native, TypeScript). Amounts are in the one currency chosen in Settings: EUR (the default), USD or COP.
 
 ## Core Principles
 
@@ -18,7 +18,7 @@ Android is the only target. iOS is out of scope for now.
 
 ### IV. Money Is Integer Cents
 
-Amounts are EUR and MUST be stored and computed as integer cents. Floating point MUST NOT be used for money.
+Amounts are in the currency chosen in Settings (EUR by default) and MUST be stored and computed as integer hundredths of it. Changing the currency MUST NOT change stored amounts. Floating point MUST NOT be used for money.
 
 ### V. English in the Repository
 
@@ -45,4 +45,4 @@ All code, comments, docs, specs and commit messages MUST be in English.
 
 This constitution takes precedence over other practices. Amending it requires the developer's approval and a version bump. `AGENTS.md` holds runtime guidance for agents and MUST stay consistent with it.
 
-**Version**: 1.3.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-11
+**Version**: 1.4.0 | **Ratified**: 2026-11-08 | **Last Amended**: 2026-11-24

@@ -20,7 +20,7 @@ import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { hapticTick } from '@/shared/haptics';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { formatMonth, formatMonthName, lastMonths, monthKey } from '@/shared/months';
 import { Layout } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -37,6 +37,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
  * and the categories are about; it never leaves the screen.
  */
 export default function TrendsScreen() {
+  const money = useMoney();
   const theme = useTheme();
   const today = useToday();
   const currentMonth = monthKey(today);
@@ -63,7 +64,7 @@ export default function TrendsScreen() {
     kind,
   ).map((share) => {
     const usual = trendAverage(monthTotals(entries.data, months, kind, share.category), inUse, currentMonth);
-    return { share, versusUsual: usual === null ? null : averageSentence(share.cents, usual, isCurrent, formatEuros, 'usual') };
+    return { share, versusUsual: usual === null ? null : averageSentence(share.cents, usual, isCurrent, money.format, 'usual') };
   });
 
   return (
@@ -92,10 +93,10 @@ export default function TrendsScreen() {
               {formatMonth(selected)}
             </ThemedText>
             <ThemedText type="heading" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {formatEuros(cents)}
+              {money.format(cents)}
             </ThemedText>
             {average === null ? null : (
-              <ThemedText type="small">{averageSentence(cents, average, isCurrent, formatEuros, 'your average')}</ThemedText>
+              <ThemedText type="small">{averageSentence(cents, average, isCurrent, money.format, 'your average')}</ThemedText>
             )}
           </View>
           <TrendBars

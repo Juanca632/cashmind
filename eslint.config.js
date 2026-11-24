@@ -22,6 +22,7 @@ const NO_WRITES_IN_HOOKS = {
     'markRecurringRecorded',
     'savePlanFromMonth',
     'saveAppLock',
+    'saveCurrency',
   ],
   message: 'Writes go through services.',
 };
