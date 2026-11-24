@@ -28,6 +28,7 @@ import { useToday } from '@/shared/hooks/use-today';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
+import { IconButton } from '@/shared/ui/icon-button';
 import { LinkButton } from '@/shared/ui/link-button';
 import { Pill } from '@/shared/ui/pill';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
@@ -135,7 +136,10 @@ function HomeMonth({ today }: { today: Date }) {
               Demo data
             </ThemedText>
           ) : null}
-          {isPast ? null : <Pill label="My plan" onPress={() => router.push('/plan')} />}
+          <View style={styles.topActions}>
+            {isPast ? null : <Pill label="My plan" onPress={() => router.push('/plan')} />}
+            <IconButton icon="settings" accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+          </View>
         </View>
 
         {/* The shadow sits on its own view: the card clips its content to its rounded corners. */}
@@ -434,6 +438,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  topActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Layout.tightGap,
   },
   askIncome: {
     alignItems: 'center',

@@ -248,6 +248,13 @@ describe("Updates never lose or break data (real list)", () => {
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
     `,
+    8: `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 20);
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-10-01', 'income', 150000, 'Pay', 'salary');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
+    `,
   };
   const monthly = (date: string, cents: number) => ({ date, kind: "income", amount_cents: cents, note: "Monthly income", category: "other" });
   /** The entries every released version ends with, once the clock says it is 9 November 2026. */
@@ -273,6 +280,7 @@ describe("Updates never lose or break data (real list)", () => {
     // Version 6 already has categories: they are kept as they are.
     6: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
     7: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
+    8: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
   };
   const expectedRest = (released: number) => [
     { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema", category: released >= 6 ? "leisure" : "other" },
@@ -421,7 +429,7 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version")).toEqual([
         { effective_month: "2026-07", savings_pct: 30 },
       ]);
-      expect(await version(db)).toBe(7);
+      expect(await version(db)).toBe(MIGRATIONS.length);
     });
 
     it("A database with no entries upgrades to an empty entry table", async () => {
@@ -429,11 +437,11 @@ describe("Updates never lose or break data (real list)", () => {
       expect(await db.getAllAsync("SELECT * FROM entry")).toEqual([]);
     });
 
-    it("The structure of a new install is the saved released structure of version 7", async () => {
+    it("The structure of a new install is the saved released structure of the latest version", async () => {
       const fresh = createFakeDb() as any;
       await runMigrations(fresh, MIGRATIONS);
       const saved = createFakeDb() as any;
-      await saved.execAsync(RELEASED_SCHEMAS[7]);
+      await saved.execAsync(RELEASED_SCHEMAS[MIGRATIONS.length]);
       expect(await structure(saved)).toEqual(await structure(fresh));
     });
   });
@@ -466,7 +474,7 @@ describe("Updates never lose or break data (real list)", () => {
         { effective_month: "2026-07", savings_pct: 30 },
         { effective_month: "2026-09", savings_pct: 0 },
       ]);
-      expect(await version(db)).toBe(7);
+      expect(await version(db)).toBe(MIGRATIONS.length);
     });
 
     it("The recurring table exists and is empty", async () => {
@@ -675,5 +683,40 @@ describe("Updates never lose or break data (real list)", () => {
         { bucket: "fixed", amount_cents: 90000, note: "Rent" },
       ]);
     });
+  });
+});
+
+describe("Existing data is kept (step 8: settings table)", () => {
+  const upgradeFromV7 = async () => {
+    const db = createFakeDb() as any;
+    await db.execAsync(RELEASED_SCHEMAS[7]);
+    await db.execAsync(`
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (3, '2026-10-01', 'income', 200000, 'Salary', '2026-10-01 07:00:00', 'salary');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (8, '2026-10-02', 'expense', 1250, 'Cinema', '2026-10-02 08:15:00', 'leisure');
+    `);
+    await db.execAsync("PRAGMA user_version = 7");
+    await runMigrations(db, MIGRATIONS);
+    return db;
+  };
+
+  it("Every entry and plan is kept unchanged and the setting table starts empty", async () => {
+    const db = await upgradeFromV7();
+    expect(await db.getAllAsync("SELECT id, date, kind, amount_cents, note, created_at, category FROM entry ORDER BY id")).toEqual([
+      { id: 3, date: "2026-10-01", kind: "income", amount_cents: 200000, note: "Salary", created_at: "2026-10-01 07:00:00", category: "salary" },
+      { id: 8, date: "2026-10-02", kind: "expense", amount_cents: 1250, note: "Cinema", created_at: "2026-10-02 08:15:00", category: "leisure" },
+    ]);
+    expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version")).toEqual([
+      { effective_month: "2026-07", savings_pct: 30 },
+    ]);
+    expect(await db.getAllAsync("SELECT * FROM setting")).toEqual([]);
+    expect(await version(db)).toBe(8);
+  });
+
+  it("The setting table is strict and keeps one value per key", async () => {
+    const db = await upgradeFromV7();
+    await db.runAsync("INSERT INTO setting (key, value) VALUES ('app_lock', 'off')");
+    await expect(db.runAsync("INSERT INTO setting (key, value) VALUES ('app_lock', 'on')")).rejects.toThrow();
+    await expect(db.runAsync("INSERT INTO setting (key, value) VALUES ('x', NULL)")).rejects.toThrow();
   });
 });

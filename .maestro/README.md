@@ -25,5 +25,6 @@ One flow: `MAESTRO_OPTS=-Xmx512m maestro test .maestro/03-edit-and-delete.yaml`.
 
 - Every flow starts from empty data (`subflows/launch-clean.yaml` clears the app state). The persistence flow restarts the app without clearing it, on purpose.
 - Flows use the emulator's real date and no hard-coded dates.
+- Flows assume the emulator has no screen lock, so the app lock (023) never shows. The lock itself is checked by hand with a PIN (`specs/023-settings-app-lock/quickstart.md`); clear the PIN afterwards.
 - Amounts use a no-break space before "€" and a narrow no-break space as thousands separator, so the flows match them with `.`.
 - `subflows/` holds shared steps; `config.yaml` only picks the top-level files.
