@@ -229,4 +229,15 @@ export const MIGRATIONS: readonly Migration[] = [
         ALTER TABLE entry ADD COLUMN recurring_id INTEGER REFERENCES recurring(id);
       `),
   },
+  {
+    // App options stored on the phone (specs/023-settings-app-lock). Only adds a table.
+    version: 8,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE setting (
+          key TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL
+        ) STRICT;
+      `),
+  },
 ];

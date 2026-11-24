@@ -117,12 +117,12 @@ describe("The database rejects invalid data", () => {
     ]);
   });
 
-  it("All tables enforce column types and only the entry, plan and recurring tables exist", async () => {
+  it("All tables enforce column types and only the entry, plan, recurring and setting tables exist", async () => {
     const db = await newDb();
     const tables = await db.getAllAsync(
       "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     );
-    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version", "recurring"]);
+    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version", "recurring", "setting"]);
     for (const t of tables) expect(t.sql).toMatch(/STRICT\s*$/i);
   });
 

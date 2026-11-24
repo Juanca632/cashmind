@@ -21,6 +21,7 @@ const NO_WRITES_IN_HOOKS = {
     'stopRecurring',
     'markRecurringRecorded',
     'savePlanFromMonth',
+    'saveAppLock',
   ],
   message: 'Writes go through services.',
 };
@@ -90,9 +91,10 @@ module.exports = defineConfig([
   },
   zone(['src/app/**'], [NO_REPOSITORIES, NO_DB]),
   { files: ['src/app/_layout.tsx'], rules: { 'no-restricted-imports': 'off' } },
-  zone(['src/shared/**'], [noFeatures('entries', 'plan', 'home'), NO_DB]),
-  ...featureZones('entries', [noFeatures('plan', 'home')]),
-  ...featureZones('plan', [noFeatures('entries', 'home')]),
+  zone(['src/shared/**'], [noFeatures('entries', 'plan', 'home', 'settings'), NO_DB]),
+  ...featureZones('entries', [noFeatures('plan', 'home', 'settings')]),
+  ...featureZones('plan', [noFeatures('entries', 'home', 'settings')]),
+  ...featureZones('settings', [noFeatures('entries', 'plan', 'home')]),
   ...featureZones('home', []),
   screenRules,
 ]);
