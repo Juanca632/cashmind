@@ -32,7 +32,7 @@ import { monthKey } from '@/shared/months';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
-import { centsToInput, parseEurosToCents } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { FontFamily, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
@@ -94,7 +94,8 @@ function EntryForm({
 }) {
   const db = useSQLiteContext();
   const theme = useTheme();
-  const [amountText, setAmountText] = useState(entry ? centsToInput(entry.amountCents) : '');
+  const money = useMoney();
+  const [amountText, setAmountText] = useState(entry ? money.toInput(entry.amountCents) : '');
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? defaultKind);
   const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
   const [note, setNote] = useState(entry?.note ?? '');
@@ -113,7 +114,7 @@ function EntryForm({
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
   // Only this month's entries can repeat; past months never change.
   const canRepeat = formMonth === monthKey(today);
-  const input: EntryInput = { date, kind, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim(), category };
+  const input: EntryInput = { date, kind, amountCents: money.parse(amountText) ?? 0, note: note.trim(), category };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
@@ -122,7 +123,7 @@ function EntryForm({
   /** Fills the form from a suggestion; the kind, the date and the repeat switch stay as they are. */
   function fillFrom(suggestion: QuickAddSuggestion) {
     hapticTick();
-    setAmountText(centsToInput(suggestion.amountCents));
+    setAmountText(money.toInput(suggestion.amountCents));
     setCategory(suggestion.category);
     setNote(suggestion.note);
   }

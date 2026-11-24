@@ -18,8 +18,8 @@ describe('Recurring entries: validation (FR-007)', () => {
   });
 
   it('refuses an amount above the limit like an entry', () => {
-    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_001 })).toEqual(['amount-too-large']);
-    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000 })).toEqual([]);
+    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000_001 })).toEqual(['amount-too-large']);
+    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000_000 })).toEqual([]);
   });
 
   it('refuses a category that does not belong to the kind', () => {

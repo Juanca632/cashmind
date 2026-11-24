@@ -6,7 +6,7 @@
 
 **Status**: Implemented
 
-**Input**: Migrated from the OpenSpec `expenses` capability; updated by 007-recorded-income, 008-simple-plan, 014-activity-screen, 015-categories, 017-entry-and-daily-budget, 021-quick-add and 022-entry-sheet. History is in `docs/openspec-archive/`.
+**Input**: Migrated from the OpenSpec `expenses` capability; updated by 007-recorded-income, 008-simple-plan, 014-activity-screen, 015-categories, 017-entry-and-daily-budget, 021-quick-add, 022-entry-sheet and 024-currency. History is in `docs/openspec-archive/`.
 
 This is a baseline spec: it describes the current behavior of the app and is kept up to date when a later feature changes that behavior.
 
@@ -136,6 +136,7 @@ Lets the user record what they earn, save or spend, in any month, and see that m
 - **FR-009** (Look inside one kind): When the month has income, the system SHALL let the user tap income, spent or savings on home to list only those entries, titled with that tile's name, and SHALL let the user return to the full list. The selected tile filters home's short list (and the count in "See all") and is the starting filter of the Activity screen, which has its own All, Income, Spent and Savings filter and shows the same empty texts. While a tile is selected, home SHALL show above the list that kind's month total split by category ("By category"), largest first, with each category's amount and whole percentage rounded to the nearest, listing only categories with entries. The Add action then adds that kind; with no tile selected it adds an expense.
 - **FR-010** (Three kinds and their categories): Every entry SHALL be an income, a saving or an expense, with one category of its kind: expenses Housing, Groceries, Transport, Eating out, Leisure, Health, Subscriptions, Other; income Salary, Freelance, Benefits, Gifts, Other; savings Emergency fund, Investments, Travel, Goal, Other (see 015). Entries recorded as fixed or leisure by older versions become expenses, and entries from before categories are in Other, when the app updates. A stored category that is unknown or not of the entry's kind counts as unreadable data (FR-008).
 - **FR-011** (Monthly entries): An entry of the current month can repeat every month. When the app opens in a new month, every repeating entry is recorded once in it, dated the 1st; months the app was not opened in are not filled, and recorded entries are ordinary entries of their month (see 018).
+- **FR-012** (Currency): Amounts SHALL be shown and typed in the one currency chosen in Settings: Euro (the default), US dollar or Colombian peso, each in its usual format. Changing it SHALL NOT convert or change stored amounts (see 024).
 
 ## Success Criteria *(mandatory)*
 

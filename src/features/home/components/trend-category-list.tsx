@@ -5,7 +5,7 @@ import { CATEGORY_LABELS, type EntryCategory } from '@/features/entries/categori
 import { categoryIcon } from '@/features/entries/components/category-icons';
 import type { CategoryShare } from '@/features/entries/rules';
 import type { EntryKind } from '@/shared/kinds';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Card } from '@/shared/ui/card';
@@ -28,6 +28,7 @@ type TrendCategoryListProps = {
  */
 export function TrendCategoryList({ kind, rows, onPress }: TrendCategoryListProps) {
   const theme = useTheme();
+  const money = useMoney();
   const largest = rows[0]?.share.cents ?? 1;
   return (
     <View style={styles.section}>
@@ -42,7 +43,7 @@ export function TrendCategoryList({ kind, rows, onPress }: TrendCategoryListProp
         ) : null}
         {rows.map(({ share, versusUsual }) => {
           const label = CATEGORY_LABELS[share.category];
-          const amount = formatEuros(share.cents);
+          const amount = money.format(share.cents);
           return (
             <PressableScale
               key={share.category}

@@ -29,7 +29,7 @@ describe('Invalid data is never saved (expenses)', () => {
     const db = await newDb();
     const result = await addEntry(db, { ...lunch, amountCents: 1e22 }, NOV_7);
 
-    expect(result).toEqual({ ok: false, kind: 'invalid', message: expect.stringMatching(/cannot be above/) });
+    expect(result).toEqual({ ok: false, kind: 'invalid', message: 'This amount is too large.' });
     expect(await rows(db)).toEqual([]);
   });
 

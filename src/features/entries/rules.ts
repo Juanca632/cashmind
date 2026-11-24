@@ -69,7 +69,7 @@ export const ENTRY_MISSING = 'This entry no longer exists.';
 export function entryErrorMessage(error: EntryError): string {
   switch (error) {
     case 'amount-not-positive':
-      return 'The amount must be greater than 0 €.';
+      return 'The amount must be greater than 0.';
     case 'amount-too-large':
       return AMOUNT_TOO_LARGE;
     case 'kind-invalid':

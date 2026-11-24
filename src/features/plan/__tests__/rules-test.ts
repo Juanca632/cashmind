@@ -1,10 +1,12 @@
 import { DEFAULT_SAVINGS_PERCENT, isValidPercent, savingsGoal, savingsPercentFor, type PlanVersion } from '../rules';
-import { formatEuros, parseEurosToCents, parsePercent } from '@/shared/money';
+import { moneyFor, parsePercent } from '@/shared/money';
 import { formatMonth, formatShortMonth, isPastMonth, isValidMonthKey, monthKey, monthsOfYear, monthStart, yearOf } from '@/shared/months';
 
 const normalizeSpaces = (text: string) => text.replace(/\s/g, ' ');
 
-describe('parseEurosToCents', () => {
+const euro = moneyFor('EUR');
+
+describe('euro parse', () => {
   it.each([
     ['2500', 250000],
     ['2500,5', 250050],
@@ -13,17 +15,17 @@ describe('parseEurosToCents', () => {
     ['1000,01 €', 100001],
     ['0', 0],
   ])('parses %p as %p cents', (text, cents) => {
-    expect(parseEurosToCents(text)).toBe(cents);
+    expect(euro.parse(text)).toBe(cents);
   });
 
   it.each(['', '   ', '-10', 'abc', '10,123', '1,2,3'])('rejects %p', (text) => {
-    expect(parseEurosToCents(text)).toBeNull();
+    expect(euro.parse(text)).toBeNull();
   });
 });
 
 describe('formatting', () => {
   it('formats cents as French euros', () => {
-    expect(normalizeSpaces(formatEuros(250050))).toBe('2 500,50 €');
+    expect(normalizeSpaces(euro.format(250050))).toBe('2 500,50 €');
   });
 
 });

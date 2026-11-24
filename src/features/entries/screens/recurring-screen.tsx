@@ -12,7 +12,7 @@ import { editRecurring, stopRecurring } from '@/features/entries/service';
 import { KIND_LABELS, NOTE_EXAMPLES } from '@/shared/kinds';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
-import { centsToInput, parseEurosToCents } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { Layout } from '@/shared/theme/theme';
 import { Button } from '@/shared/ui/button';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
@@ -38,7 +38,8 @@ export default function RecurringScreen() {
 
 function RecurringForm({ item }: { item: RecurringItem }) {
   const db = useSQLiteContext();
-  const [amountText, setAmountText] = useState(centsToInput(item.amountCents));
+  const money = useMoney();
+  const [amountText, setAmountText] = useState(money.toInput(item.amountCents));
   const [category, setCategory] = useState<EntryCategory>(item.category);
   const [note, setNote] = useState(item.note);
   const form = JSON.stringify({ amountText, category, note });
@@ -47,7 +48,7 @@ function RecurringForm({ item }: { item: RecurringItem }) {
   const { dialog: confirmDialog, ask } = useConfirm();
   const { submit, submitting } = useSubmit(allowLeave);
 
-  const input = { category, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim() };
+  const input = { category, amountCents: money.parse(amountText) ?? 0, note: note.trim() };
   const errors = validateRecurring(item.kind, input);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 

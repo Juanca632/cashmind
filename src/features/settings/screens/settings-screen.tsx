@@ -3,12 +3,19 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useSetCurrency } from '@/features/settings/components/currency-provider';
 import { authenticate } from '@/features/settings/device-auth';
 import { useAppLockSetting, type AppLockSetting } from '@/features/settings/hooks/use-app-lock-setting';
-import { setAppLock } from '@/features/settings/service';
-import { Layout } from '@/shared/theme/theme';
+import { setAppLock, setCurrency } from '@/features/settings/service';
+import { hapticTick } from '@/shared/haptics';
+import { useMoney } from '@/shared/hooks/use-money';
+import { CURRENCIES, CURRENCY_NAMES, type Currency } from '@/shared/money';
+import { Layout, Radius, Size } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
 import { DataError } from '@/shared/ui/data-error';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { ErrorText } from '@/shared/ui/error-text';
+import { Pill } from '@/shared/ui/pill';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { SwitchRow } from '@/shared/ui/switch-row';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -61,12 +68,79 @@ function SettingsList({ initial }: { initial: AppLockSetting }) {
           {error ? <ErrorText>{error}</ErrorText> : null}
         </View>
 
-        <View style={styles.section}>
-          <ThemedText type="heading">About</ThemedText>
-          <ThemedText themeColor="textSecondary">Version {Constants.expoConfig?.version ?? ''}</ThemedText>
-        </View>
+        <CurrencySection />
+
+        <AboutSection />
       </ScreenScroll>
     </ThemedView>
+  );
+}
+
+/** The app and its installed version, in a row shaped like the Security switch. */
+function AboutSection() {
+  const theme = useTheme();
+  return (
+    <View style={styles.section}>
+      <ThemedText type="heading">About</ThemedText>
+      <View style={[styles.infoRow, { backgroundColor: theme.backgroundElement }]}>
+        <ThemedText>CashMind</ThemedText>
+        <ThemedText themeColor="textSecondary">Version {Constants.expoConfig?.version ?? ''}</ThemedText>
+      </View>
+    </View>
+  );
+}
+
+/** The app's one currency (specs/024-currency). Picking one applies at once; nothing is converted. */
+function CurrencySection() {
+  const db = useSQLiteContext();
+  const theme = useTheme();
+  const { currency } = useMoney();
+  const apply = useSetCurrency();
+  const [error, setError] = useState<string | null>(null);
+  const { dialog, ask } = useConfirm();
+
+  const save = async (next: Currency) => {
+    setError(null);
+    const result = await setCurrency(db, next);
+    if (result.ok) apply(next);
+    else setError(result.message);
+  };
+
+  // Always asks first: every amount will show in the new currency with the same numbers.
+  const pick = (next: Currency) => {
+    if (next === currency) return;
+    hapticTick();
+    ask({
+      title: `Change to ${CURRENCY_NAMES[next]}?`,
+      message: `Your amounts keep their numbers and will show in ${CURRENCY_NAMES[next]}. Nothing is converted.`,
+      cancel: 'Cancel',
+      confirm: 'Change',
+      tone: 'primary',
+      onConfirm: () => void save(next),
+    });
+  };
+
+  return (
+    <View style={styles.section}>
+      {dialog}
+      <ThemedText type="heading">Currency</ThemedText>
+      <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel="Currency">
+        {CURRENCIES.map((option) => (
+          <Pill
+            key={option}
+            label={CURRENCY_NAMES[option]}
+            accessibilityRole="radio"
+            selected={option === currency}
+            colors={{ fill: theme.accent, ink: theme.onAccent }}
+            onPress={() => pick(option)}
+          />
+        ))}
+      </View>
+      <ThemedText type="small" themeColor="textSecondary">
+        Amounts are not converted when you change the currency.
+      </ThemedText>
+      {error ? <ErrorText>{error}</ErrorText> : null}
+    </View>
   );
 }
 
@@ -75,6 +149,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
+    gap: Layout.itemGap,
+  },
+  infoRow: {
+    alignItems: 'center',
+    borderRadius: Radius.field,
+    flexDirection: 'row',
+    gap: Layout.itemGap,
+    justifyContent: 'space-between',
+    minHeight: Size.control,
+    paddingHorizontal: Layout.cardPadding,
+  },
+  pills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Layout.itemGap,
   },
 });

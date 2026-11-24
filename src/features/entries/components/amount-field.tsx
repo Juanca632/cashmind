@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 
+import { useMoney } from '@/shared/hooks/use-money';
 import { BIG_FIGURE, FontFamily, Layout, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { ErrorText } from '@/shared/ui/error-text';
@@ -16,29 +17,34 @@ type AmountFieldProps = {
   size?: 'regular' | 'large';
 };
 
-/** The big euro amount at the top of an entry or monthly entry form, with its error. */
+/** The big amount at the top of an entry or monthly entry form, with its error. */
 export function AmountField({ value, onChangeText, error, autoFocus, size = 'regular' }: AmountFieldProps) {
   const theme = useTheme();
+  const money = useMoney();
   const input = useRef<TextInputInstance>(null);
+  const symbol = (
+    <ThemedText type="heading" themeColor="textSecondary">
+      {money.symbol}
+    </ThemedText>
+  );
   return (
     <View style={styles.group}>
-      {/* The whole row opens the keyboard, "€" included, so the big amount reads as something to tap. */}
+      {/* The whole row opens the keyboard, the symbol included, so the big amount reads as something to tap. */}
       <Pressable accessible={false} onPress={() => input.current?.focus()} style={styles.amount}>
+        {money.symbolFirst ? symbol : null}
         <TextInput
           ref={input}
           accessibilityLabel="Amount"
-          keyboardType="decimal-pad"
-          placeholder="0,00"
+          keyboardType={money.keyboard}
+          placeholder={money.placeholder}
           placeholderTextColor={theme.textSecondary}
-          maxLength={10}
+          maxLength={13}
           autoFocus={autoFocus}
           value={value}
           onChangeText={onChangeText}
           style={[styles.amountInput, size === 'large' && styles.large, { color: theme.text }]}
         />
-        <ThemedText type="heading" themeColor="textSecondary">
-          €
-        </ThemedText>
+        {money.symbolFirst ? null : symbol}
       </Pressable>
       {value.trim() !== '' && error ? <ErrorText>{error}</ErrorText> : null}
     </View>

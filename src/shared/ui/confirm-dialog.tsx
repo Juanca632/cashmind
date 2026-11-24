@@ -13,11 +13,13 @@ export type ConfirmRequest = {
   cancel: string;
   /** The destructive choice. */
   confirm: string;
+  /** danger (default): the confirm button is red, for deletes. primary: a change that loses nothing. */
+  tone?: 'danger' | 'primary';
   onConfirm: () => void;
 };
 
 /**
- * The app's confirmation for anything that deletes or discards. `ask` opens it; render `dialog`
+ * The app's confirmation for anything that deletes, discards or changes how all data shows. `ask` opens it; render `dialog`
  * once in the screen. A tap outside the card and Android's back button both cancel.
  */
 export function useConfirm(): { dialog: ReactNode; ask: (request: ConfirmRequest) => void } {
@@ -57,7 +59,7 @@ function ConfirmDialog({
           <ThemedText themeColor="textSecondary">{request.message}</ThemedText>
           <View style={styles.buttons}>
             <Button label={request.cancel} variant="quiet" size="compact" stretch onPress={onCancel} />
-            <Button label={request.confirm} variant="danger" size="compact" stretch onPress={onConfirm} />
+            <Button label={request.confirm} variant={request.tone ?? 'danger'} size="compact" stretch onPress={onConfirm} />
           </View>
         </View>
       </View>
