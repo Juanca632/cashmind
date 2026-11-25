@@ -68,7 +68,7 @@ The user decides part of the emergency money should go to the trip instead.
 - **Only one pocket**: To offers only "Main".
 - **Deleting a pocket**: a pocket that any move comes from or goes to cannot be deleted; its form says "A pocket with savings, spending or moves can't be deleted. You can rename it."
 - **Month without income**: the card keeps asking for income as today; money moved into that month counts in left to spend once the month has income.
-- **Pocket tiles**: a pocket's Saved and Spent tiles stay savings and expenses only; moves show in its Activity (the unfiltered list) and in its balance.
+- **Pocket Spent pill**: a pocket's Spent pill stays expenses only; moves show in its Activity (the unfiltered list) and in its balance.
 - **Main's tiles**: filtering Main's list by a kind does not show moves; the unfiltered list does.
 - **Amount**: required, above 0, within the app's amount limit, with the same amount field and messages as the entry form.
 - **Accessibility**: a move row reads "<title>, <day>, <amount with sign>"; From and To are radio groups named "From" and "To".

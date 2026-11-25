@@ -228,36 +228,36 @@ describe('See what a pocket spent, and when it runs out', () => {
     await expectBalance('1 785,00 €');
   });
 
-  it('In and out: the tiles show "Saved 200 €" and "Spent 115 €" and the list has savings and expenses together, newest first', async () => {
+  it('In and out: no Overview or tiles: the title row ends with the pill "Spent, 115,00 €" and the list has savings and expenses together, newest first', async () => {
     await startApp(withSpending);
     await showPocket('Japan trip');
 
-    expect(tile('Saved').getByText(exactText('200 €'))).toBeOnTheScreen();
-    expect(tile('Saved').getByText('into it')).toBeOnTheScreen();
-    expect(tile('Spent').getByText(exactText('115 €'))).toBeOnTheScreen();
-    expect(tile('Spent').getByText('from it')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
+    expect(screen.queryByText('Overview')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: exactText('Spent, 115,00 €') })).toBeOnTheScreen();
     const notes = screen.getAllByText(/^(Bonus|Dinner|Train|Snack)$/).map((n) => n.props.children);
     expect(notes).toEqual(['Snack', 'Train', 'Dinner', 'Bonus']);
   });
 
-  it('In and out: tapping Saved lists only savings, tapping Spent only expenses, and tapping again shows all', async () => {
+  it('In and out: there is no Saved tile, tapping Spent lists only expenses, and tapping again shows all', async () => {
     await startApp(withSpending);
     await showPocket('Japan trip');
     const listed = () => screen.queryAllByText(/^(Bonus|Dinner|Train|Snack)$/).map((n) => n.props.children);
 
-    await press('Saved');
-    expect(listed()).toEqual(['Bonus']);
-    await press('Spent');
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
+    await press(/^Spent, /);
+    expect(screen.getByRole('button', { name: /^Spent, / })).toBeSelected();
     expect(listed()).toEqual(['Snack', 'Train', 'Dinner']);
-    await press('Spent');
+    await press(/^Spent, /);
+    expect(screen.getByRole('button', { name: /^Spent, / })).not.toBeSelected();
     expect(listed()).toEqual(['Snack', 'Train', 'Dinner', 'Bonus']);
   });
 
-  it('In and out: nothing spent shows the Spent tile at 0 € and no category split', async () => {
+  it('In and out: nothing spent shows the pill "Spent, 0,00 €" and no category split', async () => {
     await startApp({ today: TODAY, pockets: [japan], entries: [salary, { date: '2026-11-02', kind: 'savings', amountCents: 20000, note: 'Bonus', pocketId: 1 }] });
     await showPocket('Japan trip');
 
-    expect(tile('Spent').getByText(exactText('0 €'))).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: exactText('Spent, 0,00 €') })).toBeOnTheScreen();
     expect(screen.queryByText('By category')).not.toBeOnTheScreen();
   });
 
@@ -265,7 +265,7 @@ describe('See what a pocket spent, and when it runs out', () => {
     await startApp(withSpending);
     await showPocket('Japan trip');
     expect(screen.queryByText('By category')).not.toBeOnTheScreen();
-    await press('Spent');
+    await press(/^Spent, /);
 
     expect(screen.getByText('By category')).toBeOnTheScreen();
     expect(splitLabels()).toEqual(['Transport', 'Eating out']);
