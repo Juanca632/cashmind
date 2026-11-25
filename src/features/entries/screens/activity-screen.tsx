@@ -5,7 +5,7 @@ import { FlatList, StyleSheet, type ListRenderItem } from 'react-native';
 import { EntryRow } from '@/features/entries/components/entry-list';
 import { KindFilter } from '@/features/entries/components/kind-filter';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
-import { EMPTY_KIND_TEXTS, entriesOfKind, isEntryKind, type Entry } from '@/features/entries/rules';
+import { countsInMonth, EMPTY_KIND_TEXTS, entriesOfKind, isEntryKind, type Entry } from '@/features/entries/rules';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
 import { formatMonth, isValidMonthKey, monthKey } from '@/shared/months';
@@ -41,7 +41,8 @@ export default function ActivityScreen() {
     <ThemedView style={styles.screen}>
       {title}
       <FlatList
-        data={entriesOfKind(entries.data, kind)}
+        // Expenses paid from a pocket show only in their pocket (specs/026-pocket-spending).
+        data={entriesOfKind(entries.data.filter(countsInMonth), kind)}
         keyExtractor={keyOf}
         renderItem={renderItem}
         ListHeaderComponent={<KindFilter value={kind} onChange={setKind} />}

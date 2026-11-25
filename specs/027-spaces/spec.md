@@ -43,7 +43,7 @@
 **Acceptance Scenarios**:
 
 1. *Form*: the pocket form has an optional "Emoji" field (one emoji) and a "Colour" choice of the fixed palette, one selected
-2. *Everywhere*: the emoji and colour show in the selector, the sheet, the hero, the form's pocket choices, and the "from ✈️ Japan trip" mark on expenses. The emoji shows once: where a round mark holds it (the selector and the sheet rows), the name next to it goes without it
+2. *Everywhere*: the emoji and colour show in the selector, the sheet, the hero, and the form's pocket choices. The emoji shows once: where a round mark holds it (the selector and the sheet rows), the name next to it goes without it
 3. *No emoji*: a pocket without emoji shows the savings icon on its colour
 4. *Update*: pockets made before this update get colours from the palette in turn and no emoji
 

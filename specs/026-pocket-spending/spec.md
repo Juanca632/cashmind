@@ -23,7 +23,7 @@ The user saved for a trip in a pocket. During the trip they spend from it. Those
 1. *From the pocket*: **Given** "Japan trip" holds 1 700,00 €, **When** the user opens it and taps "Spend from this pocket", **Then** the expense form opens with kind Expense and "Paid from" set to "Japan trip"
 2. *Recorded*: **When** they record a dinner of 35,00 € in Eating out and save, **Then** "Japan trip" shows 1 665,00 €, **And** its screen lists the dinner
 3. *Not this month's spending*: **Then** home's Spent tile, left to spend, the daily budget, the spending pace, the "By category" split and Trends are the same as before the dinner
-4. *Still in the month's lists*: **Then** home's list and Activity show the dinner on its day, marked "from Japan trip", with its amount
+4. *Only in the pocket's list*: **Then** the dinner shows in "Japan trip"'s list, **And** not in Main's list or Activity, which show only what changes the month's money (changed after 027: one rule for every list)
 5. *From the expense form*: **Given** the user adds an expense from home, **When** they pick "Japan trip" under "Paid from" and save, **Then** the result is the same as recording it from the pocket
 6. *Default*: in the expense form "Paid from" starts on "This month", and an expense paid from the month behaves exactly as before
 7. *Change later*: **When** the user edits an expense and switches "Paid from" between "This month" and a pocket, **Then** the month's figures and the pocket's balance change accordingly
@@ -53,7 +53,7 @@ The user saved for a trip in a pocket. During the trip they spend from it. Those
 - **Quick add** suggestions (021) only learn from expenses paid from the month.
 - **Deleting a pocket**: a pocket with savings or with expenses paid from it cannot be deleted. Its form says "A pocket with savings or spending can't be deleted. You can rename it."
 - **Income** is never paid from or into a pocket.
-- **Accessibility**: an expense paid from a pocket reads "<title>, <day>, <amount>, from <pocket>". The "Paid from" choices are radio buttons.
+- **Accessibility**: an expense paid from a pocket reads like any entry, "<title>, <day>, <amount>", in its pocket's list. The "Paid from" choices are radio buttons.
 
 ## Requirements *(mandatory)*
 
@@ -62,7 +62,7 @@ The user saved for a trip in a pocket. During the trip they spend from it. Those
 - **FR-001** (Paid from): An expense MUST be paid either from the month (the default) or from one pocket. Savings always belong to a pocket (025), and income never has one.
 - **FR-002** (Recording): The pocket screen MUST offer "Spend from this pocket", which opens the expense form with that pocket chosen. The expense form MUST show "Paid from" with "This month" and every pocket, when there is at least one pocket.
 - **FR-003** (Out of the month): Expenses paid from a pocket MUST NOT count in Spent, left to spend, the daily budget, the spending pace, home's split, Trends, My plan's fixed costs or quick add. Every other figure stays as it was.
-- **FR-004** (Lists): They MUST still show in home's list, Activity and the pocket's screen, marked "from <pocket>".
+- **FR-004** (Lists): They MUST show in their pocket's list only, not in Main's list or Activity: a list shows what changes its space's money.
 - **FR-005** (Balance): A pocket's balance is its starting amount plus its savings minus its expenses. It may go below zero, and then shows in red with "This pocket is <amount> short.".
 - **FR-006** (Pocket screen): It MUST show "Saved … · Spent …" and "Spent by category" when it has spending, and list every entry of the pocket.
 - **FR-007** (Storage): An expense paid from a pocket stores that pocket like a saving does. No database change is needed.
