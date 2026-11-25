@@ -1,4 +1,4 @@
-import { defaultEntryDate, lastDayOfMonth, totalsByKind, validateEntry, type EntryInput } from '../rules';
+import { defaultEntryDate, entryErrorMessage, lastDayOfMonth, totalsByKind, validateEntry, type EntryInput } from '../rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { previousMonth } from '@/shared/months';
 
@@ -6,7 +6,7 @@ const nov7 = new Date(2026, 10, 7);
 const dec3 = new Date(2026, 11, 3);
 const dec6 = new Date(2026, 11, 6);
 
-const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema', category: 'leisure' };
+const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema', category: 'leisure', pocketId: null };
 
 describe('day helpers', () => {
   it('builds day keys and moves across months and years', () => {
@@ -36,6 +36,24 @@ describe('dates of an expense', () => {
   });
 });
 
+describe('validateEntry: pockets (FR-004)', () => {
+  const saving: EntryInput = { ...cinema, kind: 'savings', category: 'other', pocketId: 2 };
+
+  it('a saving with a pocket is valid', () => {
+    expect(validateEntry(saving, nov7)).toEqual([]);
+  });
+
+  it('a saving without a pocket is "pocket-missing" with the message "Pick a pocket."', () => {
+    expect(validateEntry({ ...saving, pocketId: null }, nov7)).toEqual(['pocket-missing']);
+    expect(entryErrorMessage('pocket-missing')).toBe('Pick a pocket.');
+  });
+
+  it.each(['income', 'expense'] as const)('%s never has a pocket', (kind) => {
+    const category = kind === 'income' ? 'salary' : 'groceries';
+    expect(validateEntry({ ...cinema, kind, category, pocketId: 2 }, nov7)).toEqual(['pocket-not-allowed']);
+  });
+});
+
 describe('validateEntry', () => {
   it('accepts an expense of 12,50 € today', () => {
     expect(validateEntry(cinema, nov7)).toEqual([]);
@@ -46,7 +64,7 @@ describe('validateEntry', () => {
   });
 
   it.each(['income', 'savings', 'expense'] as const)('accepts an entry of kind %s', (kind) => {
-    expect(validateEntry({ ...cinema, kind, category: 'other' }, nov7)).toEqual([]);
+    expect(validateEntry({ ...cinema, kind, category: 'other', pocketId: kind === 'savings' ? 1 : null }, nov7)).toEqual([]);
   });
 
   it.each(['fixed', 'leisure', ''])('rejects the old or empty kind %p: only income, savings and expense exist', (kind) => {

@@ -98,13 +98,14 @@ function HomeMonth({ today }: { today: Date }) {
   const summary = monthSummary(totalsByKind(monthEntries), percent);
   const hasIncome = summary.income > 0;
   const list = firstEntries(entriesOfKind(monthEntries, selected), HOME_LIST_SIZE);
-  const split = selected ? categorySplit(monthEntries, selected) : [];
+  // Savings go into pockets, not categories (specs/025-pockets), so they have no split.
+  const split = selected && selected !== 'savings' ? categorySplit(monthEntries, selected) : [];
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
     repeatedFor.current = repeatKey;
     setRepeatedKey(repeatKey);
-    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income', category: 'other' } as const;
+    const entry = { date: defaultEntryDate(month, today), kind: 'income', amountCents, note: 'Monthly income', category: 'other', pocketId: null } as const;
     const result = await addEntry(db, entry, new Date());
     if (result.ok) {
       hapticSuccess();
@@ -174,7 +175,10 @@ function HomeMonth({ today }: { today: Date }) {
 
         {hasIncome ? (
           <View style={styles.section}>
-            <SectionTitle>Overview</SectionTitle>
+            <View style={styles.sectionTitle}>
+              <SectionTitle>Overview</SectionTitle>
+              <LinkButton label="See pockets ›" accessibilityLabel="See my pockets" onPress={() => router.push('/pockets')} />
+            </View>
             <View style={styles.tiles}>
               <KindTile kind="income" value={money.formatCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
               <KindTile kind="expense" title="Spent" value={money.formatCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />

@@ -76,7 +76,7 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
-      <KindBadge kind={entry.kind} icon={categoryIcon(entry.kind, entry.category)} />
+      <KindBadge kind={entry.kind} icon={entry.kind === 'savings' ? undefined : categoryIcon(entry.kind, entry.category)} />
       <View style={styles.text}>
         <ThemedText type="smallBold" numberOfLines={1}>
           {entryTitle(entry)}

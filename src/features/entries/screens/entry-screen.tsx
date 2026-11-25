@@ -8,10 +8,12 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
 import { useEntry } from '@/features/entries/hooks/use-entry';
+import { usePockets } from '@/features/entries/hooks/use-pockets';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import {
   ENTRY_MISSING,
@@ -98,10 +100,12 @@ function EntryForm({
   const [amountText, setAmountText] = useState(entry ? money.toInput(entry.amountCents) : '');
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? defaultKind);
   const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
+  const [pocketId, setPocketId] = useState<number | null>(entry?.pocketId ?? null);
+  const pockets = usePockets();
   const [note, setNote] = useState(entry?.note ?? '');
   const [date, setDate] = useState(entry?.date ?? defaultDate);
   const [repeat, setRepeat] = useState(initialRepeat);
-  const form = JSON.stringify({ amountText, kind, category, note, date, repeat });
+  const form = JSON.stringify({ amountText, kind, category, pocketId, note, date, repeat });
   const [savedForm] = useState(form);
   const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
   const { dialog: confirmDialog, ask } = useConfirm();
@@ -114,7 +118,15 @@ function EntryForm({
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
   // Only this month's entries can repeat; past months never change.
   const canRepeat = formMonth === monthKey(today);
-  const input: EntryInput = { date, kind, amountCents: money.parse(amountText) ?? 0, note: note.trim(), category };
+  // Savings go into a pocket and keep no category of their own; the others never have a pocket.
+  const input: EntryInput = {
+    date,
+    kind,
+    amountCents: money.parse(amountText) ?? 0,
+    note: note.trim(),
+    category: kind === 'savings' ? DEFAULT_CATEGORY : category,
+    pocketId: kind === 'savings' ? pocketId : null,
+  };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
@@ -185,12 +197,30 @@ function EntryForm({
             />
           </Card>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Category
-            </ThemedText>
-            <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
-          </View>
+          {kind === 'savings' ? (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Pocket
+              </ThemedText>
+              <PocketChoices
+                pockets={pockets.status === 'ready' ? pockets.data : []}
+                value={pocketId}
+                onChange={setPocketId}
+              />
+              {errors.includes('pocket-missing') ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {entryErrorMessage('pocket-missing')}
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Category
+              </ThemedText>
+              <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
+            </View>
+          )}
 
           {kind === 'expense' ? <QuickAddRow suggestions={suggestions} onPick={fillFrom} /> : null}
 

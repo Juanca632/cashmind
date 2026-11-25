@@ -1,6 +1,6 @@
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
-import { insertEntry } from '@/features/entries/repository';
+import { insertEntry, insertPocket } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
 import { savePlanFromMonth } from '@/features/plan/repository';
 import type { EntryCategory } from '@/features/entries/categories';
@@ -10,13 +10,21 @@ import { resetDevice, seedDevice } from './fake-sqlite';
 import { RELEASED_SCHEMAS } from './released-schemas';
 
 /** An entry to seed; without a category it is recorded in Other, as entries from before categories were. */
-export type SeedEntry = Omit<EntryInput, 'category'> & { category?: EntryCategory };
+export type SeedEntry = Omit<EntryInput, 'category' | 'pocketId'> & { category?: EntryCategory; pocketId?: number | null };
+
+/** A pocket to seed; pockets get ids 1, 2, ... in the order given. */
+export type SeedPocket = { name: string; startingCents?: number };
+
+/** Name of the pocket created for seeded savings that name none. */
+export const DEFAULT_POCKET = 'Test pocket';
 
 type Setup = {
   /** Local date the app thinks it is. */
   today: [year: number, monthIndex: number, day: number];
   /** Plans saved on the device: [savings percentage, month it applies from]. */
   plans?: [number, string][];
+  /** Pockets already created on the device. */
+  pockets?: SeedPocket[];
   /** Entries (income, savings and expenses) already recorded on the device. */
   entries?: SeedEntry[];
   /** Raw SQL run last, to store rows the app itself would never write (damaged data). */
@@ -24,14 +32,23 @@ type Setup = {
 };
 
 /** Puts a fresh device in the given state, fixes the clock and opens the app on its home screen. */
-export async function startApp({ today, plans = [], entries = [], raw = [] }: Setup) {
+export async function startApp({ today, plans = [], pockets = [], entries = [], raw = [] }: Setup) {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date(today[0], today[1], today[2], 12));
   resetDevice();
   await seedDevice(async (db) => {
     await migrateDbIfNeeded(db);
     for (const [percent, month] of plans) await savePlanFromMonth(db, percent, month);
-    for (const entry of entries) await insertEntry(db, { category: 'other', ...entry });
+    for (const pocket of pockets) await insertPocket(db, { name: pocket.name, startingCents: pocket.startingCents ?? 0 });
+    let defaultPocket: number | null = null;
+    for (const entry of entries) {
+      let pocketId = entry.pocketId ?? null;
+      if (entry.kind === 'savings' && pocketId === null) {
+        defaultPocket ??= await insertPocket(db, { name: DEFAULT_POCKET, startingCents: 0 });
+        pocketId = defaultPocket;
+      }
+      await insertEntry(db, { category: 'other', ...entry, pocketId });
+    }
     for (const sql of raw) await db.execAsync(sql);
   });
   return renderRouter('./src/app');
@@ -70,9 +87,10 @@ export async function expectLeftToSpend(amount: string) {
 }
 
 /** Records one entry through the form opened from home, for the kind and amount typed. */
-export async function record(kind: 'Income' | 'Savings' | 'Expense', amount: string, note?: string) {
+export async function record(kind: 'Income' | 'Savings' | 'Expense', amount: string, note?: string, pocket = DEFAULT_POCKET) {
   await press('Add expense');
   await choose(kind);
+  if (kind === 'Savings') await choose(pocket);
   await type('Amount', amount);
   if (note) await typeNote(note);
   await press(kind === 'Income' ? 'Add income' : kind === 'Savings' ? 'Add to savings' : 'Add expense');

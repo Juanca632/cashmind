@@ -255,6 +255,13 @@ describe("Updates never lose or break data (real list)", () => {
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
     `,
+    9: `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 20);
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-10-01', 'income', 150000, 'Pay', 'salary');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
+    `,
   };
   const monthly = (date: string, cents: number) => ({ date, kind: "income", amount_cents: cents, note: "Monthly income", category: "other" });
   /** The entries every released version ends with, once the clock says it is 9 November 2026. */
@@ -281,6 +288,7 @@ describe("Updates never lose or break data (real list)", () => {
     6: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
     7: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
     8: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
+    9: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
   };
   const expectedRest = (released: number) => [
     { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema", category: released >= 6 ? "leisure" : "other" },
@@ -710,7 +718,7 @@ describe("Existing data is kept (step 8: settings table)", () => {
       { effective_month: "2026-07", savings_pct: 30 },
     ]);
     expect(await db.getAllAsync("SELECT * FROM setting")).toEqual([]);
-    expect(await version(db)).toBe(8);
+    expect(await version(db)).toBe(MIGRATIONS.length);
   });
 
   it("The setting table is strict and keeps one value per key", async () => {
@@ -718,5 +726,87 @@ describe("Existing data is kept (step 8: settings table)", () => {
     await db.runAsync("INSERT INTO setting (key, value) VALUES ('app_lock', 'off')");
     await expect(db.runAsync("INSERT INTO setting (key, value) VALUES ('app_lock', 'on')")).rejects.toThrow();
     await expect(db.runAsync("INSERT INTO setting (key, value) VALUES ('x', NULL)")).rejects.toThrow();
+  });
+});
+
+describe("Existing data is kept (step 9: pockets, FR-008 and Story 4)", () => {
+  const upgradeFromV8 = async () => {
+    const db = createFakeDb() as any;
+    await db.execAsync(RELEASED_SCHEMAS[8]);
+    await db.execAsync(`
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (1, '2026-10-01', 'income', 200000, 'Salary', '2026-10-01 07:00:00', 'salary');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (2, '2026-10-05', 'savings', 30000, 'Plane', '2026-10-05 08:00:00', 'travel');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (3, '2026-10-06', 'savings', 10000, '', '2026-10-06 08:00:00', 'emergency_fund');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (4, '2026-11-02', 'savings', 5000, 'Hotel', '2026-11-02 08:00:00', 'travel');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (5, '2026-11-03', 'expense', 1250, 'Cinema', '2026-11-03 08:00:00', 'leisure');
+      INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category) VALUES (6, '2026-11-04', 'savings', 700, 'Coins', '2026-11-04 08:00:00', 'other');
+      INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month) VALUES (1, 'savings', 'investments', 20000, 'Fund', 1, '2026-11');
+      INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month) VALUES (2, 'expense', 'housing', 90000, 'Rent', 1, '2026-11');
+    `);
+    await db.execAsync("PRAGMA user_version = 8");
+    await runMigrations(db, MIGRATIONS);
+    return db;
+  };
+
+  it("Update: pockets are made for the categories used, in category order, named after them, starting at 0", async () => {
+    const db = await upgradeFromV8();
+    expect(await db.getAllAsync("SELECT name, starting_cents FROM pocket ORDER BY id")).toEqual([
+      { name: "Emergency fund", starting_cents: 0 },
+      { name: "Investments", starting_cents: 0 },
+      { name: "Travel", starting_cents: 0 },
+      { name: "Other", starting_cents: 0 },
+    ]);
+  });
+
+  it("Unused categories (Goal) become no pocket", async () => {
+    const db = await upgradeFromV8();
+    expect(await db.getAllAsync("SELECT name FROM pocket WHERE name = 'Goal'")).toEqual([]);
+  });
+
+  it("Each saving and monthly saving goes into the pocket of its old category", async () => {
+    const db = await upgradeFromV8();
+    expect(
+      await db.getAllAsync("SELECT e.id, p.name AS pocket FROM entry e LEFT JOIN pocket p ON p.id = e.pocket_id ORDER BY e.id"),
+    ).toEqual([
+      { id: 1, pocket: null },
+      { id: 2, pocket: "Travel" },
+      { id: 3, pocket: "Emergency fund" },
+      { id: 4, pocket: "Travel" },
+      { id: 5, pocket: null },
+      { id: 6, pocket: "Other" },
+    ]);
+    expect(
+      await db.getAllAsync("SELECT r.id, p.name AS pocket FROM recurring r LEFT JOIN pocket p ON p.id = r.pocket_id ORDER BY r.id"),
+    ).toEqual([
+      { id: 1, pocket: "Investments" },
+      { id: 2, pocket: null },
+    ]);
+  });
+
+  it("Every entry and monthly item keeps its date, amount, note and category", async () => {
+    const db = await upgradeFromV8();
+    expect(await db.getAllAsync("SELECT id, date, kind, amount_cents, note, created_at, category FROM entry ORDER BY id")).toEqual([
+      { id: 1, date: "2026-10-01", kind: "income", amount_cents: 200000, note: "Salary", created_at: "2026-10-01 07:00:00", category: "salary" },
+      { id: 2, date: "2026-10-05", kind: "savings", amount_cents: 30000, note: "Plane", created_at: "2026-10-05 08:00:00", category: "travel" },
+      { id: 3, date: "2026-10-06", kind: "savings", amount_cents: 10000, note: "", created_at: "2026-10-06 08:00:00", category: "emergency_fund" },
+      { id: 4, date: "2026-11-02", kind: "savings", amount_cents: 5000, note: "Hotel", created_at: "2026-11-02 08:00:00", category: "travel" },
+      { id: 5, date: "2026-11-03", kind: "expense", amount_cents: 1250, note: "Cinema", created_at: "2026-11-03 08:00:00", category: "leisure" },
+      { id: 6, date: "2026-11-04", kind: "savings", amount_cents: 700, note: "Coins", created_at: "2026-11-04 08:00:00", category: "other" },
+    ]);
+    expect(await db.getAllAsync("SELECT id, kind, category, amount_cents, note, active, last_month FROM recurring ORDER BY id")).toEqual([
+      { id: 1, kind: "savings", category: "investments", amount_cents: 20000, note: "Fund", active: 1, last_month: "2026-11" },
+      { id: 2, kind: "expense", category: "housing", amount_cents: 90000, note: "Rent", active: 1, last_month: "2026-11" },
+    ]);
+    expect(await db.getAllAsync("SELECT effective_month, savings_pct FROM plan_version")).toEqual([{ effective_month: "2026-07", savings_pct: 30 }]);
+  });
+
+  it("With no savings at all, no pocket is made", async () => {
+    const db = createFakeDb() as any;
+    await db.execAsync(RELEASED_SCHEMAS[8]);
+    await db.execAsync("INSERT INTO entry (date, kind, amount_cents, category) VALUES ('2026-10-01', 'income', 100, 'salary')");
+    await db.execAsync("PRAGMA user_version = 8");
+    await runMigrations(db, MIGRATIONS);
+    expect(await db.getAllAsync("SELECT * FROM pocket")).toEqual([]);
   });
 });

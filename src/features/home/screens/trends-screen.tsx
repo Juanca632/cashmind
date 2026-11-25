@@ -115,11 +115,14 @@ export default function TrendsScreen() {
           ) : null}
         </Card>
 
-        <TrendCategoryList
-          kind={kind}
-          rows={rows}
-          onPress={(category) => router.push({ pathname: '/trend-category', params: { kind, category, month: selected } })}
-        />
+        {/* Savings go into pockets, not categories (specs/025-pockets): My pockets shows them. */}
+        {kind === 'savings' ? null : (
+          <TrendCategoryList
+            kind={kind}
+            rows={rows}
+            onPress={(category) => router.push({ pathname: '/trend-category', params: { kind, category, month: selected } })}
+          />
+        )}
 
         <LinkButton
           label={`Open ${formatMonthName(selected)} ›`}

@@ -240,4 +240,48 @@ export const MIGRATIONS: readonly Migration[] = [
         ) STRICT;
       `),
   },
+  {
+    // Savings go into pockets the user names (specs/025-pockets). Every savings category already
+    // used becomes a pocket with its name, in the categories' order, and keeps all its savings.
+    // The labels are written here, never imported: a released step must not change with the code.
+    version: 9,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE pocket (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 40),
+          starting_cents INTEGER NOT NULL DEFAULT 0 CHECK (starting_cents >= 0)
+        ) STRICT;
+        ALTER TABLE entry ADD COLUMN pocket_id INTEGER REFERENCES pocket(id);
+        ALTER TABLE recurring ADD COLUMN pocket_id INTEGER REFERENCES pocket(id);
+      `);
+      const categories: [string, string][] = [
+        ['emergency_fund', 'Emergency fund'],
+        ['investments', 'Investments'],
+        ['travel', 'Travel'],
+        ['goal', 'Goal'],
+        ['other', 'Other'],
+      ];
+      for (const [category, name] of categories) {
+        const used = await db.getFirstAsync(
+          `SELECT 1 FROM entry WHERE kind = 'savings' AND category = ?
+           UNION ALL SELECT 1 FROM recurring WHERE kind = 'savings' AND category = ? LIMIT 1`,
+          category,
+          category,
+        );
+        if (!used) continue;
+        const pocket = await db.runAsync('INSERT INTO pocket (name) VALUES (?)', name);
+        await db.runAsync(
+          "UPDATE entry SET pocket_id = ? WHERE kind = 'savings' AND category = ?",
+          pocket.lastInsertRowId,
+          category,
+        );
+        await db.runAsync(
+          "UPDATE recurring SET pocket_id = ? WHERE kind = 'savings' AND category = ?",
+          pocket.lastInsertRowId,
+          category,
+        );
+      }
+    },
+  },
 ];

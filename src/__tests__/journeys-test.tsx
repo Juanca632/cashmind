@@ -1,6 +1,7 @@
 import { screen, within } from 'expo-router/testing-library';
 
 import {
+  DEFAULT_POCKET,
   answerDialog,
   choose,
   exactText,
@@ -24,7 +25,7 @@ const tile = (name: string) => within(screen.getByRole('button', { name }));
 
 describe('Journey: first use, recording income, savings and expenses, changing the plan and reopening', () => {
   it('goes from an empty app to the left to spend, keeps it after reopening and follows a new percentage', async () => {
-    await startApp({ today: [2026, 10, 7] });
+    await startApp({ today: [2026, 10, 7], pockets: [{ name: DEFAULT_POCKET }] });
 
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     await press('Add income');

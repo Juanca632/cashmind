@@ -1,12 +1,14 @@
-import { fixedCostsCents, validateRecurring } from '../rules';
+import { entryErrorMessage, fixedCostsCents, validateRecurring } from '../rules';
+
+const pocketErrorFor = entryErrorMessage;
 
 describe('Recurring entries: validation (FR-007)', () => {
-  const rent = { category: 'housing', amountCents: 90000, note: 'Rent' } as const;
+  const rent = { category: 'housing', amountCents: 90000, note: 'Rent', pocketId: null } as const;
 
   it('accepts a valid amount, category of its kind and note', () => {
     expect(validateRecurring('expense', rent)).toEqual([]);
-    expect(validateRecurring('income', { category: 'salary', amountCents: 200000, note: '' })).toEqual([]);
-    expect(validateRecurring('savings', { category: 'goal', amountCents: 1, note: '' })).toEqual([]);
+    expect(validateRecurring('income', { category: 'salary', amountCents: 200000, note: '', pocketId: null })).toEqual([]);
+    expect(validateRecurring('savings', { category: 'other', amountCents: 1, note: '', pocketId: 1 })).toEqual([]);
   });
 
   it.each([
@@ -25,7 +27,18 @@ describe('Recurring entries: validation (FR-007)', () => {
   it('refuses a category that does not belong to the kind', () => {
     expect(validateRecurring('expense', { ...rent, category: 'salary' })).toEqual(['category-invalid']);
     expect(validateRecurring('income', { ...rent, category: 'housing' })).toEqual(['category-invalid']);
-    expect(validateRecurring('savings', { ...rent, category: 'housing' })).toEqual(['category-invalid']);
+    expect(validateRecurring('savings', { ...rent, category: 'housing', pocketId: 1 })).toEqual(['category-invalid']);
+  });
+
+  it('Savings need a pocket (FR-004): none picked is "pocket-missing", "Pick a pocket."', () => {
+    const saving = { category: 'other', amountCents: 5000, note: '', pocketId: null } as const;
+    expect(validateRecurring('savings', saving)).toEqual(['pocket-missing']);
+    expect(pocketErrorFor('pocket-missing')).toBe('Pick a pocket.');
+  });
+
+  it('Income and expenses never have a pocket (FR-004)', () => {
+    expect(validateRecurring('expense', { ...rent, pocketId: 3 })).toEqual(['pocket-not-allowed']);
+    expect(validateRecurring('income', { category: 'salary', amountCents: 100, note: '', pocketId: 3 })).toEqual(['pocket-not-allowed']);
   });
 
   it('reports a bad amount and a bad category together', () => {
