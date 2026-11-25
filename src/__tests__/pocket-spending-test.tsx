@@ -1,4 +1,4 @@
-import { screen, within } from 'expo-router/testing-library';
+import { act, screen, testRouter, within } from 'expo-router/testing-library';
 
 import { seedDevice } from '../test-support/fake-sqlite';
 import {
@@ -10,6 +10,7 @@ import {
   expectPocketBalance,
   headerTitles,
   openSpaces,
+  pickSpace,
   partialText,
   press,
   showPocket,
@@ -29,8 +30,7 @@ const salary = { date: '2026-11-01', kind: 'income', amountCents: 400000, note: 
 const groceries = { date: '2026-11-03', kind: 'expense', amountCents: 10000, note: 'Shop', category: 'groceries' } as const;
 const japan = { name: 'Japan trip', startingCents: 170000, emoji: '✈️' };
 const dinner = { date: '2026-11-05', kind: 'expense', amountCents: 3500, note: 'Dinner', category: 'eating_out', pocketId: 1 } as const;
-const DINNER_LABEL = 'Dinner, Thu 5 Nov, 35,00 €, from ✈️ Japan trip';
-const DINNER_TODAY_LABEL = /^Dinner, .*35,00.€, from ✈️ Japan trip$/;
+const DINNER = /Dinner/;
 
 const tile = (name: string) => within(screen.getByRole('button', { name }));
 const pocketRow = expectPocketBalance;
@@ -75,7 +75,7 @@ describe('Pay a trip expense from its pocket', () => {
     expect(screen).toHavePathname('/');
     expect(screen.getByRole('button', { name: 'Space: Japan trip, change' })).toBeOnTheScreen();
     await expectBalance('1 665,00 €');
-    expect(screen.getByRole('button', { name: DINNER_TODAY_LABEL })).toBeOnTheScreen();
+    expect(within(screen.getByRole('button', { name: DINNER })).getByText(partialText('35,00'))).toBeOnTheScreen();
     expect(await rows("SELECT kind, amount_cents, category, pocket_id FROM entry WHERE kind = 'expense'")).toEqual([
       { kind: 'expense', amount_cents: 3500, category: 'eating_out', pocket_id: 1 },
     ]);
@@ -113,16 +113,27 @@ describe('Pay a trip expense from its pocket', () => {
     expect(screen.queryByLabelText(/35,00/)).not.toBeOnTheScreen();
   });
 
-  it('Still in the month\'s lists: home and Activity show the dinner on its day, marked "from Japan trip"', async () => {
-    const more = [1, 2, 3, 4].map((d) => ({ date: `2026-11-0${d}`, kind: 'expense', amountCents: 100, note: `Extra ${d}` }) as const);
+  it('Only in the pocket\'s list: Main\'s list and Activity leave the dinner out, its pocket lists it, also when Main is filtered to Spent', async () => {
+    const more = [1, 2, 3, 4, 5].map((d) => ({ date: `2026-11-0${d}`, kind: 'expense', amountCents: 100, note: `Extra ${d}` }) as const);
     await startApp({ today: TODAY, entries: [salary, ...more, dinner], pockets: [japan] });
 
-    expect(screen.getByRole('button', { name: DINNER_LABEL })).toBeOnTheScreen();
-    expect(screen.getByText(partialText('from ✈️ Japan trip'))).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: DINNER })).not.toBeOnTheScreen();
+    expect(screen.queryByText(partialText('from ✈️ Japan trip'))).not.toBeOnTheScreen();
+    await press('Spent');
+    expect(screen.queryByRole('button', { name: DINNER })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /Extra 5/ })).toBeOnTheScreen();
+    await press('Spent');
 
     await press('See all 6 entries');
     expect(headerTitles()).toContain('Activity · November 2026');
-    expect(screen.getByRole('button', { name: DINNER_LABEL })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: DINNER })).not.toBeOnTheScreen();
+    await act(async () => testRouter.back());
+
+    await showPocket('Japan trip');
+    const row = within(screen.getByRole('button', { name: DINNER }));
+    expect(row.getByText('Thu 5 Nov')).toBeOnTheScreen();
+    expect(row.getByText(partialText('35,00'))).toBeOnTheScreen();
+    expect(screen.queryByText(partialText('from ✈️ Japan trip'))).not.toBeOnTheScreen();
   });
 
   it('From the expense form: picking "Japan trip" under "Paid from" gives the same result', async () => {
@@ -137,7 +148,7 @@ describe('Pay a trip expense from its pocket', () => {
 
     expect(screen).toHavePathname('/');
     expect(monthFigures()).toEqual(before);
-    expect(screen.getByRole('button', { name: DINNER_TODAY_LABEL })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: DINNER })).not.toBeOnTheScreen();
     await pocketRow('Japan trip', '1 665,00 €');
   });
 
@@ -165,10 +176,12 @@ describe('Pay a trip expense from its pocket', () => {
     await expectLeftToSpend('3 000,00 €');
     await pocketRow('Japan trip', '1 600,00 €');
 
+    await showPocket('Japan trip');
     await press(/Shop/);
     expect(screen.getByRole('radio', { name: 'Japan trip' })).toBeSelected();
     await choose('Main');
     await press('Save changes');
+    await pickSpace(/^Main/);
     await expectLeftToSpend('2 900,00 €');
     await pocketRow('Japan trip', '1 700,00 €');
   });
@@ -357,6 +370,7 @@ describe('Edge cases of spending from a pocket', () => {
 
   it('Deleting an expense paid from a pocket gives its money back to the pocket', async () => {
     await startApp({ today: TODAY, pockets: [japan], entries: [salary, dinner] });
+    await showPocket('Japan trip');
     await press(/Dinner/);
     await press('Delete');
     await answerDialog('Delete');

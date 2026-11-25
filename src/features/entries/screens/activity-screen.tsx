@@ -7,6 +7,7 @@ import { KindFilter } from '@/features/entries/components/kind-filter';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { useMoves } from '@/features/entries/hooks/use-moves';
 import {
+  countsInMonth,
   EMPTY_KIND_TEXTS,
   entriesOfKind,
   isEntryKind,
@@ -55,7 +56,8 @@ export default function ActivityScreen() {
     <ThemedView style={styles.screen}>
       {title}
       <FlatList
-        data={mergeByDate(entriesOfKind(entries.data, kind), lines)}
+        // Expenses paid from a pocket show only in their pocket (specs/026-pocket-spending).
+        data={mergeByDate(entriesOfKind(entries.data.filter(countsInMonth), kind), lines)}
         keyExtractor={listItemKey}
         renderItem={renderItem}
         ListHeaderComponent={<KindFilter value={kind} onChange={setKind} />}

@@ -125,7 +125,8 @@ function HomeMonth({ today }: { today: Date }) {
   }
 
   const monthEntries = entries.data;
-  // Expenses paid from a pocket show in the list but count in no month figure (specs/026-pocket-spending).
+  // Expenses paid from a pocket are not the month's money: they count in no figure and show only in
+  // their pocket's list (specs/026-pocket-spending).
   const counted = monthEntries.filter(countsInMonth);
   const isPast = isPastMonth(month, currentMonth);
   const percent = savingsPercentFor(plan.data, month);
@@ -135,7 +136,7 @@ function HomeMonth({ today }: { today: Date }) {
   const hasIncome = summary.income > 0;
   // Moves into Main show in the whole list only, not when one kind is picked.
   const lines = selected === null ? mainMoveLines(moves.data, month) : [];
-  const list = firstEntries(mergeByDate(entriesOfKind(monthEntries, selected), lines), HOME_LIST_SIZE);
+  const list = firstEntries(mergeByDate(entriesOfKind(counted, selected), lines), HOME_LIST_SIZE);
   // Savings go into pockets, not categories (specs/025-pockets), so they have no split.
   const split = selected && selected !== 'savings' ? categorySplit(counted, selected) : [];
 

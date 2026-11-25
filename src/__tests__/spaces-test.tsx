@@ -455,10 +455,10 @@ describe('A pocket looks like home', () => {
     expect(screen.getByLabelText(/^Left to spend: /)).toBeOnTheScreen();
   });
 
-  it('Pocket entries still show, marked, in the month\'s list, and count in no month figure', async () => {
+  it('Pocket entries show only in their pocket\'s list, unmarked, and count in no month figure', async () => {
     await startApp(trip);
 
-    expect(screen.getByRole('button', { name: /^Dinner, .*35,00.€, from ✈️ Japan trip$/ })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Dinner/ })).not.toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('10 €'))).toBeOnTheScreen();
   });
 });
@@ -555,14 +555,16 @@ describe('Recognise each pocket', () => {
     expect(within(screen.getByRole('radio', { name: 'Car' })).getByText('Car')).toBeOnTheScreen();
   });
 
-  it('Everywhere: an expense paid from the pocket reads "· from ✈️ Japan trip" on its row', async () => {
+  it('Everywhere: an expense paid from the pocket reads like any entry, without a "from" mark, in its pocket\'s list', async () => {
     await startApp({
       today: TODAY,
       entries: [salary, { date: '2026-11-04', kind: 'expense', amountCents: 3500, note: 'Dinner', pocketId: 1 }],
       pockets: [japan],
     });
 
-    expect(screen.getByText(partialText('from ✈️ Japan trip'))).toBeOnTheScreen();
+    await showPocket('Japan trip');
+    expect(within(screen.getByRole('button', { name: /Dinner/ })).getByText(partialText('35,00'))).toBeOnTheScreen();
+    expect(screen.queryByText(partialText('from ✈️ Japan trip'))).not.toBeOnTheScreen();
   });
 
   it('Everywhere: the monthly entry form shows the emoji on the pocket choices', async () => {
