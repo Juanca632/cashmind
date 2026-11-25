@@ -66,13 +66,14 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
   const money = useMoney();
   const amount = `${entry.kind === 'income' ? '+' : ''}${money.format(entry.amountCents)}`;
   const repeats = entry.recurringId !== null;
+  // An expense paid from a pocket says so: it does not count in the month (specs/026-pocket-spending).
+  const fromPocket = entry.kind === 'expense' && entry.pocketName !== null ? `from ${entry.pocketName}` : null;
+  const parts = [entryTitle(entry), dayTitle(entry.date, today), amount, fromPocket, repeats ? 'recorded by a repeat' : null];
   return (
     <Pressable
       accessibilityRole="button"
       // An entry recorded by a repeat (active or stopped) says so; the others read their texts as they are.
-      accessibilityLabel={
-        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, recorded by a repeat` : undefined
-      }
+      accessibilityLabel={repeats || fromPocket ? parts.filter(Boolean).join(', ') : undefined}
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
@@ -86,6 +87,11 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
             {dayTitle(entry.date, today)}
           </ThemedText>
           {repeats ? <Feather name="repeat" size={IconSize.small} color={theme.textSecondary} /> : null}
+          {fromPocket ? (
+            <ThemedText type="caption" numberOfLines={1} style={[styles.pocket, { color: theme.kindInk.savings }]}>
+              · {fromPocket}
+            </ThemedText>
+          ) : null}
         </View>
       </View>
       <ThemedText
@@ -98,6 +104,9 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
 });
 
 const styles = StyleSheet.create({
+  pocket: {
+    flexShrink: 1,
+  },
   empty: {
     paddingVertical: Layout.itemGap,
   },

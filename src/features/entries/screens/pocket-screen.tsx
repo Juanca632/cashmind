@@ -2,13 +2,16 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { FlatList, StyleSheet, View, type ListRenderItem } from 'react-native';
 
+import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryRow } from '@/features/entries/components/entry-list';
 import { usePocket } from '@/features/entries/hooks/use-pocket';
-import { useSavingsEntries } from '@/features/entries/hooks/use-savings-entries';
-import { pocketBalances, type Entry, type Pocket } from '@/features/entries/rules';
+import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
+import { categorySplit, pocketBalances, type CategoryShare, type Entry, type Pocket } from '@/features/entries/rules';
 import { useMoney } from '@/shared/hooks/use-money';
 import { useToday } from '@/shared/hooks/use-today';
 import { Layout } from '@/shared/theme/theme';
+import { useTheme } from '@/shared/theme/use-theme';
+import { Button } from '@/shared/ui/button';
 import { DataError } from '@/shared/ui/data-error';
 import { EdgeFades } from '@/shared/ui/edge-fades';
 import { LinkButton } from '@/shared/ui/link-button';
@@ -29,7 +32,7 @@ export default function PocketScreen() {
 
 function PocketLoader({ id }: { id: number }) {
   const loaded = usePocket(id);
-  const savings = useSavingsEntries();
+  const savings = usePocketEntries();
   if (loaded.status === 'error' || savings.status === 'error') return <DataError />;
   if (loaded.status === 'loading' || savings.status === 'loading') return <ThemedView style={styles.screen} />;
   if (loaded.data === null) return <MessageScreen title={POCKET_GONE} />;
@@ -39,7 +42,6 @@ function PocketLoader({ id }: { id: number }) {
 function PocketDetail({ pocket, savings }: { pocket: Pocket; savings: Entry[] }) {
   const content = useScreenContent();
   const today = useToday();
-  const money = useMoney();
 
   const openEntry = useCallback((entry: Entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } }), []);
   const renderItem = useCallback<ListRenderItem<Entry>>(
@@ -47,8 +49,10 @@ function PocketDetail({ pocket, savings }: { pocket: Pocket; savings: Entry[] })
     [today, openEntry],
   );
 
+  // Savings and expenses paid from this pocket, newest first (specs/026-pocket-spending).
   const entries = savings.filter((entry) => entry.pocketId === pocket.id);
-  const [{ cents }] = pocketBalances([pocket], entries);
+  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], entries);
+  const spentSplit = categorySplit(entries, 'expense');
   return (
     <ThemedView style={styles.screen}>
       <Stack.Screen options={{ title: pocket.name }} />
@@ -57,22 +61,7 @@ function PocketDetail({ pocket, savings }: { pocket: Pocket; savings: Entry[] })
         keyExtractor={keyOf}
         renderItem={renderItem}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.balance}>
-              <ThemedText themeColor="textSecondary">Balance</ThemedText>
-              <ThemedText type="heading">{money.format(cents)}</ThemedText>
-              {pocket.startingCents > 0 ? (
-                <ThemedText type="small" themeColor="textSecondary">
-                  Started with {money.format(pocket.startingCents)}
-                </ThemedText>
-              ) : null}
-            </View>
-            <LinkButton
-              label="Edit"
-              accessibilityLabel={`Edit ${pocket.name}`}
-              onPress={() => router.push({ pathname: '/pocket-edit', params: { id: String(pocket.id) } })}
-            />
-          </View>
+          <PocketHeader pocket={pocket} cents={cents} savedCents={savedCents} spentCents={spentCents} spentSplit={spentSplit} />
         }
         ListEmptyComponent={
           <ThemedText themeColor="textSecondary" style={styles.empty}>
@@ -83,6 +72,59 @@ function PocketDetail({ pocket, savings }: { pocket: Pocket; savings: Entry[] })
       />
       <EdgeFades />
     </ThemedView>
+  );
+}
+
+type PocketHeaderProps = {
+  pocket: Pocket;
+  cents: number;
+  savedCents: number;
+  spentCents: number;
+  spentSplit: CategoryShare[];
+};
+
+/** The pocket's balance, what went in and out, how to spend from it, and its spending by category. */
+function PocketHeader({ pocket, cents, savedCents, spentCents, spentSplit }: PocketHeaderProps) {
+  const theme = useTheme();
+  const money = useMoney();
+  return (
+    <View style={styles.top}>
+      <View style={styles.header}>
+        <View style={styles.balance}>
+          <ThemedText themeColor="textSecondary">Balance</ThemedText>
+          <ThemedText type="heading" style={cents < 0 ? { color: theme.error } : undefined}>
+            {money.format(cents)}
+          </ThemedText>
+          {cents < 0 ? (
+            <ThemedText type="small" style={{ color: theme.error }}>
+              This pocket is {money.format(-cents)} short.
+            </ThemedText>
+          ) : null}
+          {pocket.startingCents > 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Started with {money.format(pocket.startingCents)}
+            </ThemedText>
+          ) : null}
+          {spentCents > 0 ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              Saved {money.format(savedCents)} · Spent {money.format(spentCents)}
+            </ThemedText>
+          ) : null}
+        </View>
+        <LinkButton
+          label="Edit"
+          accessibilityLabel={`Edit ${pocket.name}`}
+          onPress={() => router.push({ pathname: '/pocket-edit', params: { id: String(pocket.id) } })}
+        />
+      </View>
+      <Button
+        label="Spend from this pocket"
+        icon="shopping-bag"
+        variant="secondary"
+        onPress={() => router.push({ pathname: '/entry', params: { kind: 'expense', pocket: String(pocket.id) } })}
+      />
+      {spentSplit.length > 0 ? <CategorySplit kind="expense" shares={spentSplit} title="Spent by category" /> : null}
+    </View>
   );
 }
 
@@ -97,12 +139,15 @@ const styles = StyleSheet.create({
   list: {
     paddingTop: Layout.itemGap,
   },
+  top: {
+    gap: Layout.sectionGap,
+    marginBottom: Layout.sectionGap,
+  },
   header: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: Layout.itemGap,
     justifyContent: 'space-between',
-    marginBottom: Layout.sectionGap,
   },
   balance: {
     flexShrink: 1,

@@ -23,9 +23,10 @@ const COLUMNS =
   'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name';
 const FROM_ENTRY = 'entry LEFT JOIN pocket ON pocket.id = entry.pocket_id';
 
-/** A saving has a pocket and its name; income and expenses have neither. */
+/** A saving has a pocket, an expense may be paid from one, and income never has one. */
 function readPocket(kind: string, row: { pocket_id: unknown; pocket_name: unknown }, table: string) {
-  if (kind !== 'savings') {
+  const optional = kind === 'expense' && row.pocket_id === null;
+  if (kind === 'income' || optional) {
     if (row.pocket_id !== null) throw new DataFormatError(`${table}.pocket_id`);
     return { pocketId: null, pocketName: null };
   }
@@ -76,10 +77,10 @@ export async function getEntriesBetween(db: SQLiteDatabase, fromMonth: string, t
   return rows.map(toEntry);
 }
 
-/** Every saving of every month, newest first: what the pockets hold (specs/025-pockets). */
-export async function getSavingsEntries(db: SQLiteDatabase): Promise<Entry[]> {
+/** Every entry of every month that has a pocket, newest first: savings and expenses paid from one. */
+export async function getPocketEntries(db: SQLiteDatabase): Promise<Entry[]> {
   const rows = await db.getAllAsync<EntryRow>(
-    `SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE entry.kind = 'savings' ORDER BY entry.date DESC, entry.id DESC`,
+    `SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE entry.pocket_id IS NOT NULL ORDER BY entry.date DESC, entry.id DESC`,
   );
   return rows.map(toEntry);
 }

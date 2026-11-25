@@ -108,7 +108,7 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
           <Button label={pocket ? 'Save changes' : 'Create pocket'} disabled={submitting} onPress={onSave} />
           {pocket === null ? null : inUse ? (
             <ThemedText type="small" themeColor="textSecondary">
-              A pocket with savings can&apos;t be deleted. You can rename it.
+              A pocket with savings or spending can&apos;t be deleted. You can rename it.
             </ThemedText>
           ) : (
             <Button label="Delete pocket" variant="destructive" disabled={submitting} onPress={onDelete} />

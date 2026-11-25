@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
-import { categorySplit } from '@/features/entries/rules';
+import { categorySplit, countsInMonth } from '@/features/entries/rules';
 import { TrendBars } from '@/features/home/components/trend-bars';
 import { TrendCategoryList } from '@/features/home/components/trend-category-list';
 import {
@@ -52,18 +52,20 @@ export default function TrendsScreen() {
   if (entries.status === 'error' || plan.status === 'error') return <DataError />;
   if (entries.status === 'loading' || plan.status === 'loading') return <ThemedView style={styles.screen} />;
 
-  const totals = monthTotals(entries.data, months, kind);
-  const average = trendAverage(totals, monthsInUse(entries.data), currentMonth);
+  // Expenses paid from a pocket are not the month's money (specs/026-pocket-spending).
+  const counted = entries.data.filter(countsInMonth);
+  const totals = monthTotals(counted, months, kind);
+  const average = trendAverage(totals, monthsInUse(counted), currentMonth);
   const cents = totals.find((total) => total.month === selected)?.cents ?? 0;
-  const goals = kind === 'savings' ? savingsGoals(entries.data, months, plan.data) : undefined;
+  const goals = kind === 'savings' ? savingsGoals(counted, months, plan.data) : undefined;
   const count = goals ? goalCount(goals) : null;
-  const inUse = monthsInUse(entries.data);
+  const inUse = monthsInUse(counted);
   const isCurrent = selected === currentMonth;
   const rows = categorySplit(
-    entries.data.filter((entry) => entry.date.slice(0, 7) === selected),
+    counted.filter((entry) => entry.date.slice(0, 7) === selected),
     kind,
   ).map((share) => {
-    const usual = trendAverage(monthTotals(entries.data, months, kind, share.category), inUse, currentMonth);
+    const usual = trendAverage(monthTotals(counted, months, kind, share.category), inUse, currentMonth);
     return { share, versusUsual: usual === null ? null : averageSentence(share.cents, usual, isCurrent, money.format, 'usual') };
   });
 

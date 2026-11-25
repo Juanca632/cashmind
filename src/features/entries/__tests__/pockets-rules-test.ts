@@ -45,7 +45,7 @@ describe('Pocket balance (FR-002, SC-003)', () => {
   const saving = (pocketId: number | null, amountCents: number, kind: 'savings' | 'expense' = 'savings') => ({ kind, pocketId, amountCents });
 
   it('is the starting amount plus every saving in the pocket: 1.500,00 + 200,00 = 1.700,00', () => {
-    expect(pocketBalances([japan], [saving(1, 20000)])).toEqual([{ pocket: japan, cents: 170000 }]);
+    expect(pocketBalances([japan], [saving(1, 20000)])).toEqual([{ pocket: japan, cents: 170000, savedCents: 20000, spentCents: 0 }]);
   });
 
   it('with no savings it is the starting amount, and 0 when there is none', () => {
@@ -53,11 +53,35 @@ describe('Pocket balance (FR-002, SC-003)', () => {
   });
 
   it('savings of other pockets and other kinds do not count; the order is the pockets order', () => {
-    const balances = pocketBalances([car, japan], [saving(1, 100), saving(2, 7), saving(2, 3), saving(2, 999, 'expense'), saving(null, 5)]);
+    const balances = pocketBalances([car, japan], [saving(1, 100), saving(2, 7), saving(2, 3), saving(null, 5)]);
     expect(balances.map((b) => [b.pocket.name, b.cents])).toEqual([
       ['Car', 10],
       ['Japan trip', 150100],
     ]);
+  });
+
+  it('expenses paid from the pocket are subtracted: 1.700,00 - 35,00 = 1.665,00 (026 US1)', () => {
+    const [b] = pocketBalances([japan], [saving(1, 20000), saving(1, 3500, 'expense')]);
+    expect(b).toEqual({ pocket: japan, cents: 166500, savedCents: 20000, spentCents: 3500 });
+  });
+
+  it('an expense only lowers its own pocket; one paid from the month touches none', () => {
+    const balances = pocketBalances([car, japan], [saving(1, 700, 'expense'), saving(null, 900, 'expense'), saving(2, 100)]);
+    expect(balances.map((b) => [b.pocket.name, b.cents, b.spentCents])).toEqual([
+      ['Car', 100, 0],
+      ['Japan trip', 149300, 700],
+    ]);
+  });
+
+  it('may go below zero: 100,00 - 150,00 = -50,00 (026 US2 scenario 4)', () => {
+    const cars: Pocket = { id: 2, name: 'Car', startingCents: 0 };
+    const [b] = pocketBalances([cars], [saving(2, 10000), saving(2, 15000, 'expense')]);
+    expect(b.cents).toBe(-5000);
+  });
+
+  it('the total adds negative balances too (026 US2 scenario 5)', () => {
+    const balances = pocketBalances([japan, car], [saving(2, 5000, 'expense')]);
+    expect(pocketsTotal(balances)).toBe(145000);
   });
 
   it('is exact to the cent', () => {

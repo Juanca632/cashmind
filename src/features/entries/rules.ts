@@ -56,15 +56,30 @@ export function validateRecurring(kind: EntryKind, input: RecurringInput): Entry
   return errors;
 }
 
-/** Savings need a pocket; income and expenses never have one. */
+/** Savings need a pocket, an expense may be paid from one, and income never has one. */
 function checkPocket(kind: EntryKind, pocketId: number | null): EntryError | null {
   if (kind === 'savings') return pocketId === null ? 'pocket-missing' : null;
-  return pocketId === null ? null : 'pocket-not-allowed';
+  if (kind === 'income') return pocketId === null ? null : 'pocket-not-allowed';
+  return null;
 }
 
-/** What the monthly expenses add up to; repeating income and savings are not costs. */
-export function fixedCostsCents(items: readonly Pick<RecurringItem, 'kind' | 'amountCents' | 'active'>[]): number {
-  return items.reduce((sum, item) => (item.active && item.kind === 'expense' ? sum + item.amountCents : sum), 0);
+/**
+ * What the monthly expenses paid from the month add up to. Repeating income and savings are not
+ * costs, and expenses paid from a pocket are not the month's money (specs/026-pocket-spending).
+ */
+export function fixedCostsCents(items: readonly Pick<RecurringItem, 'kind' | 'amountCents' | 'active' | 'pocketId'>[]): number {
+  return items.reduce(
+    (sum, item) => (item.active && item.kind === 'expense' && countsInMonth(item) ? sum + item.amountCents : sum),
+    0,
+  );
+}
+
+/**
+ * False only for an expense paid from a pocket (specs/026-pocket-spending): it lowers the pocket,
+ * not the month, so every month figure leaves it out. Lists still show it.
+ */
+export function countsInMonth(entry: Pick<Entry, 'kind' | 'pocketId'>): boolean {
+  return !(entry.kind === 'expense' && entry.pocketId !== null);
 }
 
 export type EntryError =
@@ -108,7 +123,7 @@ export function entryErrorMessage(error: EntryError): string {
     case 'pocket-missing':
       return POCKET_MISSING;
     case 'pocket-not-allowed':
-      return 'Only savings go into a pocket.';
+      return 'Income never goes into a pocket.';
   }
 }
 
@@ -201,7 +216,7 @@ export function quickAddSuggestions(entries: readonly Entry[], today: Date): Qui
   const first = addDays(last, -(QUICK_ADD_DAYS - 1));
   const groups = new Map<string, QuickAddSuggestion>();
   for (const entry of entries) {
-    if (entry.kind !== 'expense' || entry.recurringId !== null || entry.date < first || entry.date > last) continue;
+    if (entry.kind !== 'expense' || !countsInMonth(entry) || entry.recurringId !== null || entry.date < first || entry.date > last) continue;
     const key = JSON.stringify([entry.category, entry.amountCents, entry.note]);
     const group = groups.get(key);
     if (group) {
@@ -243,20 +258,24 @@ export function pocketErrorMessage(error: PocketError): string {
   return error === 'pocket-name' ? 'Give the pocket a name.' : AMOUNT_TOO_LARGE;
 }
 
-export type PocketBalance = { pocket: Pocket; cents: number };
+/** What a pocket holds: `cents` = starting + saved − spent, which may be below zero. */
+export type PocketBalance = { pocket: Pocket; cents: number; savedCents: number; spentCents: number };
 
-/** Each pocket's starting amount plus every saving in it, in the pockets' order. */
+/** Each pocket's balance from its starting amount, its savings and the expenses paid from it, in the pockets' order. */
 export function pocketBalances(
   pockets: readonly Pocket[],
-  savings: readonly Pick<Entry, 'kind' | 'pocketId' | 'amountCents'>[],
+  entries: readonly Pick<Entry, 'kind' | 'pocketId' | 'amountCents'>[],
 ): PocketBalance[] {
-  return pockets.map((pocket) => ({
-    pocket,
-    cents: savings.reduce(
-      (sum, entry) => (entry.kind === 'savings' && entry.pocketId === pocket.id ? sum + entry.amountCents : sum),
-      pocket.startingCents,
-    ),
-  }));
+  return pockets.map((pocket) => {
+    let savedCents = 0;
+    let spentCents = 0;
+    for (const entry of entries) {
+      if (entry.pocketId !== pocket.id) continue;
+      if (entry.kind === 'savings') savedCents += entry.amountCents;
+      else if (entry.kind === 'expense') spentCents += entry.amountCents;
+    }
+    return { pocket, cents: pocket.startingCents + savedCents - spentCents, savedCents, spentCents };
+  });
 }
 
 export function pocketsTotal(balances: readonly PocketBalance[]): number {

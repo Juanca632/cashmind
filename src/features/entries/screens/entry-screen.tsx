@@ -8,6 +8,7 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
 import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
@@ -48,7 +49,7 @@ import { ErrorText } from '@/shared/ui/error-text';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export default function EntryScreen() {
-  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string }>();
+  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string; pocket?: string }>();
   const id = params.id ? Number(params.id) : null;
   const loaded = useEntry(id);
   const item = useRecurringItem(loaded.status === 'ready' ? (loaded.data?.recurringId ?? null) : null);
@@ -72,6 +73,8 @@ export default function EntryScreen() {
       defaultDate={defaultEntryDate(params.month, today)}
       // An entry repeats while its item is active; Add from My plan starts with repeat on.
       initialRepeat={entry ? item.data?.active === true : params.repeat === '1'}
+      // "Spend from this pocket" opens the form already paid from that pocket.
+      defaultPocketId={params.pocket && Number.isInteger(Number(params.pocket)) ? Number(params.pocket) : null}
       today={today}
       suggestions={suggestions}
     />
@@ -83,6 +86,7 @@ function EntryForm({
   defaultKind,
   defaultDate,
   initialRepeat,
+  defaultPocketId,
   today,
   suggestions,
 }: {
@@ -90,6 +94,7 @@ function EntryForm({
   defaultKind: EntryKind;
   defaultDate: string;
   initialRepeat: boolean;
+  defaultPocketId: number | null;
   today: Date;
   /** Expenses recorded often lately, offered while adding an expense. */
   suggestions: readonly QuickAddSuggestion[];
@@ -100,7 +105,7 @@ function EntryForm({
   const [amountText, setAmountText] = useState(entry ? money.toInput(entry.amountCents) : '');
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? defaultKind);
   const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
-  const [pocketId, setPocketId] = useState<number | null>(entry?.pocketId ?? null);
+  const [pocketId, setPocketId] = useState<number | null>(entry ? entry.pocketId : defaultPocketId);
   const pockets = usePockets();
   const [note, setNote] = useState(entry?.note ?? '');
   const [date, setDate] = useState(entry?.date ?? defaultDate);
@@ -125,7 +130,8 @@ function EntryForm({
     amountCents: money.parse(amountText) ?? 0,
     note: note.trim(),
     category: kind === 'savings' ? DEFAULT_CATEGORY : category,
-    pocketId: kind === 'savings' ? pocketId : null,
+    // Savings go into a pocket; an expense may be paid from one; income never has one.
+    pocketId: kind === 'income' ? null : pocketId,
   };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
@@ -182,8 +188,9 @@ function EntryForm({
             value={kind}
             onChange={(option) => {
               setKind(option);
-              // Categories belong to a kind: a new kind starts again from Other.
+              // Categories belong to a kind: a new kind starts again from Other, and from no pocket.
               setCategory(DEFAULT_CATEGORY);
+              setPocketId(null);
             }}
           />
 
@@ -221,6 +228,15 @@ function EntryForm({
               <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
             </View>
           )}
+
+          {kind === 'expense' && pockets.status === 'ready' && pockets.data.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Paid from
+              </ThemedText>
+              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+            </View>
+          ) : null}
 
           {kind === 'expense' ? <QuickAddRow suggestions={suggestions} onPick={fillFrom} /> : null}
 

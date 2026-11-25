@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Savings funds
+# Specification Quality Checklist: Pockets
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-24
@@ -31,5 +31,5 @@
 
 ## Notes
 
-- Decisions taken with the developer on 2026-11-24: fixed funds (the savings categories), named funds later, spending from a fund in step 2 with a normal category, this is step 1.
+- Decisions taken with the developer on 2026-11-24: pockets named by the user replace the savings categories, optional starting amount not counted as a month's savings, existing savings migrate to pockets, only empty pockets can be deleted.
 

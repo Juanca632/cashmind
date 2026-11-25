@@ -209,10 +209,11 @@ describe('Save into a pocket', () => {
     expect(choicesOnForm().slice(0, 2)).toEqual(['Japan trip', 'Car']);
   });
 
-  it('Choose a pocket: income and expenses show no pockets', async () => {
+  it('Choose a pocket: income shows no pockets; an expense offers them as "Paid from" (026)', async () => {
     await startApp({ today: TODAY, entries: [salary], pockets: [japan] });
     await press('Add expense');
-    expect(screen.queryByRole('radio', { name: 'Japan trip' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Japan trip' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'This month' })).toBeSelected();
     await choose('Income');
     expect(screen.queryByRole('radio', { name: 'Japan trip' })).not.toBeOnTheScreen();
   });
@@ -563,7 +564,7 @@ describe('See and manage a pocket', () => {
     await press('Edit Japan trip');
 
     expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings can't be deleted. You can rename it.")).toBeOnTheScreen();
+    expect(screen.getByText("A pocket with savings or spending can't be deleted. You can rename it.")).toBeOnTheScreen();
     await type('Name', 'Tokyo');
     await press('Save changes');
     expect(headerTitles().at(-1)).toBe('Tokyo');
@@ -581,7 +582,7 @@ describe('See and manage a pocket', () => {
     await press('Edit Car');
 
     expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings can't be deleted. You can rename it.")).toBeOnTheScreen();
+    expect(screen.getByText("A pocket with savings or spending can't be deleted. You can rename it.")).toBeOnTheScreen();
   });
 
   it('A new pocket form has no delete button', async () => {

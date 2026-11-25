@@ -42,7 +42,7 @@ describe('Choose a category when recording', () => {
   it('Categories of the kind: expense, income and savings each offer their own list with icons', async () => {
     await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Japan trip' }] });
     await press('Add expense');
-    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other']);
+    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other', 'This month', 'Japan trip']);
 
     await choose('Income');
     expect(categoryOptions()).toEqual(['Salary', 'Freelance', 'Benefits', 'Gifts', 'Other']);
@@ -451,7 +451,8 @@ describe('Existing entries are kept', () => {
     expect(splitLine('Other', '21,50', 100)).toBeOnTheScreen();
 
     await press(/Cinema/);
-    expect(screen.getByRole('radio', { name: 'Other' })).toBeSelected();
+    // The category "Other" is chosen; the migrated pocket "Other" is also offered under "Paid from", not chosen.
+    expect(screen.getAllByRole('radio', { name: 'Other', selected: true })).toHaveLength(1);
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue('12,50');
 
     const [rows] = (await dumpDevice()) as [Record<string, unknown>[]];
