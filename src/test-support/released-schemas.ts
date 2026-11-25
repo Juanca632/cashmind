@@ -236,4 +236,51 @@ export const RELEASED_SCHEMAS: Record<number, string> = {
       starting_cents INTEGER NOT NULL DEFAULT 0 CHECK (starting_cents >= 0)
     ) STRICT;
   `,
+  10: `
+    CREATE TABLE "plan_version" (
+      effective_month TEXT PRIMARY KEY NOT NULL CHECK (effective_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+      savings_pct INTEGER NOT NULL CHECK (savings_pct BETWEEN 0 AND 100)
+    ) STRICT;
+    CREATE TABLE entry (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+      kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+      amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+      note TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      category TEXT NOT NULL DEFAULT 'other' CHECK (
+        (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+        OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+        OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+      ),
+      recurring_id INTEGER REFERENCES recurring(id),
+      pocket_id INTEGER REFERENCES pocket(id)
+    ) STRICT;
+    CREATE TABLE recurring (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL CHECK (kind IN ('expense', 'savings', 'income')),
+      category TEXT NOT NULL CHECK (
+        (kind = 'expense' AND category IN ('housing', 'groceries', 'transport', 'eating_out', 'leisure', 'health', 'subscriptions', 'other'))
+        OR (kind = 'income' AND category IN ('salary', 'freelance', 'benefits', 'gifts', 'other'))
+        OR (kind = 'savings' AND category IN ('emergency_fund', 'investments', 'travel', 'goal', 'other'))
+      ),
+      amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+      note TEXT NOT NULL DEFAULT '',
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+      last_month TEXT NOT NULL CHECK (last_month GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'),
+      pocket_id INTEGER REFERENCES pocket(id)
+    ) STRICT;
+    CREATE TABLE setting (
+      key TEXT PRIMARY KEY NOT NULL,
+      value TEXT NOT NULL
+    ) STRICT;
+    CREATE TABLE pocket (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 40),
+      starting_cents INTEGER NOT NULL DEFAULT 0 CHECK (starting_cents >= 0),
+      emoji TEXT NOT NULL DEFAULT '' CHECK (length(emoji) <= 8),
+      color TEXT NOT NULL DEFAULT 'blue'
+        CHECK (color IN ('blue', 'indigo', 'purple', 'pink', 'orange', 'amber', 'green', 'slate'))
+    ) STRICT;
+  `,
 };

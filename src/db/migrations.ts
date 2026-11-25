@@ -284,4 +284,18 @@ export const MIGRATIONS: readonly Migration[] = [
       }
     },
   },
+  {
+    // Each pocket gets an optional emoji and a colour of the fixed palette (specs/027-spaces).
+    // Existing pockets take the palette's colours in turn; nothing else changes.
+    version: 10,
+    up: (db) =>
+      db.execAsync(`
+        ALTER TABLE pocket ADD COLUMN emoji TEXT NOT NULL DEFAULT '' CHECK (length(emoji) <= 8);
+        ALTER TABLE pocket ADD COLUMN color TEXT NOT NULL DEFAULT 'blue'
+          CHECK (color IN ('blue', 'indigo', 'purple', 'pink', 'orange', 'amber', 'green', 'slate'));
+        UPDATE pocket SET color = CASE (id - 1) % 8
+          WHEN 0 THEN 'blue' WHEN 1 THEN 'indigo' WHEN 2 THEN 'purple' WHEN 3 THEN 'pink'
+          WHEN 4 THEN 'orange' WHEN 5 THEN 'amber' WHEN 6 THEN 'green' ELSE 'slate' END;
+      `),
+  },
 ];

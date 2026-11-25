@@ -25,7 +25,7 @@ describe('App updates: opening the app on a database left by released version 3'
   it('Fixed and leisure entries count as expenses, savings stay savings, and a plan that was not a savings percentage becomes 20 %', async () => {
     await startAppOnReleasedVersion([2026, 10, 7], 3, data);
 
-    expect(await screen.findByText('Left to spend')).toBeOnTheScreen();
+    expect(await screen.findByLabelText(/^Left to spend: /)).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('950 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
@@ -37,12 +37,12 @@ describe('App updates: opening the app on a database left by released version 3'
 
   it('A savings percentage keeps applying to the months it covered', async () => {
     await startAppOnReleasedVersion([2026, 10, 7], 3, data);
-    await screen.findByText('Left to spend');
+    await screen.findByLabelText(/^Left to spend: /);
 
     await press(/^Month:/);
     await press('Sep');
 
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
   });
 });

@@ -176,7 +176,7 @@ export async function addPocket(db: SQLiteDatabase, input: PocketInput): Promise
   const result = await attemptWrite(POCKET_FAILED, async () => {
     const [error] = validatePocket(input);
     if (error) return rejected(pocketErrorMessage(error));
-    id = await insertPocket(db, { name: input.name.trim(), startingCents: input.startingCents });
+    id = await insertPocket(db, { ...input, name: input.name.trim(), emoji: input.emoji.trim() });
     return WRITE_OK;
   });
   return result.ok ? { ...result, id } : result;
@@ -188,7 +188,7 @@ export function editPocket(db: SQLiteDatabase, id: number, input: PocketInput): 
     const [error] = validatePocket(input);
     if (error) return rejected(pocketErrorMessage(error));
     if (!(await getPocket(db, id))) return rejected(POCKET_GONE);
-    await updatePocket(db, id, { name: input.name.trim(), startingCents: input.startingCents });
+    await updatePocket(db, id, { ...input, name: input.name.trim(), emoji: input.emoji.trim() });
     return WRITE_OK;
   });
 }

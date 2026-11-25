@@ -184,7 +184,7 @@ describe('Every kind can be recorded', () => {
   it.each(['income', 'savings', 'expense'] as const)('A new %s is stored', async (kind) => {
     const db = await newDb();
 
-    await addPocket(db, { name: 'Trip', startingCents: 0 });
+    await addPocket(db, { name: 'Trip', startingCents: 0, emoji: '', color: 'blue' });
     const pocketId = kind === 'savings' ? 1 : null;
 
     expect(await addEntry(db, { ...lunch, kind, category: 'other', pocketId }, NOV_7)).toEqual({ ok: true });

@@ -30,7 +30,7 @@ describe('Month picker', () => {
     await press('Sep');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
   });
 });
@@ -123,7 +123,7 @@ describe('How far back', () => {
     await press('Mar');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByText('March 2025', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: March 2025' })).toBeOnTheScreen();
     expect(screen.getByText('Old lunch')).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 200 €'))).toBeOnTheScreen();
   });
@@ -148,12 +148,12 @@ describe('The plan of a past month cannot be changed', () => {
     await openPicker();
     await press('Sep');
 
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
 
     await press('Back to current month');
 
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'My plan' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Back to current month' })).not.toBeOnTheScreen();
   });
@@ -203,7 +203,7 @@ describe('Past months can be corrected: income', () => {
     await press('Save changes');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('2 500 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
   });
@@ -218,7 +218,7 @@ describe('Past months can be corrected: income', () => {
     await answerDialog('Delete');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     expect(screen.queryByText('Pay 2026-11')).not.toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
@@ -230,7 +230,7 @@ describe('Going to a month by address', () => {
     await startApp({ today: [2026, 10, 7], entries: [income('2026-11', 100000)] });
     await testRouter.navigate(`/?month=${month}`);
 
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('1 000 €'))).toBeOnTheScreen();
   });
 
@@ -238,7 +238,7 @@ describe('Going to a month by address', () => {
     await startApp({ today: [2026, 10, 7], entries: [income('2026-09', 100000)] });
     await testRouter.navigate('/?month=2026-09');
 
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'My plan' })).not.toBeOnTheScreen();
   });
 });
@@ -250,7 +250,7 @@ describe('Removed screens', () => {
 
     expect(screen.getByText('Page could not be found.')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Save plan' })).not.toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
   });
 });
 
@@ -258,14 +258,14 @@ describe('Today follows the clock', () => {
   it('When the app returns to the foreground after midnight into a new month, home shows the new month', async () => {
     const listen = jest.spyOn(AppState, 'addEventListener');
     await startApp({ today: [2026, 10, 30], entries: [income('2026-11', 100000)] });
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
 
     jest.setSystemTime(new Date(2026, 11, 1, 9));
     await act(async () => {
       for (const [event, handler] of listen.mock.calls) if (event === 'change') (handler as (state: string) => void)('active');
     });
 
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     listen.mockRestore();
   });

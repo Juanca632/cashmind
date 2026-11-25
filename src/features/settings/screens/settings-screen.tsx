@@ -10,7 +10,7 @@ import { setAppLock, setCurrency } from '@/features/settings/service';
 import { hapticTick } from '@/shared/haptics';
 import { useMoney } from '@/shared/hooks/use-money';
 import { CURRENCIES, CURRENCY_NAMES, type Currency } from '@/shared/money';
-import { Layout, Radius, Size } from '@/shared/theme/theme';
+import { Hero, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { DataError } from '@/shared/ui/data-error';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
@@ -131,7 +131,7 @@ function CurrencySection() {
             label={CURRENCY_NAMES[option]}
             accessibilityRole="radio"
             selected={option === currency}
-            colors={{ fill: theme.accent, ink: theme.onAccent }}
+            colors={{ fill: theme.accent, ink: theme.onAccent, ring: Hero.ring }}
             onPress={() => pick(option)}
           />
         ))}

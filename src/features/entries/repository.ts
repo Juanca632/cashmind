@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { ALL_CATEGORIES, isCategoryOf } from '@/features/entries/categories';
 import type { Entry, EntryInput, Pocket, PocketInput, RecurringInput, RecurringItem } from '@/features/entries/rules';
 import { ENTRY_KINDS } from '@/shared/kinds';
+import { POCKET_COLOR_NAMES } from '@/shared/theme/theme';
 import {
   DataFormatError,
   readDay,
@@ -14,25 +15,26 @@ import {
 } from '@/shared/read-checks';
 
 type EntryRow = Record<
-  'id' | 'date' | 'kind' | 'amount_cents' | 'note' | 'category' | 'recurring_id' | 'pocket_id' | 'pocket_name',
+  'id' | 'date' | 'kind' | 'amount_cents' | 'note' | 'category' | 'recurring_id' | 'pocket_id' | 'pocket_name' | 'pocket_emoji',
   unknown
 >;
 
 /** Every entry query reads its pocket's name too, so titles need no other lookup. */
 const COLUMNS =
-  'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name';
+  'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name, pocket.emoji AS pocket_emoji';
 const FROM_ENTRY = 'entry LEFT JOIN pocket ON pocket.id = entry.pocket_id';
 
 /** A saving has a pocket, an expense may be paid from one, and income never has one. */
-function readPocket(kind: string, row: { pocket_id: unknown; pocket_name: unknown }, table: string) {
+function readPocket(kind: string, row: { pocket_id: unknown; pocket_name: unknown; pocket_emoji: unknown }, table: string) {
   const optional = kind === 'expense' && row.pocket_id === null;
   if (kind === 'income' || optional) {
     if (row.pocket_id !== null) throw new DataFormatError(`${table}.pocket_id`);
-    return { pocketId: null, pocketName: null };
+    return { pocketId: null, pocketName: null, pocketEmoji: null };
   }
   return {
     pocketId: readInteger(row.pocket_id, `${table}.pocket_id`),
     pocketName: readText(row.pocket_name, 'pocket.name'),
+    pocketEmoji: readText(row.pocket_emoji, 'pocket.emoji'),
   };
 }
 
@@ -155,12 +157,12 @@ export async function linkEntryToRecurring(db: SQLiteDatabase, id: number, recur
 }
 
 type RecurringRow = Record<
-  'id' | 'kind' | 'category' | 'amount_cents' | 'note' | 'active' | 'last_month' | 'pocket_id' | 'pocket_name',
+  'id' | 'kind' | 'category' | 'amount_cents' | 'note' | 'active' | 'last_month' | 'pocket_id' | 'pocket_name' | 'pocket_emoji',
   unknown
 >;
 
 const RECURRING_COLUMNS =
-  'recurring.id, recurring.kind, recurring.category, recurring.amount_cents, recurring.note, recurring.active, recurring.last_month, recurring.pocket_id, pocket.name AS pocket_name';
+  'recurring.id, recurring.kind, recurring.category, recurring.amount_cents, recurring.note, recurring.active, recurring.last_month, recurring.pocket_id, pocket.name AS pocket_name, pocket.emoji AS pocket_emoji';
 const FROM_RECURRING = 'recurring LEFT JOIN pocket ON pocket.id = recurring.pocket_id';
 
 function toRecurring(row: RecurringRow): RecurringItem {
@@ -247,22 +249,30 @@ export async function markRecurringRecorded(db: SQLiteDatabase, id: number, mont
   return result.changes === 1;
 }
 
-type PocketRow = Record<'id' | 'name' | 'starting_cents', unknown>;
+type PocketRow = Record<'id' | 'name' | 'starting_cents' | 'emoji' | 'color', unknown>;
+
+const POCKET_COLUMNS = 'id, name, starting_cents, emoji, color';
 
 function toPocket(row: PocketRow): Pocket {
   const startingCents = readInteger(row.starting_cents, 'pocket.starting_cents');
   if (startingCents < 0) throw new DataFormatError('pocket.starting_cents');
-  return { id: readInteger(row.id, 'pocket.id'), name: readText(row.name, 'pocket.name'), startingCents };
+  return {
+    id: readInteger(row.id, 'pocket.id'),
+    name: readText(row.name, 'pocket.name'),
+    startingCents,
+    emoji: readText(row.emoji, 'pocket.emoji'),
+    color: readOneOf(row.color, POCKET_COLOR_NAMES, 'pocket.color'),
+  };
 }
 
 /** Every pocket, in the order they were made. */
 export async function getPockets(db: SQLiteDatabase): Promise<Pocket[]> {
-  const rows = await db.getAllAsync<PocketRow>('SELECT id, name, starting_cents FROM pocket ORDER BY id');
+  const rows = await db.getAllAsync<PocketRow>(`SELECT ${POCKET_COLUMNS} FROM pocket ORDER BY id`);
   return rows.map(toPocket);
 }
 
 export async function getPocket(db: SQLiteDatabase, id: number): Promise<Pocket | null> {
-  const row = await db.getFirstAsync<PocketRow>('SELECT id, name, starting_cents FROM pocket WHERE id = ?', id);
+  const row = await db.getFirstAsync<PocketRow>(`SELECT ${POCKET_COLUMNS} FROM pocket WHERE id = ?`, id);
   return row ? toPocket(row) : null;
 }
 
@@ -278,12 +288,25 @@ export async function pocketInUse(db: SQLiteDatabase, id: number): Promise<boole
 
 /** Returns the new pocket's id. */
 export async function insertPocket(db: SQLiteDatabase, input: PocketInput): Promise<number> {
-  const result = await db.runAsync('INSERT INTO pocket (name, starting_cents) VALUES (?, ?)', input.name, input.startingCents);
+  const result = await db.runAsync(
+    'INSERT INTO pocket (name, starting_cents, emoji, color) VALUES (?, ?, ?, ?)',
+    input.name,
+    input.startingCents,
+    input.emoji,
+    input.color,
+  );
   return result.lastInsertRowId;
 }
 
 export async function updatePocket(db: SQLiteDatabase, id: number, input: PocketInput): Promise<void> {
-  await db.runAsync('UPDATE pocket SET name = ?, starting_cents = ? WHERE id = ?', input.name, input.startingCents, id);
+  await db.runAsync(
+    'UPDATE pocket SET name = ?, starting_cents = ?, emoji = ?, color = ? WHERE id = ?',
+    input.name,
+    input.startingCents,
+    input.emoji,
+    input.color,
+    id,
+  );
 }
 
 export async function deletePocket(db: SQLiteDatabase, id: number): Promise<void> {

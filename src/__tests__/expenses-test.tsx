@@ -313,11 +313,11 @@ describe('Past months can be corrected', () => {
     await type('Amount', '20');
     await press('Add expense');
 
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText(exactText('20,00 €'))).toBeOnTheScreen();
 
     await press('Back to current month');
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     expect(screen.queryByText(exactText('20,00 €'))).not.toBeOnTheScreen();
   });
 
@@ -350,7 +350,7 @@ describe('Past months can be corrected', () => {
     await typeNote('Bakery');
     await press(/^Date: /);
     await press('Add expense');
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText('Bakery')).toBeOnTheScreen();
     expect(screen.getByText(exactText('7,00 €'))).toBeOnTheScreen();
   });
@@ -438,7 +438,7 @@ describe('Month expense list', () => {
     await press(/^Month:/);
     await press('Sep');
 
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(screen.getByText('Concert')).toBeOnTheScreen();
     expect(screen.getByText(exactText('80,00 €'))).toBeOnTheScreen();
     expect(screen.queryByText('Coffee')).not.toBeOnTheScreen();

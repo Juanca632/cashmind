@@ -1,9 +1,7 @@
-import { Feather } from '@react-native-vector-icons/feather';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import Animated, { useReducedMotion } from 'react-native-reanimated';
 
 import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
@@ -11,24 +9,26 @@ import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
 import { categorySplit, countsInMonth, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
 import { addEntry, recordRecurringEntries } from '@/features/entries/service';
+import { usePocket } from '@/features/entries/hooks/use-pocket';
+import { SpaceSelector } from '@/features/home/components/space-selector';
 import { SpendingPaceChart } from '@/features/home/components/spending-pace-chart';
+import { PocketSpace } from '@/features/home/screens/pocket-space';
 import { dailyAllowance, monthSummary, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { IS_DEMO } from '@/shared/demo';
 import { useMoney } from '@/shared/hooks/use-money';
-import { splitFraction } from '@/shared/money';
+import type { Money } from '@/shared/money';
 import { formatMonth, isPastMonth, isValidMonthKey, monthKey } from '@/shared/months';
-import { BORDER_WIDTH, elevation, FontFamily, Hero, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
-import { useTheme } from '@/shared/theme/use-theme';
+import { Hero, Layout, Size } from '@/shared/theme/theme';
 import { hapticSuccess, hapticTick } from '@/shared/haptics';
-import { useCountUp } from '@/shared/hooks/use-count-up';
-import { PressableScale } from '@/shared/ui/pressable-scale';
 import { useToday } from '@/shared/hooks/use-today';
-import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
+import { HeroCard } from '@/shared/ui/hero-card';
+import { HeroFigure } from '@/shared/ui/hero-figure';
+import { KindTile } from '@/shared/ui/kind-tile';
 import { IconButton } from '@/shared/ui/icon-button';
 import { LinkButton } from '@/shared/ui/link-button';
 import { Pill } from '@/shared/ui/pill';
@@ -61,13 +61,29 @@ export default function HomeScreen() {
   }, [db, currentMonth, today]);
 
   if (recordedMonth !== currentMonth) return <ThemedView style={styles.screen} />;
-  return <HomeMonth today={today} />;
+  return <HomeSpace today={today} />;
+}
+
+/** Home shows one space (specs/027-spaces): the month, or the pocket named by the `space` param. */
+function HomeSpace({ today }: { today: Date }) {
+  const params = useLocalSearchParams<{ space?: string }>();
+  const id = Number(params.space);
+  if (!params.space || !Number.isInteger(id) || id <= 0) return <HomeMonth today={today} />;
+  return <PocketLoader id={id} today={today} />;
+}
+
+function PocketLoader({ id, today }: { id: number; today: Date }) {
+  const loaded = usePocket(id);
+  if (loaded.status === 'error') return <DataError topInset />;
+  if (loaded.status === 'loading') return <ThemedView style={styles.screen} />;
+  // A pocket deleted meanwhile, or a stale link: show the month instead.
+  if (loaded.data === null) return <HomeMonth today={today} />;
+  return <PocketSpace pocket={loaded.data.pocket} />;
 }
 
 function HomeMonth({ today }: { today: Date }) {
   const money = useMoney();
   const db = useSQLiteContext();
-  const theme = useTheme();
   const plan = usePlanVersions();
   const params = useLocalSearchParams<{ month?: string }>();
   const currentMonth = monthKey(today);
@@ -147,12 +163,14 @@ function HomeMonth({ today }: { today: Date }) {
           </View>
         </View>
 
-        {/* The shadow sits on its own view: the card clips its content to its rounded corners. */}
-        <View style={[styles.monthShadow, elevation(theme, overspent ? 'heroOverspent' : 'hero')]}>
-          <View style={styles.monthCard}>
-            <OverspentLayer visible={overspent} />
+        <HeroCard overspent={overspent}>
             {hasIncome ? (
-              <LeftToSpend left={summary.left} month={month} daily={dailyAllowance(summary.left, today, month)} />
+              <HeroFigure
+                label="Left to spend"
+                cents={summary.left}
+                countKey={month}
+                detail={dailyText(dailyAllowance(summary.left, today, month), money)}
+              />
             ) : (
               <View style={styles.askIncome}>
                 <ThemedText type="heading" style={[styles.centeredText, { color: Hero.text }]}>
@@ -172,15 +190,13 @@ function HomeMonth({ today }: { today: Date }) {
                 </View>
               </View>
             )}
-          </View>
-        </View>
+        </HeroCard>
+        {/* Under the figure it changes, as Revolut switches accounts under the balance (specs/027-spaces). */}
+        <SpaceSelector pocket={null} />
 
         {hasIncome ? (
           <View style={styles.section}>
-            <View style={styles.sectionTitle}>
-              <SectionTitle>Overview</SectionTitle>
-              <LinkButton label="See pockets ›" accessibilityLabel="See my pockets" onPress={() => router.push('/pockets')} />
-            </View>
+            <SectionTitle>Overview</SectionTitle>
             <View style={styles.tiles}>
               <KindTile kind="income" value={money.formatCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
               <KindTile kind="expense" title="Spent" value={money.formatCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
@@ -293,120 +309,12 @@ function emptyListText(selected: EntryKind | null, isPast: boolean): string {
   return 'Record what you earn, spend and save.';
 }
 
-/** The red version of the card, faded in over the green one when the month is overspent. */
-function OverspentLayer({ visible }: { visible: boolean }) {
-  const reducedMotion = useReducedMotion();
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.overspent,
-        { opacity: visible ? 1 : 0, transitionProperty: 'opacity', transitionDuration: reducedMotion ? 0 : 250 },
-      ]}
-    />
-  );
-}
-
-/** The month in brief: what can still be spent after expenses and the savings goal. */
-function LeftToSpend({ left, month, daily }: { left: number; month: string; daily: DailyAllowance | null }) {
-  const money = useMoney();
-  const counted = useCountUp(left, month);
-  // A whole amount counts up in whole units, so pesos never flash decimals they do not have.
-  const shown = left % 100 === 0 ? Math.round(counted / 100) * 100 : counted;
-  const [whole, fraction] = splitFraction(money, money.format(shown));
-  const dailyText =
-    daily === null
-      ? null
-      : daily.daysLeft === 1
-        ? `Today: ${money.format(daily.cents)}`
-        : `≈ ${money.format(daily.cents)} / day · ${daily.daysLeft} days left`;
-  const label = `Left to spend: ${money.format(left)}${dailyText ? `. ${dailyText}` : ''}`;
-  return (
-    <View style={styles.brief} accessible accessibilityLabel={label}>
-      <ThemedText style={[styles.briefLabel, { color: Hero.label }]}>Left to spend</ThemedText>
-      <View style={styles.figure}>
-        <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.figureWhole, { color: Hero.text }]}>
-          {whole}
-        </ThemedText>
-        {fraction ? <ThemedText style={[styles.figureDecimals, { color: Hero.label }]}>{fraction}</ThemedText> : null}
-      </View>
-      {dailyText ? (
-        <ThemedText type="small" style={{ color: Hero.label }}>
-          {dailyText}
-        </ThemedText>
-      ) : null}
-    </View>
-  );
-}
-
-type KindTileProps = {
-  kind: EntryKind;
-  title?: string;
-  value: string;
-  detail: string;
-  /** How full the savings goal bar is, from 0 to 1. No bar when undefined. */
-  progress?: number;
-  selected: EntryKind | null;
-  onSelect: (kind: EntryKind) => void;
-};
-
-/** One colored tile per kind of entry below the card. Tapping it lists only those entries. */
-function KindTile({ kind, title = KIND_LABELS[kind], value, detail, progress, selected, onSelect }: KindTileProps) {
-  const theme = useTheme();
-  const color = theme.kindInk[kind];
-  return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityValue={{ text: `${value}, ${detail}` }}
-      accessibilityState={{ selected: kind === selected }}
-      onPress={() => onSelect(kind)}
-      style={[
-        styles.tile,
-        // Tapped to filter the list, so they float like the other things you press.
-        elevation(theme, 'raised'),
-        { backgroundColor: theme.kindTint[kind], borderColor: kind === selected ? color : 'transparent' },
-      ]}>
-      <View style={styles.tileTitle}>
-        <Feather name={KIND_ICONS[kind]} size={IconSize.small} color={color} />
-        <ThemedText type="smallBold" numberOfLines={1} style={{ color }}>
-          {title}
-        </ThemedText>
-      </View>
-      <ThemedText type="smallBold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.tileValue, { color }]}>
-        {value}
-      </ThemedText>
-      <ThemedText type="caption" numberOfLines={1} style={{ color }}>
-        {detail}
-      </ThemedText>
-      {progress === undefined ? null : <GoalBar progress={progress} color={color} />}
-    </PressableScale>
-  );
-}
-
-/** How much of the savings goal is saved. Decorative: the tile already says it in words. */
-function GoalBar({ progress, color }: { progress: number; color: string }) {
-  const theme = useTheme();
-  const reducedMotion = useReducedMotion();
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      testID="savings-goal-bar"
-      style={[styles.goalTrack, { backgroundColor: theme.savingsTrack }]}>
-      <Animated.View
-        style={[
-          styles.goalFill,
-          {
-            backgroundColor: color,
-            width: `${progress * 100}%`,
-            transitionProperty: 'width',
-            transitionDuration: reducedMotion ? 0 : 300,
-          },
-        ]}
-      />
-    </View>
-  );
+/** The hero's line under "Left to spend": what can be spent each day until the month ends. */
+function dailyText(daily: DailyAllowance | null, money: Money): string | null {
+  if (daily === null) return null;
+  return daily.daysLeft === 1
+    ? `Today: ${money.format(daily.cents)}`
+    : `≈ ${money.format(daily.cents)} / day · ${daily.daysLeft} days left`;
 }
 
 const styles = StyleSheet.create({
@@ -416,39 +324,10 @@ const styles = StyleSheet.create({
   centeredText: {
     textAlign: 'center',
   },
-  monthShadow: {
-    borderRadius: Radius.hero,
-  },
-  monthCard: {
-    backgroundColor: Hero.background,
-    overflow: 'hidden',
-    borderRadius: Radius.hero,
-    experimental_backgroundImage: Hero.gradient,
-    gap: Layout.sectionGap,
-    justifyContent: 'center',
-    minHeight: Size.hero,
-    padding: Layout.cardPadding,
-  },
-  overspent: {
-    ...StyleSheet.absoluteFill,
-    experimental_backgroundImage: Hero.overspentGradient,
-  },
-  goalTrack: {
-    borderRadius: Radius.full,
-    height: Size.progress,
-    marginTop: Layout.tightGap,
-    overflow: 'hidden',
-  },
-  goalFill: {
-    borderRadius: Radius.full,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    top: 0,
-  },
   topRow: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: Layout.itemGap,
     justifyContent: 'space-between',
   },
   topActions: {
@@ -467,52 +346,9 @@ const styles = StyleSheet.create({
     gap: Layout.itemGap,
     justifyContent: 'center',
   },
-  brief: {
-    alignItems: 'center',
-    gap: Layout.tightGap,
-  },
-  briefLabel: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  figure: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-  },
-  figureWhole: {
-    flexShrink: 1,
-    fontFamily: FontFamily.bold,
-    fontSize: 64,
-    fontVariant: ['tabular-nums'],
-    letterSpacing: -1.5,
-    lineHeight: 72,
-  },
-  figureDecimals: {
-    fontFamily: FontFamily.semiBold,
-    fontSize: 28,
-    lineHeight: 36,
-  },
   tiles: {
     flexDirection: 'row',
     gap: Layout.itemGap,
-  },
-  tile: {
-    borderRadius: Radius.card,
-    borderWidth: BORDER_WIDTH,
-    flex: 1,
-    gap: Layout.tightGap,
-    minWidth: 0,
-    padding: Layout.tilePadding,
-  },
-  tileValue: {
-    fontSize: 18,
-    lineHeight: 24,
-  },
-  tileTitle: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Layout.tightGap,
   },
   section: {
     gap: Layout.itemGap,

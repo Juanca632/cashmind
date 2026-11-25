@@ -1,9 +1,11 @@
+import { BackHandler } from 'react-native';
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
 import { insertEntry, insertPocket } from '@/features/entries/repository';
 import { migrateDbIfNeeded } from '@/db/database';
 import { savePlanFromMonth } from '@/features/plan/repository';
 import type { EntryCategory } from '@/features/entries/categories';
+import type { PocketColor } from '@/shared/theme/theme';
 import type { EntryInput } from '@/features/entries/rules';
 
 import { resetDevice, seedDevice } from './fake-sqlite';
@@ -13,7 +15,7 @@ import { RELEASED_SCHEMAS } from './released-schemas';
 export type SeedEntry = Omit<EntryInput, 'category' | 'pocketId'> & { category?: EntryCategory; pocketId?: number | null };
 
 /** A pocket to seed; pockets get ids 1, 2, ... in the order given. */
-export type SeedPocket = { name: string; startingCents?: number };
+export type SeedPocket = { name: string; startingCents?: number; emoji?: string; color?: PocketColor };
 
 /** Name of the pocket created for seeded savings that name none. */
 export const DEFAULT_POCKET = 'Test pocket';
@@ -39,12 +41,12 @@ export async function startApp({ today, plans = [], pockets = [], entries = [], 
   await seedDevice(async (db) => {
     await migrateDbIfNeeded(db);
     for (const [percent, month] of plans) await savePlanFromMonth(db, percent, month);
-    for (const pocket of pockets) await insertPocket(db, { name: pocket.name, startingCents: pocket.startingCents ?? 0 });
+    for (const pocket of pockets) await insertPocket(db, { name: pocket.name, startingCents: pocket.startingCents ?? 0, emoji: pocket.emoji ?? '', color: pocket.color ?? 'blue' });
     let defaultPocket: number | null = null;
     for (const entry of entries) {
       let pocketId = entry.pocketId ?? null;
       if (entry.kind === 'savings' && pocketId === null) {
-        defaultPocket ??= await insertPocket(db, { name: DEFAULT_POCKET, startingCents: 0 });
+        defaultPocket ??= await insertPocket(db, { name: DEFAULT_POCKET, startingCents: 0, emoji: '', color: 'blue' });
         pocketId = defaultPocket;
       }
       await insertEntry(db, { category: 'other', ...entry, pocketId });
@@ -83,7 +85,19 @@ export async function expectLeftToSpend(amount: string) {
     jest.advanceTimersByTime(500);
   });
   const escaped = amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\u00a0\\u202f]');
-  expect(screen.getByText('Left to spend').parent).toHaveTextContent(new RegExp(`^Left to spend${escaped}`));
+  expect(screen.getByLabelText(new RegExp(`^Left to spend: ${escaped}`))).toBeOnTheScreen();
+}
+
+/**
+ * Checks the amount shown on a pocket's "Balance" card, e.g. "1 665,00 €" or "-50,00 €", once the
+ * figure has finished running.
+ */
+export async function expectBalance(amount: string) {
+  await act(async () => {
+    jest.advanceTimersByTime(600);
+  });
+  const escaped = amount.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\u00a0\\u202f]');
+  expect(screen.getByLabelText(new RegExp(`^Balance: ${escaped}`))).toBeOnTheScreen();
 }
 
 /** Records one entry through the form opened from home, for the kind and amount typed. */
@@ -181,4 +195,89 @@ export async function dumpDevice() {
     ];
   });
   return rows;
+}
+
+/** Lets the sheet's fade and the count-up figures finish. */
+async function settle() {
+  await act(async () => {
+    jest.advanceTimersByTime(600);
+  });
+}
+
+/** Opens the sheet of spaces from home's selector. */
+export async function openSpaces() {
+  await press(/^Space:/);
+  await settle();
+}
+
+/** Closes the open sheet of spaces by tapping outside it. */
+export async function closeSpaces() {
+  await fireEvent.press(screen.getByTestId('spaces-sheet-backdrop', { hidden: true }));
+  await settle();
+}
+
+/** Picks a row of the sheet by its accessible name, e.g. "Japan trip, 1 500,00 €" or "Main". */
+export async function pickSpace(name: string | RegExp) {
+  await openSpaces();
+  await fireEvent.press(screen.getByRole('radio', { name }));
+  await settle();
+}
+
+/** Shows the pocket with this name on home, through the selector. */
+export async function showPocket(name: string) {
+  await pickSpace(new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}, `));
+}
+
+/** The accessible names of the sheet's rows, in order; opens and closes the sheet. */
+export async function spaceRows(): Promise<string[]> {
+  await openSpaces();
+  const names = screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel as string);
+  await closeSpaces();
+  return names;
+}
+
+/** Checks a pocket's balance in the sheet: its row is a radio reading "<name>, <balance>". */
+export async function expectPocketBalance(name: string, balance: string) {
+  await openSpaces();
+  expect(screen.getByRole('radio', { name: exactText(`${name}, ${balance}`) })).toBeOnTheScreen();
+  await closeSpaces();
+}
+
+/**
+ * Stands in for Android's back button: listeners are asked newest first until one handles it.
+ * Returns what the app did: "handled" or "exit" (nobody handled it, so Android would leave the app).
+ */
+export function installBackButton() {
+  const listeners: (() => boolean | null | undefined)[] = [];
+  const spy = jest.spyOn(BackHandler, 'addEventListener').mockImplementation((_event, handler) => {
+    listeners.push(handler as () => boolean | null | undefined);
+    return {
+      remove: () => {
+        const at = listeners.indexOf(handler as () => boolean | null | undefined);
+        if (at >= 0) listeners.splice(at, 1);
+      },
+    };
+  });
+  return {
+    async press(): Promise<'handled' | 'exit'> {
+      let result: 'handled' | 'exit' = 'exit';
+      await act(async () => {
+        for (const handler of [...listeners].reverse()) {
+          if (handler()) {
+            result = 'handled';
+            return;
+          }
+        }
+      });
+      await settle();
+      return result;
+    },
+    restore: () => spy.mockRestore(),
+  };
+}
+
+/** Presses the back button of the sheet (the Modal's request to close). */
+export async function backOnSheet() {
+  await fireEvent(screen.getByTestId('spaces-sheet'), 'requestClose');
+  await settle();
 }

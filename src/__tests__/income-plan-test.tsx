@@ -45,7 +45,7 @@ describe('Income comes from what is recorded', () => {
 
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Add income' })).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Savings' })).not.toBeOnTheScreen();
   });
 
