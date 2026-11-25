@@ -20,6 +20,9 @@ export type SeedPocket = { name: string; startingCents?: number; emoji?: string;
 /** Name of the pocket created for seeded savings that name none. */
 export const DEFAULT_POCKET = 'Test pocket';
 
+/** A move to seed (028); `to` null means Main. Pockets are given by their ids. */
+export type SeedMove = { date: string; amountCents: number; from: number; to: number | null; note?: string; createdAt?: string };
+
 type Setup = {
   /** Local date the app thinks it is. */
   today: [year: number, monthIndex: number, day: number];
@@ -29,12 +32,14 @@ type Setup = {
   pockets?: SeedPocket[];
   /** Entries (income, savings and expenses) already recorded on the device. */
   entries?: SeedEntry[];
+  /** Moves of money out of a pocket already recorded on the device. */
+  moves?: SeedMove[];
   /** Raw SQL run last, to store rows the app itself would never write (damaged data). */
   raw?: string[];
 };
 
 /** Puts a fresh device in the given state, fixes the clock and opens the app on its home screen. */
-export async function startApp({ today, plans = [], pockets = [], entries = [], raw = [] }: Setup) {
+export async function startApp({ today, plans = [], pockets = [], entries = [], moves = [], raw = [] }: Setup) {
   jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
   jest.setSystemTime(new Date(today[0], today[1], today[2], 12));
   resetDevice();
@@ -50,6 +55,17 @@ export async function startApp({ today, plans = [], pockets = [], entries = [], 
         pocketId = defaultPocket;
       }
       await insertEntry(db, { category: 'other', ...entry, pocketId });
+    }
+    for (const move of moves) {
+      await db.runAsync(
+        "INSERT INTO move (date, amount_cents, from_pocket_id, to_pocket_id, note, created_at) VALUES (?, ?, ?, ?, ?, COALESCE(?, datetime('now')))",
+        move.date,
+        move.amountCents,
+        move.from,
+        move.to,
+        move.note ?? '',
+        move.createdAt ?? null,
+      );
     }
     for (const sql of raw) await db.execAsync(sql);
   });

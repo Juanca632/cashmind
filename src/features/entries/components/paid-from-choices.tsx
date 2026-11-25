@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { pocketLabel, type Pocket } from '@/features/entries/rules';
+import { MAIN_NAME, pocketLabel, type Pocket } from '@/features/entries/rules';
 import { hapticTick } from '@/shared/haptics';
 import { Hero, Layout, POCKET_COLORS } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -11,14 +11,16 @@ type PaidFromChoicesProps = {
   /** null: paid from the month. */
   value: number | null;
   onChange: (pocketId: number | null) => void;
+  /** The radio group's name; the move form calls it "To". */
+  label?: string;
 };
 
 /** Where an expense is paid from: the month, or one of the pockets (specs/026-pocket-spending). */
-export function PaidFromChoices({ pockets, value, onChange }: PaidFromChoicesProps) {
+export function PaidFromChoices({ pockets, value, onChange, label = 'Paid from' }: PaidFromChoicesProps) {
   const theme = useTheme();
   const options: { id: number | null; label: string; name: string; fill: string; ink: string; ring: string }[] = [
     // "Main" is the month's money, named as on home's space selector (specs/027-spaces).
-    { id: null, label: 'Main', name: 'Main', fill: theme.accent, ink: theme.onAccent, ring: Hero.ring },
+    { id: null, label: MAIN_NAME, name: MAIN_NAME, fill: theme.accent, ink: theme.onAccent, ring: Hero.ring },
     ...pockets.map((pocket) => ({
       id: pocket.id,
       label: pocketLabel(pocket),
@@ -29,7 +31,7 @@ export function PaidFromChoices({ pockets, value, onChange }: PaidFromChoicesPro
     })),
   ];
   return (
-    <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel="Paid from">
+    <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {options.map((option) => (
         <Pill
           key={option.id ?? 'month'}

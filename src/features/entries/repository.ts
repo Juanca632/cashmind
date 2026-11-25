@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { ALL_CATEGORIES, isCategoryOf } from '@/features/entries/categories';
-import type { Entry, EntryInput, Pocket, PocketInput, RecurringInput, RecurringItem } from '@/features/entries/rules';
+import type { Entry, EntryInput, Move, MoveInput, Pocket, PocketInput, RecurringInput, RecurringItem } from '@/features/entries/rules';
 import { ENTRY_KINDS } from '@/shared/kinds';
 import { POCKET_COLOR_NAMES } from '@/shared/theme/theme';
 import {
@@ -15,13 +15,23 @@ import {
 } from '@/shared/read-checks';
 
 type EntryRow = Record<
-  'id' | 'date' | 'kind' | 'amount_cents' | 'note' | 'category' | 'recurring_id' | 'pocket_id' | 'pocket_name' | 'pocket_emoji',
+  | 'id'
+  | 'date'
+  | 'kind'
+  | 'amount_cents'
+  | 'note'
+  | 'category'
+  | 'recurring_id'
+  | 'pocket_id'
+  | 'pocket_name'
+  | 'pocket_emoji'
+  | 'created_at',
   unknown
 >;
 
 /** Every entry query reads its pocket's name too, so titles need no other lookup. */
 const COLUMNS =
-  'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name, pocket.emoji AS pocket_emoji';
+  'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name, pocket.emoji AS pocket_emoji, entry.created_at';
 const FROM_ENTRY = 'entry LEFT JOIN pocket ON pocket.id = entry.pocket_id';
 
 /** A saving has a pocket, an expense may be paid from one, and income never has one. */
@@ -57,6 +67,7 @@ function toEntry(row: EntryRow): Entry {
     category,
     recurringId: row.recurring_id === null ? null : readInteger(row.recurring_id, 'entry.recurring_id'),
     ...readPocket(kind, row, 'entry'),
+    createdAt: readText(row.created_at, 'entry.created_at'),
   };
 }
 
@@ -276,10 +287,13 @@ export async function getPocket(db: SQLiteDatabase, id: number): Promise<Pocket 
   return row ? toPocket(row) : null;
 }
 
-/** True when a saving or a monthly saving (even a stopped one) points to the pocket. */
+/** True when an entry, a monthly item (even a stopped one) or a move on either side points to the pocket. */
 export async function pocketInUse(db: SQLiteDatabase, id: number): Promise<boolean> {
   const row = await db.getFirstAsync(
-    'SELECT 1 FROM entry WHERE pocket_id = ? UNION ALL SELECT 1 FROM recurring WHERE pocket_id = ? LIMIT 1',
+    `SELECT 1 FROM entry WHERE pocket_id = ? UNION ALL SELECT 1 FROM recurring WHERE pocket_id = ?
+     UNION ALL SELECT 1 FROM move WHERE from_pocket_id = ? OR to_pocket_id = ? LIMIT 1`,
+    id,
+    id,
     id,
     id,
   );
@@ -311,4 +325,71 @@ export async function updatePocket(db: SQLiteDatabase, id: number, input: Pocket
 
 export async function deletePocket(db: SQLiteDatabase, id: number): Promise<void> {
   await db.runAsync('DELETE FROM pocket WHERE id = ?', id);
+}
+
+type MoveRow = Record<
+  'id' | 'date' | 'amount_cents' | 'note' | 'from_pocket_id' | 'from_name' | 'from_emoji' | 'to_pocket_id' | 'to_name' | 'to_emoji' | 'created_at',
+  unknown
+>;
+
+/** Every move query reads both pockets' names and emojis; To is empty for a move into Main. */
+const MOVE_COLUMNS = `move.id, move.date, move.amount_cents, move.note, move.from_pocket_id,
+  f.name AS from_name, f.emoji AS from_emoji, move.to_pocket_id, t.name AS to_name, t.emoji AS to_emoji, move.created_at`;
+const FROM_MOVE = 'move JOIN pocket f ON f.id = move.from_pocket_id LEFT JOIN pocket t ON t.id = move.to_pocket_id';
+
+function toMove(row: MoveRow): Move {
+  const fromPocketId = readInteger(row.from_pocket_id, 'move.from_pocket_id');
+  const toPocketId = row.to_pocket_id === null ? null : readInteger(row.to_pocket_id, 'move.to_pocket_id');
+  if (toPocketId === fromPocketId) throw new DataFormatError('move.to_pocket_id');
+  return {
+    id: readInteger(row.id, 'move.id'),
+    date: readDay(row.date, 'move.date'),
+    amountCents: readPositiveInteger(row.amount_cents, 'move.amount_cents'),
+    note: readText(row.note, 'move.note'),
+    fromPocketId,
+    fromName: readText(row.from_name, 'pocket.name'),
+    fromEmoji: readText(row.from_emoji, 'pocket.emoji'),
+    toPocketId,
+    toName: toPocketId === null ? null : readText(row.to_name, 'pocket.name'),
+    toEmoji: toPocketId === null ? null : readText(row.to_emoji, 'pocket.emoji'),
+    createdAt: readText(row.created_at, 'move.created_at'),
+  };
+}
+
+/** Every move, newest first (specs/028-move-money). */
+export async function getMoves(db: SQLiteDatabase): Promise<Move[]> {
+  const rows = await db.getAllAsync<MoveRow>(`SELECT ${MOVE_COLUMNS} FROM ${FROM_MOVE} ORDER BY move.date DESC, move.created_at DESC, move.id DESC`);
+  return rows.map(toMove);
+}
+
+export async function getMove(db: SQLiteDatabase, id: number): Promise<Move | null> {
+  const row = await db.getFirstAsync<MoveRow>(`SELECT ${MOVE_COLUMNS} FROM ${FROM_MOVE} WHERE move.id = ?`, id);
+  return row ? toMove(row) : null;
+}
+
+export async function insertMove(db: SQLiteDatabase, input: MoveInput): Promise<void> {
+  await db.runAsync(
+    'INSERT INTO move (date, amount_cents, note, from_pocket_id, to_pocket_id) VALUES (?, ?, ?, ?, ?)',
+    input.date,
+    input.amountCents,
+    input.note,
+    input.fromPocketId,
+    input.toPocketId,
+  );
+}
+
+export async function updateMove(db: SQLiteDatabase, id: number, input: MoveInput): Promise<void> {
+  await db.runAsync(
+    'UPDATE move SET date = ?, amount_cents = ?, note = ?, from_pocket_id = ?, to_pocket_id = ? WHERE id = ?',
+    input.date,
+    input.amountCents,
+    input.note,
+    input.fromPocketId,
+    input.toPocketId,
+    id,
+  );
+}
+
+export async function deleteMove(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM move WHERE id = ?', id);
 }

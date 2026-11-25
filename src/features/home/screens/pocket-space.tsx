@@ -4,8 +4,9 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
+import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
-import { categorySplit, entriesOfKind, pocketBalances, type Pocket } from '@/features/entries/rules';
+import { categorySplit, entriesOfKind, mergeByDate, pocketBalances, pocketMoveLines, type Pocket } from '@/features/entries/rules';
 import { SpaceSelector } from '@/features/home/components/space-selector';
 import { useMoney } from '@/shared/hooks/use-money';
 import { useToday } from '@/shared/hooks/use-today';
@@ -32,6 +33,7 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
   const money = useMoney();
   const today = useToday();
   const entries = usePocketEntries();
+  const moves = useMoves();
   // Which kind the list shows; null shows both.
   const [selected, setSelected] = useState<EntryKind | null>(null);
 
@@ -47,18 +49,20 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
     }, []),
   );
 
-  if (entries.status === 'error') return <DataError topInset />;
-  if (entries.status === 'loading') return <ThemedView style={styles.screen} />;
+  if (entries.status === 'error' || moves.status === 'error') return <DataError topInset />;
+  if (entries.status === 'loading' || moves.status === 'loading') return <ThemedView style={styles.screen} />;
 
   const own = entries.data.filter((entry) => entry.pocketId === pocket.id);
-  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own);
+  const ownMoves = pocketMoveLines(moves.data, pocket.id);
+  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own, moves.data);
   const overdrawn = cents < 0;
   const detail = overdrawn
     ? `This pocket is ${money.format(-cents)} short.`
     : pocket.startingCents > 0
       ? `Started with ${money.format(pocket.startingCents)}`
       : null;
-  const listed = entriesOfKind(own, selected);
+  // Moves show in the whole list; the Saved and Spent tiles stay savings and expenses (specs/028-move-money).
+  const listed = mergeByDate(entriesOfKind(own, selected), selected === null ? ownMoves : []);
   const split = selected === 'expense' ? categorySplit(own, 'expense') : [];
   const toggle = (kind: EntryKind) => setSelected((current) => (current === kind ? null : kind));
 
@@ -96,6 +100,13 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
             stretch
             onPress={() => router.push({ pathname: '/entry', params: { kind: 'expense', pocket: String(pocket.id) } })}
           />
+          <Button
+            label="Move"
+            icon="shuffle"
+            variant="secondary"
+            stretch
+            onPress={() => router.push({ pathname: '/move', params: { from: String(pocket.id) } })}
+          />
         </View>
 
         <View style={styles.section}>
@@ -115,10 +126,11 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
           {split.length > 0 ? <CategorySplit kind="expense" shares={split} /> : null}
           <Card style={styles.activity}>
             <EntryList
-              entries={listed}
+              items={listed}
               today={today}
               emptyText={EMPTY}
               onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
+              onPressMove={(line) => router.push({ pathname: '/move', params: { id: String(line.move.id) } })}
             />
           </Card>
         </View>

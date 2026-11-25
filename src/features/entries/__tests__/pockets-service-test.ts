@@ -117,7 +117,7 @@ describe('Save into a pocket (Story 2)', () => {
     const db = await newDb();
     await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
     await addEntry(db, { ...lunch, pocketId: 1 }, NOV_15);
-    expect(await deletePocket(db, 1)).toMatchObject({ ok: false, message: "A pocket with savings or spending can't be deleted." });
+    expect(await deletePocket(db, 1)).toMatchObject({ ok: false, message: "A pocket with savings, spending or moves can't be deleted." });
     expect(await pockets(db)).toHaveLength(1);
   });
 
@@ -207,7 +207,7 @@ describe('Manage a pocket (Story 3)', () => {
     const db = await newDb();
     await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
     await addEntry(db, saving(1), NOV_15);
-    expect(await deletePocket(db, 1)).toEqual({ ok: false, kind: 'invalid', message: "A pocket with savings or spending can't be deleted." });
+    expect(await deletePocket(db, 1)).toEqual({ ok: false, kind: 'invalid', message: "A pocket with savings, spending or moves can't be deleted." });
     expect(await pockets(db)).toHaveLength(1);
   });
 
@@ -216,7 +216,7 @@ describe('Manage a pocket (Story 3)', () => {
     await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
     await addEntry(db, saving(1), NOV_15, { repeat: true });
     await db.runAsync('DELETE FROM entry');
-    expect(await deletePocket(db, 1)).toMatchObject({ ok: false, message: "A pocket with savings or spending can't be deleted." });
+    expect(await deletePocket(db, 1)).toMatchObject({ ok: false, message: "A pocket with savings, spending or moves can't be deleted." });
     expect(await pockets(db)).toHaveLength(1);
   });
 
