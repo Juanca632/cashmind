@@ -132,7 +132,7 @@ describe("The database rejects invalid data", () => {
     expect(await cols("plan_version")).toEqual(["effective_month", "savings_pct"]);
     expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category", "recurring_id", "pocket_id"]);
     expect(await cols("recurring")).toEqual(["id", "kind", "category", "amount_cents", "note", "active", "last_month", "pocket_id"]);
-    expect(await cols("pocket")).toEqual(["id", "name", "starting_cents"]);
+    expect(await cols("pocket")).toEqual(["id", "name", "starting_cents", "emoji", "color"]);
   });
 });
 

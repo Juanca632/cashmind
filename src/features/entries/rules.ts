@@ -5,6 +5,7 @@
 import { CATEGORIES, CATEGORY_LABELS, isCategoryOf, type EntryCategory } from '@/features/entries/categories';
 import { ENTRY_KINDS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
 import { AMOUNT_TOO_LARGE, isValidCents } from '@/shared/money';
+import { POCKET_COLOR_NAMES, type PocketColor } from '@/shared/theme/theme';
 import { addDays, dayKey, dayToDate, isValidDayKey } from '@/shared/days';
 import { isValidMonthKey, monthKey } from '@/shared/months';
 
@@ -19,11 +20,12 @@ export type Entry = {
   recurringId: number | null;
   /** The pocket of a saving (specs/025-pockets); null for income and expenses. */
   pocketId: number | null;
-  /** That pocket's name, read with the entry; null when there is no pocket. */
+  /** That pocket's name and emoji, read with the entry; null when there is no pocket. */
   pocketName: string | null;
+  pocketEmoji: string | null;
 };
 
-export type EntryInput = Omit<Entry, 'id' | 'recurringId' | 'pocketName'>;
+export type EntryInput = Omit<Entry, 'id' | 'recurringId' | 'pocketName' | 'pocketEmoji'>;
 
 /** An entry that is recorded again on the 1st of every new month until it is stopped. */
 export type RecurringItem = {
@@ -38,6 +40,7 @@ export type RecurringItem = {
   /** The pocket a monthly saving goes into; null for income and expenses. */
   pocketId: number | null;
   pocketName: string | null;
+  pocketEmoji: string | null;
 };
 
 /** What can change on a monthly item; its kind is fixed. */
@@ -238,24 +241,53 @@ export function quickAddRange(today: Date): { from: string; to: string } {
 }
 
 /** A place the user saves for, with money saved before the app (specs/025-pockets). */
-export type Pocket = { id: number; name: string; startingCents: number };
+export type Pocket = {
+  id: number;
+  name: string;
+  startingCents: number;
+  /** An optional emoji to recognise it by; '' when there is none (specs/027-spaces). */
+  emoji: string;
+  color: PocketColor;
+};
 
-export type PocketInput = Pick<Pocket, 'name' | 'startingCents'>;
+export type PocketInput = Pick<Pocket, 'name' | 'startingCents' | 'emoji' | 'color'>;
 
 export const POCKET_NAME_MAX = 40;
+/** Room for one emoji, even one made of several characters (flags, skin tones, families). */
+export const POCKET_EMOJI_MAX = 8;
 
-export type PocketError = 'pocket-name' | 'amount-too-large';
+export type PocketError = 'pocket-name' | 'amount-too-large' | 'pocket-emoji' | 'pocket-color';
+
+export function isPocketColor(value: unknown): value is PocketColor {
+  return POCKET_COLOR_NAMES.includes(value as PocketColor);
+}
 
 export function validatePocket(input: PocketInput): PocketError[] {
   const errors: PocketError[] = [];
   const name = input.name.trim();
   if (name.length === 0 || name.length > POCKET_NAME_MAX) errors.push('pocket-name');
   if (!isValidCents(input.startingCents)) errors.push('amount-too-large');
+  if (input.emoji.trim().length > POCKET_EMOJI_MAX) errors.push('pocket-emoji');
+  if (!isPocketColor(input.color)) errors.push('pocket-color');
   return errors;
 }
 
 export function pocketErrorMessage(error: PocketError): string {
-  return error === 'pocket-name' ? 'Give the pocket a name.' : AMOUNT_TOO_LARGE;
+  switch (error) {
+    case 'pocket-name':
+      return 'Give the pocket a name.';
+    case 'amount-too-large':
+      return AMOUNT_TOO_LARGE;
+    case 'pocket-emoji':
+      return 'Use one emoji.';
+    case 'pocket-color':
+      return 'Pick a colour.';
+  }
+}
+
+/** How a pocket is named on screen: its emoji, if any, before its name. */
+export function pocketLabel(pocket: { name: string; emoji: string | null }): string {
+  return pocket.emoji ? `${pocket.emoji} ${pocket.name}` : pocket.name;
 }
 
 /** What a pocket holds: `cents` = starting + saved − spent, which may be below zero. */

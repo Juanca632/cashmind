@@ -42,7 +42,7 @@ describe('Choose a category when recording', () => {
   it('Categories of the kind: expense, income and savings each offer their own list with icons', async () => {
     await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Japan trip' }] });
     await press('Add expense');
-    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other', 'This month', 'Japan trip']);
+    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other', 'Main', 'Japan trip']);
 
     await choose('Income');
     expect(categoryOptions()).toEqual(['Salary', 'Freelance', 'Benefits', 'Gifts', 'Other']);
@@ -497,7 +497,7 @@ describe('Unreadable category', () => {
     await startApp({ today: TODAY, entries: [salary], raw: bad(kind, category) });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     expect(screen.queryByText('Broken')).not.toBeOnTheScreen();
     expect(screen.queryByText('By category')).not.toBeOnTheScreen();
     const [rows] = (await dumpDevice()) as [Record<string, unknown>[]];

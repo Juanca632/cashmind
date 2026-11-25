@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
 import { categoryIcon } from '@/features/entries/components/category-icons';
-import { entryTitle, type Entry } from '@/features/entries/rules';
+import { entryTitle, pocketLabel, type Entry } from '@/features/entries/rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { useMoney } from '@/shared/hooks/use-money';
 import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
@@ -67,7 +67,10 @@ export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryR
   const amount = `${entry.kind === 'income' ? '+' : ''}${money.format(entry.amountCents)}`;
   const repeats = entry.recurringId !== null;
   // An expense paid from a pocket says so: it does not count in the month (specs/026-pocket-spending).
-  const fromPocket = entry.kind === 'expense' && entry.pocketName !== null ? `from ${entry.pocketName}` : null;
+  const fromPocket =
+    entry.kind === 'expense' && entry.pocketName !== null
+      ? `from ${pocketLabel({ name: entry.pocketName, emoji: entry.pocketEmoji })}`
+      : null;
   const parts = [entryTitle(entry), dayTitle(entry.date, today), amount, fromPocket, repeats ? 'recorded by a repeat' : null];
   return (
     <Pressable

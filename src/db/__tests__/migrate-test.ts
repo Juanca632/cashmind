@@ -262,6 +262,13 @@ describe("Updates never lose or break data (real list)", () => {
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
       INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
     `,
+    10: `
+      INSERT INTO plan_version VALUES ('2026-07', 30);
+      INSERT INTO plan_version VALUES ('2026-09', 20);
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-10-01', 'income', 150000, 'Pay', 'salary');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-05', 'expense', 1250, 'Cinema', 'leisure');
+      INSERT INTO entry (date, kind, amount_cents, note, category) VALUES ('2026-11-06', 'expense', 90000, '', 'housing');
+    `,
   };
   const monthly = (date: string, cents: number) => ({ date, kind: "income", amount_cents: cents, note: "Monthly income", category: "other" });
   /** The entries every released version ends with, once the clock says it is 9 November 2026. */
@@ -289,6 +296,7 @@ describe("Updates never lose or break data (real list)", () => {
     7: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
     8: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
     9: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
+    10: [{ date: "2026-10-01", kind: "income", amount_cents: 150000, note: "Pay", category: "salary" }],
   };
   const expectedRest = (released: number) => [
     { date: "2026-11-05", kind: "expense", amount_cents: 1250, note: "Cinema", category: released >= 6 ? "leisure" : "other" },
@@ -808,5 +816,56 @@ describe("Existing data is kept (step 9: pockets, FR-008 and Story 4)", () => {
     await db.execAsync("PRAGMA user_version = 8");
     await runMigrations(db, MIGRATIONS);
     expect(await db.getAllAsync("SELECT * FROM pocket")).toEqual([]);
+  });
+});
+
+describe("Existing data is kept (step 10: spaces, 027 FR-006 and Story 3)", () => {
+  const COLOURS = ["blue", "indigo", "purple", "pink", "orange", "amber", "green", "slate"];
+  const upgradeFromV9 = async (pockets: number) => {
+    const db = createFakeDb() as any;
+    await db.execAsync(RELEASED_SCHEMAS[9]);
+    for (let i = 1; i <= pockets; i++) {
+      await db.execAsync(`INSERT INTO pocket (id, name, starting_cents) VALUES (${i}, 'Pocket ${i}', ${i * 100})`);
+    }
+    if (pockets >= 2) {
+      await db.execAsync(`
+        INSERT INTO entry (id, date, kind, amount_cents, note, created_at, category, pocket_id) VALUES (1, '2026-10-05', 'savings', 30000, 'Plane', '2026-10-05 08:00:00', 'other', 1);
+        INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 20000, 'Fund', 1, '2026-11', 2);
+      `);
+    }
+    await db.execAsync("PRAGMA user_version = 9");
+    await runMigrations(db, MIGRATIONS);
+    return db;
+  };
+
+  it("Update: pockets made before get palette colours in turn, by id, and no emoji", async () => {
+    const db = await upgradeFromV9(10);
+    const rows = await db.getAllAsync("SELECT id, emoji, color FROM pocket ORDER BY id");
+    expect(rows).toEqual(
+      Array.from({ length: 10 }, (_, i) => ({ id: i + 1, emoji: "", color: COLOURS[i % 8] })),
+    );
+  });
+
+  it("Names, starting amounts, savings and monthly items are kept", async () => {
+    const db = await upgradeFromV9(3);
+    expect(await db.getAllAsync("SELECT id, name, starting_cents FROM pocket ORDER BY id")).toEqual([
+      { id: 1, name: "Pocket 1", starting_cents: 100 },
+      { id: 2, name: "Pocket 2", starting_cents: 200 },
+      { id: 3, name: "Pocket 3", starting_cents: 300 },
+    ]);
+    expect(await db.getAllAsync("SELECT id, amount_cents, note, pocket_id FROM entry")).toEqual([
+      { id: 1, amount_cents: 30000, note: "Plane", pocket_id: 1 },
+    ]);
+    expect(await db.getAllAsync("SELECT id, amount_cents, pocket_id FROM recurring")).toEqual([
+      { id: 1, amount_cents: 20000, pocket_id: 2 },
+    ]);
+  });
+
+  it("The database rejects an emoji longer than 8 characters and a colour outside the palette", async () => {
+    const db = await upgradeFromV9(0);
+    await expect(db.runAsync("INSERT INTO pocket (name, starting_cents, emoji) VALUES ('A', 0, '123456789')")).rejects.toThrow();
+    await expect(db.runAsync("INSERT INTO pocket (name, starting_cents, color) VALUES ('A', 0, 'red')")).rejects.toThrow();
+    await db.runAsync("INSERT INTO pocket (name, starting_cents) VALUES ('A', 0)");
+    expect(await db.getAllAsync("SELECT emoji, color FROM pocket")).toEqual([{ emoji: "", color: "blue" }]);
   });
 });

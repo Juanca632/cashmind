@@ -20,6 +20,7 @@ const exp = (date: string, amountCents: number, note: string, category: Entry['c
   recurringId: null,
   pocketId: null,
   pocketName: null,
+  pocketEmoji: null,
   ...extra,
 });
 const twice = (note: string, cents: number, d1 = '2026-11-03', d2 = '2026-11-10', category: Entry['category'] = 'eating_out') => [

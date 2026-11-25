@@ -155,7 +155,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     await startApp({ today: TODAY, entries: [salary], raw: damagedPlan });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
   });
 
   it('Unreadable plan: /plan says data could not be read', async () => {
@@ -222,7 +222,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     const [entries] = (await dumpDevice()) as [Record<string, unknown>[]];
     expect(entries).toHaveLength(2);
     expect(entries[1]).toMatchObject(kept);
@@ -254,7 +254,7 @@ describe('Damaged data is detected, never hidden or altered', () => {
     });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     const [, plans] = (await dumpDevice()) as [unknown, Record<string, unknown>[]];
     expect(plans).toEqual([{ effective_month: month, savings_pct: 30 }]);
   });
@@ -297,7 +297,7 @@ describe('Data that is not damaged is never reported as damaged', () => {
     await press('Previous year');
     await press('Nov');
 
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
     expect(screen.getByText(exactText('12,50 €'))).toBeOnTheScreen();
     expect(screen.queryByText(UNREADABLE)).not.toBeOnTheScreen();

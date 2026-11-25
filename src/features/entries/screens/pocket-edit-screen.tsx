@@ -1,15 +1,17 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
-import { KeyboardAvoidingView, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
 
 import { AmountField } from '@/features/entries/components/amount-field';
+import { ColorChoices } from '@/features/entries/components/color-choices';
 import { usePocket } from '@/features/entries/hooks/use-pocket';
-import { POCKET_NAME_MAX, pocketErrorMessage, validatePocket, type Pocket } from '@/features/entries/rules';
+import { POCKET_EMOJI_MAX, POCKET_NAME_MAX, pocketErrorMessage, validatePocket, type Pocket } from '@/features/entries/rules';
 import { addPocket, deletePocket, editPocket } from '@/features/entries/service';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useMoney } from '@/shared/hooks/use-money';
 import { useSubmit } from '@/shared/hooks/use-submit';
+import { Layout, type PocketColor } from '@/shared/theme/theme';
 import { Button } from '@/shared/ui/button';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { DataError } from '@/shared/ui/data-error';
@@ -22,8 +24,9 @@ import { ThemedView } from '@/shared/ui/themed-view';
 
 /** Makes a pocket, or renames one and changes what it started with (specs/025-pockets). */
 export default function PocketEditScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
-  if (params.id === undefined) return <PocketForm pocket={null} inUse={false} />;
+  const params = useLocalSearchParams<{ id?: string; show?: string }>();
+  // From the spaces sheet, home shows the new pocket once it is made; from a form, back returns there.
+  if (params.id === undefined) return <PocketForm pocket={null} inUse={false} showAfter={params.show === '1'} />;
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) return <MessageScreen title="This pocket no longer exists." />;
   return <PocketEditLoader id={id} />;
@@ -34,15 +37,17 @@ function PocketEditLoader({ id }: { id: number }) {
   if (loaded.status === 'error') return <DataError />;
   if (loaded.status === 'loading') return <ThemedView style={styles.screen} />;
   if (loaded.data === null) return <MessageScreen title="This pocket no longer exists." />;
-  return <PocketForm pocket={loaded.data.pocket} inUse={loaded.data.inUse} />;
+  return <PocketForm pocket={loaded.data.pocket} inUse={loaded.data.inUse} showAfter={false} />;
 }
 
-function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }) {
+function PocketForm({ pocket, inUse, showAfter }: { pocket: Pocket | null; inUse: boolean; showAfter: boolean }) {
   const db = useSQLiteContext();
   const money = useMoney();
   const [name, setName] = useState(pocket?.name ?? '');
   const [startText, setStartText] = useState(pocket && pocket.startingCents > 0 ? money.toInput(pocket.startingCents) : '');
-  const form = JSON.stringify({ name, startText });
+  const [emoji, setEmoji] = useState(pocket?.emoji ?? '');
+  const [color, setColor] = useState<PocketColor>(pocket?.color ?? 'blue');
+  const form = JSON.stringify({ name, startText, emoji, color });
   const [savedForm] = useState(form);
   const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
   const { dialog: confirmDialog, ask } = useConfirm();
@@ -52,12 +57,13 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
 
   // An empty starting amount is 0; anything typed must read as an amount.
   const startingCents = startText.trim() === '' ? 0 : money.parse(startText);
-  const input = { name, startingCents: startingCents ?? 0 };
+  const input = { name, startingCents: startingCents ?? 0, emoji, color };
   const errors = startingCents === null ? [] : validatePocket(input);
   const nameError =
     errors.includes('pocket-name') && (tried || name.trim() !== '') ? pocketErrorMessage('pocket-name') : null;
   const startError =
     startingCents === null ? 'Type an amount, like 1500.' : errors.includes('amount-too-large') ? pocketErrorMessage('amount-too-large') : null;
+  const emojiError = errors.includes('pocket-emoji') ? pocketErrorMessage('pocket-emoji') : null;
   const valid = startingCents !== null && errors.length === 0;
 
   function onSave() {
@@ -65,7 +71,15 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
       setTried(true);
       return;
     }
-    submit(() => (pocket ? editPocket(db, pocket.id, input) : addPocket(db, input)));
+    if (pocket) {
+      submit(() => editPocket(db, pocket.id, input));
+      return;
+    }
+    submit(
+      () => addPocket(db, input),
+      'save',
+      showAfter ? (result) => ({ pathname: '/', params: { space: String(result.id) } }) : undefined,
+    );
   }
 
   function onDelete() {
@@ -75,8 +89,8 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
       message: 'The pocket is empty, so nothing else is deleted.',
       cancel: 'Cancel',
       confirm: 'Delete',
-      // The pocket's own screen would show a pocket that is gone, so go back to the list.
-      onConfirm: () => submit(() => deletePocket(db, pocket.id), 'delete', '/pockets'),
+      // Home would show a pocket that is gone, so it goes back to the month.
+      onConfirm: () => submit(() => deletePocket(db, pocket.id), 'delete', '/'),
     });
   }
 
@@ -96,6 +110,22 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
             autoFocus={pocket === null}
           />
           {nameError ? <ErrorText>{nameError}</ErrorText> : null}
+
+          <TextField
+            label="Emoji (optional)"
+            placeholder="✈️"
+            value={emoji}
+            onChangeText={setEmoji}
+            maxLength={POCKET_EMOJI_MAX}
+          />
+          {emojiError ? <ErrorText>{emojiError}</ErrorText> : null}
+
+          <View style={styles.section}>
+            <ThemedText type="small" themeColor="textSecondary">
+              Colour
+            </ThemedText>
+            <ColorChoices value={color} onChange={setColor} />
+          </View>
 
           <ThemedText type="small" themeColor="textSecondary">
             Already saved for it before using the app (optional)
@@ -122,5 +152,8 @@ function PocketForm({ pocket, inUse }: { pocket: Pocket | null; inUse: boolean }
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  section: {
+    gap: Layout.itemGap,
   },
 });

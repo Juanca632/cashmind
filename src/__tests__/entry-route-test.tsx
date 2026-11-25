@@ -41,6 +41,6 @@ describe('Rename: entries are called entries everywhere (route)', () => {
 
     expect(screen).not.toHavePathname('/entry');
     expect(screen.queryByRole('button', { name: 'Add expense' })).not.toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
   });
 });

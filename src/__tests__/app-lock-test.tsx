@@ -61,7 +61,7 @@ const expectLocked = async () => {
   expect(await screen.findByRole('button', { name: 'Unlock' })).toBeOnTheScreen();
   expect(screen.getByText('CashMind')).toBeOnTheScreen();
   expect(screen.queryByText('Groceries')).not.toBeOnTheScreen();
-  expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+  expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
 };
 const expectHome = async () => {
   expect(await screen.findByText('Groceries')).toBeOnTheScreen();
@@ -85,7 +85,7 @@ describe('Only I can open my finances', () => {
     passes();
     await startApp({ today: TODAY, entries: ENTRIES });
     await expectHome();
-    expect(screen.getByText('Left to spend')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Left to spend: /)).toBeOnTheScreen();
   });
 
   it('Cancelled or failed: the locked screen stays and Unlock shows the prompt again', async () => {
@@ -187,7 +187,7 @@ describe('Settings screen and turning the lock off or on', () => {
     phoneWithLock();
     passes();
     await startApp({ today: TODAY, entries: ENTRIES });
-    expect(await screen.findByText('Left to spend')).toBeOnTheScreen();
+    expect(await screen.findByLabelText(/^Left to spend: /)).toBeOnTheScreen();
     await press('Settings');
     expect(screen).toHavePathname('/settings');
     expect(screen.getByText('Security')).toBeOnTheScreen();
@@ -201,10 +201,10 @@ describe('Settings screen and turning the lock off or on', () => {
     phoneWithLock();
     passes();
     await startApp({ today: TODAY, entries: ENTRIES });
-    await screen.findByText('Left to spend');
+    await screen.findByLabelText(/^Left to spend: /);
     await press(/^Month:/);
     await press('Sep');
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     await press('Settings');
     expect(screen).toHavePathname('/settings');
   });

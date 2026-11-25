@@ -125,10 +125,10 @@ const MONTHS: Entry[][] = [
 ];
 
 /** The demo's pockets: the savings category they hold, their name and what they started with. */
-const POCKETS: [string, string, number][] = [
-  ['emergency_fund', 'Emergency fund', 120000],
-  ['travel', 'Summer trip', 0],
-  ['investments', 'Investments', 0],
+const POCKETS: [category: string, name: string, startingCents: number, emoji: string, color: string][] = [
+  ['emergency_fund', 'Emergency fund', 120000, '🛟', 'green'],
+  ['travel', 'Summer trip', 0, '🏖️', 'orange'],
+  ['investments', 'Investments', 0, '📈', 'indigo'],
 ];
 
 /**
@@ -141,8 +141,14 @@ export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<voi
 
     // Savings go into pockets (specs/025-pockets); the emergency fund started before the app.
     const pocketIds = new Map<string, number>();
-    for (const [category, name, startingCents] of POCKETS) {
-      const row = await db.runAsync('INSERT INTO pocket (name, starting_cents) VALUES (?, ?)', name, startingCents);
+    for (const [category, name, startingCents, emoji, color] of POCKETS) {
+      const row = await db.runAsync(
+        'INSERT INTO pocket (name, starting_cents, emoji, color) VALUES (?, ?, ?, ?)',
+        name,
+        startingCents,
+        emoji,
+        color,
+      );
       pocketIds.set(category, row.lastInsertRowId);
     }
     const pocketOf = (kind: Kind, category: string) => (kind === 'savings' ? (pocketIds.get(category) ?? null) : null);

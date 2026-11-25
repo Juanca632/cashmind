@@ -128,7 +128,25 @@ export const Hero = {
   text: '#FFFFFF',
   label: '#DFF7EF',
   control: 'rgba(255, 255, 255, 0.18)',
+  /** The ring of a selected pill filled with the month's green: the same green, lighter. */
+  ring: '#34C3A5',
 } as const;
+
+/** The colours a pocket can have (specs/027-spaces). Deep enough for `Hero.text` in both themes. */
+export const POCKET_COLOR_NAMES = ['blue', 'indigo', 'purple', 'pink', 'orange', 'amber', 'green', 'slate'] as const;
+export type PocketColor = (typeof POCKET_COLOR_NAMES)[number];
+
+/** `light` rings a selected pill filled with `base`: the same colour, lighter, never white. */
+export const POCKET_COLORS: Record<PocketColor, { base: string; gradient: string; light: string }> = {
+  blue: { base: '#1D4ED8', gradient: 'linear-gradient(145deg, #1E40AF 0%, #1D4ED8 60%, #2563EB 100%)', light: '#60A5FA' },
+  indigo: { base: '#4338CA', gradient: 'linear-gradient(145deg, #3730A3 0%, #4338CA 60%, #4F46E5 100%)', light: '#818CF8' },
+  purple: { base: '#7E22CE', gradient: 'linear-gradient(145deg, #6B21A8 0%, #7E22CE 60%, #9333EA 100%)', light: '#C084FC' },
+  pink: { base: '#BE185D', gradient: 'linear-gradient(145deg, #9D174D 0%, #BE185D 60%, #DB2777 100%)', light: '#F472B6' },
+  orange: { base: '#C2410C', gradient: 'linear-gradient(145deg, #9A3412 0%, #C2410C 60%, #EA580C 100%)', light: '#FB923C' },
+  amber: { base: '#A16207', gradient: 'linear-gradient(145deg, #854D0E 0%, #A16207 60%, #B45309 100%)', light: '#FBBF24' },
+  green: { base: '#15803D', gradient: 'linear-gradient(145deg, #166534 0%, #15803D 60%, #16A34A 100%)', light: '#4ADE80' },
+  slate: { base: '#334155', gradient: 'linear-gradient(145deg, #1E293B 0%, #334155 60%, #475569 100%)', light: '#94A3B8' },
+};
 
 export const Radius = {
   /** The month card. */
@@ -183,6 +201,8 @@ export const Size = {
   hero: 168,
   /** The round icon badge of a list row. */
   badge: 40,
+  /** A small round mark inside a pill, such as a space's colour and emoji. */
+  pillMark: 28,
   /** The savings goal progress bar. */
   progress: 6,
   /** Widest a modal dialog gets. */

@@ -1,8 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { Pocket } from '@/features/entries/rules';
+import { pocketLabel, type Pocket } from '@/features/entries/rules';
 import { hapticTick } from '@/shared/haptics';
-import { Layout } from '@/shared/theme/theme';
+import { Hero, Layout, POCKET_COLORS } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Pill } from '@/shared/ui/pill';
 
@@ -16,9 +16,17 @@ type PaidFromChoicesProps = {
 /** Where an expense is paid from: the month, or one of the pockets (specs/026-pocket-spending). */
 export function PaidFromChoices({ pockets, value, onChange }: PaidFromChoicesProps) {
   const theme = useTheme();
-  const options: { id: number | null; label: string }[] = [
-    { id: null, label: 'This month' },
-    ...pockets.map((pocket) => ({ id: pocket.id, label: pocket.name })),
+  const options: { id: number | null; label: string; name: string; fill: string; ink: string; ring: string }[] = [
+    // "Main" is the month's money, named as on home's space selector (specs/027-spaces).
+    { id: null, label: 'Main', name: 'Main', fill: theme.accent, ink: theme.onAccent, ring: Hero.ring },
+    ...pockets.map((pocket) => ({
+      id: pocket.id,
+      label: pocketLabel(pocket),
+      name: pocket.name,
+      fill: POCKET_COLORS[pocket.color].base,
+      ink: Hero.text,
+      ring: POCKET_COLORS[pocket.color].light,
+    })),
   ];
   return (
     <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel="Paid from">
@@ -26,14 +34,11 @@ export function PaidFromChoices({ pockets, value, onChange }: PaidFromChoicesPro
         <Pill
           key={option.id ?? 'month'}
           label={option.label}
+          accessibilityLabel={option.name}
           accessibilityRole="radio"
           weight="regular"
           selected={option.id === value}
-          colors={
-            option.id === null
-              ? { fill: theme.kindTint.expense, ink: theme.kindInk.expense }
-              : { fill: theme.kindTint.savings, ink: theme.kindInk.savings }
-          }
+          colors={{ fill: option.fill, ink: option.ink, ring: option.ring }}
           onPress={() => {
             if (option.id === value) return;
             hapticTick();

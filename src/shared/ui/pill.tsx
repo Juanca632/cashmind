@@ -1,5 +1,5 @@
 import { Feather } from '@react-native-vector-icons/feather';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { BORDER_WIDTH, elevation, Hero, IconSize, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
@@ -16,14 +16,18 @@ const HIT_SLOP = { top: (Size.control - Size.pill) / 2, bottom: (Size.control - 
 type PillProps = {
   label: string;
   icon?: ComponentProps<typeof Feather>['name'];
+  /** Drawn before the label instead of an icon, such as a space's round mark (at most `Size.pillMark`). */
+  mark?: ReactNode;
+  /** An icon after the label, such as the down arrow of a pill that opens a list. */
+  trailingIcon?: ComponentProps<typeof Feather>['name'];
   onPress: () => void;
   /** What a screen reader says, when the visible label is shorter. */
   accessibilityLabel?: string;
   accessibilityRole?: 'button' | 'radio';
   /** Selected pills take `colors`; others are neutral. Undefined means the pill has no selected state. */
   selected?: boolean;
-  /** Fill and ink when selected; the ink also colors the icon when not selected. */
-  colors?: { fill: string; ink: string };
+  /** Fill, ink and ring when selected (the ring is the ink unless given); the ink also colors the icon when not selected. */
+  colors?: { fill: string; ink: string; ring?: string };
   /** `hero` sits on the month card's gradient. */
   variant?: 'default' | 'hero';
   /** regular: a lighter label, for a long list of choices such as categories. */
@@ -35,6 +39,8 @@ type PillProps = {
 export function Pill({
   label,
   icon,
+  mark,
+  trailingIcon,
   onPress,
   accessibilityLabel,
   accessibilityRole = 'button',
@@ -65,16 +71,17 @@ export function Pill({
           ? { backgroundColor: Hero.control }
           : {
               backgroundColor: active ? colors.fill : theme.backgroundElement,
-              borderColor: active ? colors.ink : 'transparent',
+              borderColor: active ? (colors.ring ?? colors.ink) : 'transparent',
             },
         // Action pills float like buttons; choices (filters, categories) lie flat like cards.
         selected === undefined && !hero && elevation(theme, 'raised'),
         disabled && (hero ? styles.disabledOnHero : styles.disabled),
       ]}>
-      {icon ? <Feather name={icon} size={IconSize.small} color={iconInk} /> : null}
-      <ThemedText type={weight === 'bold' ? 'smallBold' : 'small'} numberOfLines={1} style={{ color: ink }}>
+      {mark ?? (icon ? <Feather name={icon} size={IconSize.small} color={iconInk} /> : null)}
+      <ThemedText type={weight === 'bold' ? 'smallBold' : 'small'} numberOfLines={1} style={[styles.label, { color: ink }]}>
         {label}
       </ThemedText>
+      {trailingIcon ? <Feather name={trailingIcon} size={IconSize.small} color={iconInk} /> : null}
     </PressableScale>
   );
 }
@@ -86,12 +93,17 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
     borderWidth: BORDER_WIDTH,
     flexDirection: 'row',
+    // A long label (a pocket's name) truncates instead of pushing the pills beside it off screen.
+    flexShrink: 1,
     gap: Layout.tightGap,
     justifyContent: 'center',
     minHeight: Size.pill,
     // Never narrower than the minimum touch size, since the touch area only grows up and down.
     minWidth: Size.control,
     paddingHorizontal: Layout.pillPadding,
+  },
+  label: {
+    flexShrink: 1,
   },
   disabled: {
     opacity: Opacity.disabled,

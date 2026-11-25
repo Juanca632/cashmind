@@ -38,14 +38,23 @@ const fillWidth = () => {
 };
 /** The red layer on top of the green month card: opacity 1 is red, 0 is green. */
 const redLayerOpacity = () => {
-  const card = screen.getByLabelText(/^Left to spend/).parent as unknown as { children: { props: { style: unknown } }[] };
-  return (StyleSheet.flatten(card.children[0].props.style as never) as { opacity: number }).opacity;
+  type Node = { parent: Node | null; children: unknown[]; props: { style?: unknown } };
+  // The layout may change, so walk up from the figure to the card whose first child is the red layer.
+  for (let n = screen.getByLabelText(/^Left to spend: /).parent as unknown as Node | null; n; n = n.parent) {
+    const first = n.children[0] as Node | string | undefined;
+    if (first && typeof first !== 'string') {
+      const opacity = (StyleSheet.flatten(first.props.style as never) as { opacity?: number } | undefined)?.opacity;
+      if (opacity !== undefined) return opacity;
+    }
+  }
+  return undefined;
 };
 const textOf = (node: unknown): string =>
   typeof node === 'string' ? node : ((node as { children?: unknown[] }).children ?? []).map(textOf).join('');
 /** The cents the card currently writes, read from its visible text (e.g. "1 187,50 €" is 118750). */
 const shownLeft = () => {
-  const text = textOf(screen.getByText('Left to spend').parent).replace('Left to spend', '');
+  // The accessible name holds the final amount; the visible digits are the ones that count up.
+  const text = textOf(screen.getByLabelText(/^Left to spend: /)).replace(/^Left to spend/, '');
   const [, sign, whole, cents] = text.match(/^(-?)([\d\s\u00a0\u202f]+),(\d\d)/)!;
   return (sign ? -1 : 1) * (Number(whole.replace(/\D/g, '')) * 100 + Number(cents));
 };
@@ -166,7 +175,7 @@ describe('Notice when the month is overspent', () => {
   it('Nothing else on the card changes: the red card still shows the same label and income, spent and savings tiles', async () => {
     await startApp({ today: TODAY, entries: [salary(100000), spending(90000)] });
 
-    expect(screen.getByText('Left to spend')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Left to spend: /)).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('1 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('900 €'))).toBeOnTheScreen();
   });
@@ -209,7 +218,7 @@ describe('The app feels smooth', () => {
   it('Opening the app: the first time home appears the figure is shown at once, not counted up from zero', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), spending(40000)] });
 
-    expect(screen.getByText('Left to spend').parent).toHaveTextContent(/^Left to spend1[\s  ]200,00[\s  ]€/);
+    expect(screen.getByLabelText(/^Left to spend: 1[\s\u00a0\u202f]200,00[\s\u00a0\u202f]€/)).toBeOnTheScreen();
   });
 });
 

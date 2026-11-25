@@ -174,7 +174,7 @@ describe('US2 New month starts filled in', () => {
     await startApp({ today: NOV_15, raw: [...RENT, ...SALARY] });
     await reopenApp(DEC_4);
 
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^Rent, Tue 1 Dec, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^Salary, Tue 1 Dec, \+2.000,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
@@ -191,7 +191,7 @@ describe('US2 New month starts filled in', () => {
       jest.advanceTimersByTime(500);
     });
     // 2 000 - 900 - max(20 % of 2 000 = 400, 0) = 700
-    expect(screen.getByText('Left to spend').parent).toHaveTextContent(/^Left to spend700,00.€/);
+    expect(screen.getByLabelText(/^Left to spend: 700,00.€/)).toBeOnTheScreen();
   });
 
   it('Once per month: opening the app again in December adds nothing a second time', async () => {
@@ -249,7 +249,7 @@ describe('US2 New month starts filled in', () => {
     await reopenApp(DEC_4);
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Repeat last income' })).not.toBeOnTheScreen();
-    expect(screen.getByText('Left to spend')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Left to spend: /)).toBeOnTheScreen();
   });
 
   it('Repeat last income: when only an expense repeats, "Add this month\'s income" and "Repeat last income" work as before', async () => {
@@ -452,14 +452,14 @@ describe('US2 New month starts filled in (while the app stays open)', () => {
   it('Month changes while open: returning on 1 December fills in December', async () => {
     const listen = jest.spyOn(AppState, 'addEventListener');
     await startApp({ today: [2026, 10, 30], raw: [...RENT, ...SALARY] });
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
 
     jest.setSystemTime(new Date(2026, 11, 1, 9));
     await act(async () => {
       for (const [event, handler] of listen.mock.calls) if (event === 'change') (handler as (state: string) => void)('active');
     });
 
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^Rent, Today, 900,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^Salary, Today, \+2.000,00.€, recorded by a repeat$/ })).toBeOnTheScreen();
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
