@@ -1,4 +1,5 @@
 /** How a month is going against the plan. Pure logic, money in integer cents. */
+import { countsInMonth, movedIntoMain, totalsByKind, type Entry, type Move } from '@/features/entries/rules';
 import { savingsGoal } from '@/features/plan/rules';
 import type { EntryKind } from '@/shared/kinds';
 import { monthKey } from '@/shared/months';
@@ -15,12 +16,27 @@ export type MonthSummary = {
 
 /**
  * One rule for every month: the goal is the percentage of the income, and left to spend is the
- * income minus what was spent and minus the larger of the goal and what was saved.
+ * income plus what was moved into Main from pockets, minus what was spent and minus the larger of
+ * the goal and what was saved. Moved money is neither income nor savings, so the goal does not
+ * change (specs/028-move-money).
  */
-export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number): MonthSummary {
+export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number, movedInCents = 0): MonthSummary {
   const { income, savings: saved, expense: spent } = totals;
   const goal = savingsGoal(income, savingsPercent);
-  return { income, saved, spent, goal, left: income - spent - Math.max(goal, saved) };
+  return { income, saved, spent, goal, left: income + movedInCents - spent - Math.max(goal, saved) };
+}
+
+/**
+ * The one way a month's figures are worked out from what was recorded, for home and the spaces
+ * sheet alike: expenses paid from a pocket are left out (026) and money moved into Main is added (028).
+ */
+export function monthFigures(
+  entries: readonly Pick<Entry, 'kind' | 'amountCents' | 'pocketId'>[],
+  moves: readonly Pick<Move, 'date' | 'toPocketId' | 'amountCents'>[],
+  savingsPercent: number,
+  month: string,
+): MonthSummary {
+  return monthSummary(totalsByKind(entries.filter(countsInMonth)), savingsPercent, movedIntoMain(moves, month));
 }
 
 /** What can be spent each remaining day of the current month, today included. */

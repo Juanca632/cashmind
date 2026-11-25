@@ -46,3 +46,24 @@ describe('monthSummary', () => {
     expect(monthSummary(totals(100000, 90000, 20000), 20).left).toBe(-10000);
   });
 });
+
+describe('monthSummary with money moved into Main (028 FR-004)', () => {
+  it('Story 1: income 2 000,00, spent 1 800,00, goal 0: left is 200,00 and 500,00 after 300,00 moved in', () => {
+    expect(monthSummary(totals(200000, 0, 180000), 0).left).toBe(20000);
+    expect(monthSummary(totals(200000, 0, 180000), 0, 30000).left).toBe(50000);
+  });
+
+  it('left = income + moved in - expenses - the larger of the goal and what was saved', () => {
+    expect(monthSummary(totals(200000, 15000, 90000), 20, 10000).left).toBe(200000 + 10000 - 90000 - 40000);
+    expect(monthSummary(totals(200000, 60000, 90000), 20, 10000).left).toBe(200000 + 10000 - 90000 - 60000);
+  });
+
+  it('Not income, not savings: income, saved, spent and goal are the same with or without it', () => {
+    const withMoved = monthSummary(totals(200000, 15000, 90000), 20, 25000);
+    expect(withMoved).toMatchObject({ income: 200000, saved: 15000, spent: 90000, goal: 40000 });
+  });
+
+  it('omitting it is the same as 0', () => {
+    expect(monthSummary(totals(200000, 15000, 90000), 20)).toEqual(monthSummary(totals(200000, 15000, 90000), 20, 0));
+  });
+});

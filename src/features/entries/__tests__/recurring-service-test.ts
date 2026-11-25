@@ -20,8 +20,8 @@ const entries = (db: any) =>
 const items = (db: any) => db.getAllAsync('SELECT * FROM recurring ORDER BY id');
 const datesOf = async (db: any) => (await entries(db)).map((e: any) => e.date);
 
-const rent = { date: '2026-11-15', kind: 'expense', amountCents: 90000, note: 'Rent', category: 'housing' } as const;
-const salary = { date: '2026-11-03', kind: 'income', amountCents: 200000, note: 'Salary', category: 'salary' } as const;
+const rent = { date: '2026-11-15', kind: 'expense', amountCents: 90000, note: 'Rent', category: 'housing', pocketId: null } as const;
+const salary = { date: '2026-11-03', kind: 'income', amountCents: 200000, note: 'Salary', category: 'salary', pocketId: null } as const;
 
 describe('Mark an entry as monthly (US1)', () => {
   it('Mark on a new entry: the entry is saved as usual and an item is created from it', async () => {
@@ -32,7 +32,7 @@ describe('Mark an entry as monthly (US1)', () => {
       { date: '2026-11-15', kind: 'expense', category: 'housing', amount_cents: 90000, note: 'Rent', recurring_id: 1 },
     ]);
     expect(await items(db)).toEqual([
-      { id: 1, kind: 'expense', category: 'housing', amount_cents: 90000, note: 'Rent', active: 1, last_month: '2026-11' },
+      { id: 1, kind: 'expense', category: 'housing', amount_cents: 90000, note: 'Rent', active: 1, last_month: '2026-11', pocket_id: null },
     ]);
   });
 
@@ -191,7 +191,7 @@ describe('Review what repeats (US3)', () => {
   it('Change: the item changes from next month; this month keeps its amount', async () => {
     const db = await newDb();
     await addEntry(db, rent, NOV_15, { repeat: true });
-    expect(await editRecurring(db, 1, { category: 'housing', amountCents: 95000, note: 'Rent' })).toEqual({ ok: true });
+    expect(await editRecurring(db, 1, { category: 'housing', amountCents: 95000, note: 'Rent', pocketId: null })).toEqual({ ok: true });
 
     expect(await entries(db)).toEqual([expect.objectContaining({ date: '2026-11-15', amount_cents: 90000 })]);
     await recordRecurringEntries(db, DEC_4);
@@ -204,7 +204,7 @@ describe('Review what repeats (US3)', () => {
   it('Change: category and note apply from next month, the kind stays', async () => {
     const db = await newDb();
     await addEntry(db, rent, NOV_15, { repeat: true });
-    await editRecurring(db, 1, { category: 'subscriptions', amountCents: 1299, note: 'Netflix' });
+    await editRecurring(db, 1, { category: 'subscriptions', amountCents: 1299, note: 'Netflix', pocketId: null });
     await recordRecurringEntries(db, DEC_4);
     expect((await entries(db))[1]).toEqual({
       date: '2026-12-01', kind: 'expense', category: 'subscriptions', amount_cents: 1299, note: 'Netflix', recurring_id: 1,
@@ -214,14 +214,14 @@ describe('Review what repeats (US3)', () => {
   it('Change: an invalid amount or a category of another kind is refused and the item is unchanged', async () => {
     const db = await newDb();
     await addEntry(db, rent, NOV_15, { repeat: true });
-    expect((await editRecurring(db, 1, { category: 'housing', amountCents: 0, note: 'Rent' })).ok).toBe(false);
-    expect((await editRecurring(db, 1, { category: 'salary', amountCents: 100, note: 'Rent' })).ok).toBe(false);
+    expect((await editRecurring(db, 1, { category: 'housing', amountCents: 0, note: 'Rent', pocketId: null })).ok).toBe(false);
+    expect((await editRecurring(db, 1, { category: 'salary', amountCents: 100, note: 'Rent', pocketId: null })).ok).toBe(false);
     expect(await items(db)).toEqual([expect.objectContaining({ amount_cents: 90000, category: 'housing' })]);
   });
 
   it('Change: an item that does not exist is refused', async () => {
     const db = await newDb();
-    expect((await editRecurring(db, 99, { category: 'housing', amountCents: 100, note: '' })).ok).toBe(false);
+    expect((await editRecurring(db, 99, { category: 'housing', amountCents: 100, note: '', pocketId: null })).ok).toBe(false);
   });
 
   it('Stop: the item is not recorded in later months and entries already recorded stay', async () => {

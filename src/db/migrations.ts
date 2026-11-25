@@ -229,4 +229,113 @@ export const MIGRATIONS: readonly Migration[] = [
         ALTER TABLE entry ADD COLUMN recurring_id INTEGER REFERENCES recurring(id);
       `),
   },
+  {
+    // App options stored on the phone (specs/023-settings-app-lock). Only adds a table.
+    version: 8,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE setting (
+          key TEXT PRIMARY KEY NOT NULL,
+          value TEXT NOT NULL
+        ) STRICT;
+      `),
+  },
+  {
+    // Savings go into pockets the user names (specs/025-pockets). Every savings category already
+    // used becomes a pocket with its name, in the categories' order, and keeps all its savings.
+    // The labels are written here, never imported: a released step must not change with the code.
+    version: 9,
+    up: async (db) => {
+      await db.execAsync(`
+        CREATE TABLE pocket (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 40),
+          starting_cents INTEGER NOT NULL DEFAULT 0 CHECK (starting_cents >= 0)
+        ) STRICT;
+        ALTER TABLE entry ADD COLUMN pocket_id INTEGER REFERENCES pocket(id);
+        ALTER TABLE recurring ADD COLUMN pocket_id INTEGER REFERENCES pocket(id);
+      `);
+      const categories: [string, string][] = [
+        ['emergency_fund', 'Emergency fund'],
+        ['investments', 'Investments'],
+        ['travel', 'Travel'],
+        ['goal', 'Goal'],
+        ['other', 'Other'],
+      ];
+      for (const [category, name] of categories) {
+        const used = await db.getFirstAsync(
+          `SELECT 1 FROM entry WHERE kind = 'savings' AND category = ?
+           UNION ALL SELECT 1 FROM recurring WHERE kind = 'savings' AND category = ? LIMIT 1`,
+          category,
+          category,
+        );
+        if (!used) continue;
+        const pocket = await db.runAsync('INSERT INTO pocket (name) VALUES (?)', name);
+        await db.runAsync(
+          "UPDATE entry SET pocket_id = ? WHERE kind = 'savings' AND category = ?",
+          pocket.lastInsertRowId,
+          category,
+        );
+        await db.runAsync(
+          "UPDATE recurring SET pocket_id = ? WHERE kind = 'savings' AND category = ?",
+          pocket.lastInsertRowId,
+          category,
+        );
+      }
+    },
+  },
+  {
+    // Each pocket gets an optional emoji and a colour of the fixed palette (specs/027-spaces).
+    // Existing pockets take the palette's colours in turn; nothing else changes.
+    version: 10,
+    up: (db) =>
+      db.execAsync(`
+        ALTER TABLE pocket ADD COLUMN emoji TEXT NOT NULL DEFAULT '' CHECK (length(emoji) <= 8);
+        ALTER TABLE pocket ADD COLUMN color TEXT NOT NULL DEFAULT 'blue'
+          CHECK (color IN ('blue', 'indigo', 'purple', 'pink', 'orange', 'amber', 'green', 'slate'));
+        UPDATE pocket SET color = CASE (id - 1) % 8
+          WHEN 0 THEN 'blue' WHEN 1 THEN 'indigo' WHEN 2 THEN 'purple' WHEN 3 THEN 'pink'
+          WHEN 4 THEN 'orange' WHEN 5 THEN 'amber' WHEN 6 THEN 'green' ELSE 'slate' END;
+      `),
+  },
+  {
+    // Money moved out of a pocket, into Main (to_pocket_id NULL) or another pocket (specs/028-move-money).
+    // Only adds a table.
+    version: 11,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE move (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          from_pocket_id INTEGER NOT NULL REFERENCES pocket(id),
+          to_pocket_id INTEGER REFERENCES pocket(id),
+          note TEXT NOT NULL DEFAULT '',
+          CHECK (to_pocket_id IS NULL OR to_pocket_id <> from_pocket_id)
+        ) STRICT;
+      `),
+  },
+  {
+    // Each move records when it was made, to order it among the entries of its day like an entry's
+    // created_at (specs/028-move-money). SQLite cannot add a column whose default is the current
+    // time, so the table is rebuilt with every move kept; moves made before take this moment.
+    version: 12,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE move_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          from_pocket_id INTEGER NOT NULL REFERENCES pocket(id),
+          to_pocket_id INTEGER REFERENCES pocket(id),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          CHECK (to_pocket_id IS NULL OR to_pocket_id <> from_pocket_id)
+        ) STRICT;
+        INSERT INTO move_new (id, date, amount_cents, from_pocket_id, to_pocket_id, note)
+          SELECT id, date, amount_cents, from_pocket_id, to_pocket_id, note FROM move;
+        DROP TABLE move;
+        ALTER TABLE move_new RENAME TO move;
+      `),
+  },
 ];

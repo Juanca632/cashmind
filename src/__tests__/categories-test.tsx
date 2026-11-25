@@ -40,15 +40,18 @@ const spent = (category: EntryCategory, amountCents: number, day = 5, note = '')
 
 describe('Choose a category when recording', () => {
   it('Categories of the kind: expense, income and savings each offer their own list with icons', async () => {
-    await startApp({ today: TODAY, entries: [salary] });
+    await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Japan trip' }] });
     await press('Add expense');
-    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other']);
+    expect(categoryOptions()).toEqual(['Housing', 'Groceries', 'Transport', 'Eating out', 'Leisure', 'Health', 'Subscriptions', 'Other', 'Main', 'Japan trip']);
 
     await choose('Income');
     expect(categoryOptions()).toEqual(['Salary', 'Freelance', 'Benefits', 'Gifts', 'Other']);
 
     await choose('Savings');
-    expect(categoryOptions()).toEqual(['Emergency fund', 'Investments', 'Travel', 'Goal', 'Other']);
+    // Savings have pockets, not categories (025 FR-004).
+    expect(categoryOptions()).not.toContain('Emergency fund');
+    expect(categoryOptions()).not.toContain('Goal');
+    expect(categoryOptions()).toContain('Japan trip');
     expect(screen.queryByRole('radio', { name: 'Groceries' })).not.toBeOnTheScreen();
   });
 
@@ -67,14 +70,14 @@ describe('Choose a category when recording', () => {
     expect(rows.at(-1)).toMatchObject({ kind: 'expense', amount_cents: 1000, category: 'other' });
   });
 
-  it('Default: each kind opened from home starts on Other', async () => {
-    await startApp({ today: TODAY, entries: [salary] });
+  it('Default: opened from Savings the form is on Savings with no pocket chosen', async () => {
+    await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Japan trip' }] });
     await press('Savings');
     await press('Add to savings');
 
     expect(screen.getByRole('radio', { name: 'Savings', selected: true })).toBeOnTheScreen();
-    expect(screen.getByRole('radio', { name: 'Other' })).toBeSelected();
-    expect(categoryOptions()).toEqual(['Emergency fund', 'Investments', 'Travel', 'Goal', 'Other']);
+    expect(screen.getByRole('radio', { name: 'Japan trip' })).not.toBeSelected();
+    expect(screen.queryByRole('radio', { name: 'Emergency fund' })).not.toBeOnTheScreen();
   });
 
   it('Saved: 45,20 € as an expense in Groceries shows Groceries selected when reopened', async () => {
@@ -95,8 +98,8 @@ describe('Choose a category when recording', () => {
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue('45,20');
   });
 
-  it('Saved: the category of income and savings is kept too', async () => {
-    await startApp({ today: TODAY, entries: [salary] });
+  it('Saved: the pocket of a saving is kept when it is opened again', async () => {
+    await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Car' }, { name: 'Travel' }] });
     await press('Add expense');
     await choose('Savings');
     await choose('Travel');
@@ -106,6 +109,7 @@ describe('Choose a category when recording', () => {
 
     expect(screen.getByRole('radio', { name: 'Savings' })).toBeSelected();
     expect(screen.getByRole('radio', { name: 'Travel' })).toBeSelected();
+    expect(screen.getByRole('radio', { name: 'Car' })).not.toBeSelected();
   });
 
   it('Changing kind: expense with Groceries switched to income shows the income categories with Other selected', async () => {
@@ -214,14 +218,14 @@ describe('See a kind split by category', () => {
     expect(splitLabels()).toEqual(['Housing', 'Groceries', 'Other']);
   });
 
-  it('Income and savings: 2.000 Salary and 300 Freelance give 87 % and 13 %; savings are split the same way', async () => {
+  it('Income: 2.000 Salary and 300 Freelance give 87 % and 13 %; savings have no split (they have pockets)', async () => {
     await startApp({
       today: TODAY,
       entries: [
         { date: '2026-11-01', kind: 'income', amountCents: 200000, note: '', category: 'salary' },
         { date: '2026-11-02', kind: 'income', amountCents: 30000, note: '', category: 'freelance' },
-        { date: '2026-11-03', kind: 'savings', amountCents: 10000, note: '', category: 'goal' },
-        { date: '2026-11-04', kind: 'savings', amountCents: 30000, note: '', category: 'travel' },
+        { date: '2026-11-03', kind: 'savings', amountCents: 10000, note: '' },
+        { date: '2026-11-04', kind: 'savings', amountCents: 30000, note: '' },
       ],
     });
 
@@ -231,9 +235,8 @@ describe('See a kind split by category', () => {
     expect(splitLabels()).toEqual(['Salary', 'Freelance']);
 
     await press('Savings');
-    expect(splitLabels()).toEqual(['Travel', 'Goal']);
-    expect(splitLine('Travel', '300,00', 75)).toBeOnTheScreen();
-    expect(splitLine('Goal', '100,00', 25)).toBeOnTheScreen();
+    expect(splitLabels()).toEqual([]);
+    expect(screen.queryByText('By category')).not.toBeOnTheScreen();
     expect(screen.queryByLabelText(/^Salary:/)).not.toBeOnTheScreen();
   });
 
@@ -363,22 +366,23 @@ describe('Category in the lists', () => {
     expect(screen.queryByText('Expense')).toBeOnTheScreen();
   });
 
-  it('No note: income and savings rows read their category, or their kind for Other', async () => {
+  it('No note: income rows read their category, or their kind for Other; savings rows read their pocket', async () => {
     await startApp({
       today: TODAY,
+      pockets: [{ name: 'Emergency fund' }, { name: 'Car' }],
       entries: [
         { date: '2026-11-01', kind: 'income', amountCents: 100000, note: '', category: 'freelance' },
         { date: '2026-11-02', kind: 'income', amountCents: 100000, note: '', category: 'other' },
-        { date: '2026-11-03', kind: 'savings', amountCents: 5000, note: '', category: 'emergency_fund' },
-        { date: '2026-11-04', kind: 'savings', amountCents: 5000, note: '', category: 'other' },
+        { date: '2026-11-03', kind: 'savings', amountCents: 5000, note: '', pocketId: 1 },
+        { date: '2026-11-04', kind: 'savings', amountCents: 5000, note: '', pocketId: 2 },
       ],
     });
 
     expect(screen.getByText('Freelance')).toBeOnTheScreen();
     expect(screen.getByText('Emergency fund')).toBeOnTheScreen();
-    // "Income" and "Savings" are also the names of the tiles: one match for the tile, one for the row.
+    expect(screen.getByText('Car')).toBeOnTheScreen();
+    // "Income" is also the name of its tile: one match for the tile, one for the row.
     expect(screen.getAllByText('Income')).toHaveLength(2);
-    expect(screen.getAllByText('Savings')).toHaveLength(2);
   });
 
   it('With a note: a Groceries expense with the note "Market" reads "Market"', async () => {
@@ -422,7 +426,7 @@ describe('Category in the lists', () => {
 });
 
 describe('Existing entries are kept', () => {
-  it('Update: entries recorded with the previous version keep kind, amount, date and note and are in Other', async () => {
+  it('Update: entries recorded with the previous version keep kind, amount, date and note; the saving reads "Other", the name of its pocket', async () => {
     await startAppOnReleasedVersion(
       TODAY,
       5,
@@ -438,7 +442,7 @@ describe('Existing entries are kept', () => {
     expect(screen.getByText('Pay')).toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
     expect(screen.getByText('Expense')).toBeOnTheScreen();
-    expect(screen.getAllByText('Savings')).toHaveLength(2); // the tile and the row
+    expect(screen.getByText('Other')).toBeOnTheScreen(); // the saving, titled with its pocket
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('21,50 €'))).toBeOnTheScreen();
 
@@ -447,7 +451,8 @@ describe('Existing entries are kept', () => {
     expect(splitLine('Other', '21,50', 100)).toBeOnTheScreen();
 
     await press(/Cinema/);
-    expect(screen.getByRole('radio', { name: 'Other' })).toBeSelected();
+    // The category "Other" is chosen; the migrated pocket "Other" is also offered under "Paid from", not chosen.
+    expect(screen.getAllByRole('radio', { name: 'Other', selected: true })).toHaveLength(1);
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue('12,50');
 
     const [rows] = (await dumpDevice()) as [Record<string, unknown>[]];
@@ -492,7 +497,7 @@ describe('Unreadable category', () => {
     await startApp({ today: TODAY, entries: [salary], raw: bad(kind, category) });
 
     expect(screen.getByText(UNREADABLE)).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     expect(screen.queryByText('Broken')).not.toBeOnTheScreen();
     expect(screen.queryByText('By category')).not.toBeOnTheScreen();
     const [rows] = (await dumpDevice()) as [Record<string, unknown>[]];

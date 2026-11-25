@@ -1,12 +1,14 @@
-import { fixedCostsCents, validateRecurring } from '../rules';
+import { entryErrorMessage, fixedCostsCents, validateRecurring } from '../rules';
+
+const pocketErrorFor = entryErrorMessage;
 
 describe('Recurring entries: validation (FR-007)', () => {
-  const rent = { category: 'housing', amountCents: 90000, note: 'Rent' } as const;
+  const rent = { category: 'housing', amountCents: 90000, note: 'Rent', pocketId: null } as const;
 
   it('accepts a valid amount, category of its kind and note', () => {
     expect(validateRecurring('expense', rent)).toEqual([]);
-    expect(validateRecurring('income', { category: 'salary', amountCents: 200000, note: '' })).toEqual([]);
-    expect(validateRecurring('savings', { category: 'goal', amountCents: 1, note: '' })).toEqual([]);
+    expect(validateRecurring('income', { category: 'salary', amountCents: 200000, note: '', pocketId: null })).toEqual([]);
+    expect(validateRecurring('savings', { category: 'other', amountCents: 1, note: '', pocketId: 1 })).toEqual([]);
   });
 
   it.each([
@@ -18,14 +20,28 @@ describe('Recurring entries: validation (FR-007)', () => {
   });
 
   it('refuses an amount above the limit like an entry', () => {
-    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_001 })).toEqual(['amount-too-large']);
-    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000 })).toEqual([]);
+    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000_001 })).toEqual(['amount-too-large']);
+    expect(validateRecurring('expense', { ...rent, amountCents: 90_000_000_000 })).toEqual([]);
   });
 
   it('refuses a category that does not belong to the kind', () => {
     expect(validateRecurring('expense', { ...rent, category: 'salary' })).toEqual(['category-invalid']);
     expect(validateRecurring('income', { ...rent, category: 'housing' })).toEqual(['category-invalid']);
-    expect(validateRecurring('savings', { ...rent, category: 'housing' })).toEqual(['category-invalid']);
+    expect(validateRecurring('savings', { ...rent, category: 'housing', pocketId: 1 })).toEqual(['category-invalid']);
+  });
+
+  it('Savings need a pocket (FR-004): none picked is "pocket-missing", "Pick a pocket."', () => {
+    const saving = { category: 'other', amountCents: 5000, note: '', pocketId: null } as const;
+    expect(validateRecurring('savings', saving)).toEqual(['pocket-missing']);
+    expect(pocketErrorFor('pocket-missing')).toBe('Pick a pocket.');
+  });
+
+  it('An expense may be paid from a pocket (026 FR-001)', () => {
+    expect(validateRecurring('expense', { ...rent, pocketId: 3 })).toEqual([]);
+  });
+
+  it('Income never has a pocket (FR-004)', () => {
+    expect(validateRecurring('income', { category: 'salary', amountCents: 100, note: '', pocketId: 3 })).toEqual(['pocket-not-allowed']);
   });
 
   it('reports a bad amount and a bad category together', () => {
@@ -40,24 +56,34 @@ describe('Review what repeats: Fixed costs total (US3 scenario 2)', () => {
   it('adds only the repeating expenses: 900,00 + 12,99 = 912,99, ignoring income', () => {
     expect(
       fixedCostsCents([
-        { kind: 'income', amountCents: 200000, active: true },
-        { kind: 'expense', amountCents: 90000, active: true },
-        { kind: 'expense', amountCents: 1299, active: true },
+        { kind: 'income', amountCents: 200000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 90000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
       ]),
     ).toBe(91299);
   });
 
   it('does not count savings', () => {
-    expect(fixedCostsCents([{ kind: 'savings', amountCents: 5000, active: true }])).toBe(0);
+    expect(fixedCostsCents([{ kind: 'savings', amountCents: 5000, active: true, pocketId: 1 }])).toBe(0);
   });
 
   it('does not count stopped items', () => {
     expect(
       fixedCostsCents([
-        { kind: 'expense', amountCents: 90000, active: false },
-        { kind: 'expense', amountCents: 1299, active: true },
+        { kind: 'expense', amountCents: 90000, active: false, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
       ]),
     ).toBe(1299);
+  });
+
+  it('leaves out expenses paid from a pocket (026 FR-003): 900,00 + 12,99 = 912,99', () => {
+    expect(
+      fixedCostsCents([
+        { kind: 'expense', amountCents: 90000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 50000, active: true, pocketId: 2 },
+      ]),
+    ).toBe(91299);
   });
 
   it('is 0 with nothing repeating', () => {

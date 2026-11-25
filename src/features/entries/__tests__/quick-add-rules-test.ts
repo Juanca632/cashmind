@@ -18,6 +18,9 @@ const exp = (date: string, amountCents: number, note: string, category: Entry['c
   note,
   category,
   recurringId: null,
+  pocketId: null,
+  pocketName: null,
+  pocketEmoji: null,
   ...extra,
 });
 const twice = (note: string, cents: number, d1 = '2026-11-03', d2 = '2026-11-10', category: Entry['category'] = 'eating_out') => [
@@ -28,6 +31,24 @@ const twice = (note: string, cents: number, d1 = '2026-11-03', d2 = '2026-11-10'
 describe('quick add constants', () => {
   it('are 60 days, at least 2 and at most 4', () => {
     expect([QUICK_ADD_DAYS, QUICK_ADD_MIN, QUICK_ADD_MAX]).toEqual([60, 2, 4]);
+  });
+});
+
+describe('026 Quick add only learns from expenses paid from the month', () => {
+  it('expenses paid from a pocket are not suggested, even when repeated', () => {
+    const fromPocket = [
+      exp('2026-11-03', 250, 'Ramen', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+      exp('2026-11-10', 250, 'Ramen', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+    ];
+    expect(quickAddSuggestions(fromPocket, today)).toEqual([]);
+  });
+
+  it('they do not add to the count of the same expense paid from the month', () => {
+    const mixed = [
+      exp('2026-11-03', 250, 'Café'),
+      exp('2026-11-10', 250, 'Café', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+    ];
+    expect(quickAddSuggestions(mixed, today)).toEqual([]);
   });
 });
 

@@ -1,6 +1,7 @@
 import { screen, within } from 'expo-router/testing-library';
 
 import {
+  DEFAULT_POCKET,
   answerDialog,
   choose,
   exactText,
@@ -24,7 +25,7 @@ const tile = (name: string) => within(screen.getByRole('button', { name }));
 
 describe('Journey: first use, recording income, savings and expenses, changing the plan and reopening', () => {
   it('goes from an empty app to the left to spend, keeps it after reopening and follows a new percentage', async () => {
-    await startApp({ today: [2026, 10, 7] });
+    await startApp({ today: [2026, 10, 7], pockets: [{ name: DEFAULT_POCKET }] });
 
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     await press('Add income');
@@ -76,7 +77,7 @@ describe('Journey: a new month, repeating the last income and browsing back', ()
         { date: '2026-11-04', kind: 'expense', amountCents: 30000, note: 'November trip' },
       ],
     });
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     expect(screen.queryByText('November trip')).not.toBeOnTheScreen();
 
@@ -90,14 +91,14 @@ describe('Journey: a new month, repeating the last income and browsing back', ()
 
     await press(/^Month:/);
     await press('Nov');
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText('November trip')).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('1 500 €'))).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 375 €'))).toBeOnTheScreen();
     await expectLeftToSpend('825,00 €');
 
     await press('Back to current month');
-    expect(screen.getByText('December 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: December 2026' })).toBeOnTheScreen();
     await expectLeftToSpend('1 125,00 €');
   });
 });
@@ -134,7 +135,7 @@ describe('Journey: income edge cases', () => {
     await type('Amount', '2500');
     await press('Add income');
 
-    expect(screen.getByText('September 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
     expect(tile('Savings').getByText(exactText('of 750 €'))).toBeOnTheScreen();
     await expectLeftToSpend('1 650,00 €');
 

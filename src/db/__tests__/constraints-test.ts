@@ -117,12 +117,12 @@ describe("The database rejects invalid data", () => {
     ]);
   });
 
-  it("All tables enforce column types and only the entry, plan and recurring tables exist", async () => {
+  it("All tables enforce column types and only the entry, move, plan, pocket, recurring and setting tables exist", async () => {
     const db = await newDb();
     const tables = await db.getAllAsync(
       "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     );
-    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "plan_version", "recurring"]);
+    expect(tables.map((t: any) => t.name).sort()).toEqual(["entry", "move", "plan_version", "pocket", "recurring", "setting"]);
     for (const t of tables) expect(t.sql).toMatch(/STRICT\s*$/i);
   });
 
@@ -130,8 +130,9 @@ describe("The database rejects invalid data", () => {
     const db = await newDb();
     const cols = async (t: string) => (await db.getAllAsync(`PRAGMA table_info(${t})`)).map((c: any) => c.name);
     expect(await cols("plan_version")).toEqual(["effective_month", "savings_pct"]);
-    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category", "recurring_id"]);
-    expect(await cols("recurring")).toEqual(["id", "kind", "category", "amount_cents", "note", "active", "last_month"]);
+    expect(await cols("entry")).toEqual(["id", "date", "kind", "amount_cents", "note", "created_at", "category", "recurring_id", "pocket_id"]);
+    expect(await cols("recurring")).toEqual(["id", "kind", "category", "amount_cents", "note", "active", "last_month", "pocket_id"]);
+    expect(await cols("pocket")).toEqual(["id", "name", "starting_cents", "emoji", "color"]);
   });
 });
 
@@ -187,5 +188,25 @@ describe("The database rejects invalid recurring items", () => {
     await expect(
       db.execAsync("INSERT INTO entry (date, kind, amount_cents, recurring_id) VALUES ('2026-11-01', 'expense', 100, 99)"),
     ).rejects.toThrow();
+  });
+});
+
+describe("The database rejects invalid pockets (FR-001)", () => {
+  it.each([
+    ["an empty name", "''", "0"],
+    ["a name of only spaces", "'   '", "0"],
+    ["a name of 41 characters", `'${"a".repeat(41)}'`, "0"],
+    ["a negative starting amount", "'Trip'", "-1"],
+    ["a decimal starting amount", "'Trip'", "1.5"],
+    ["a text starting amount", "'Trip'", "'lots'"],
+  ])("A pocket with %s is refused", async (_label, name, cents) => {
+    const db = await newDb();
+    await expect(db.execAsync(`INSERT INTO pocket (name, starting_cents) VALUES (${name}, ${cents})`)).rejects.toThrow();
+  });
+
+  it("A pocket of 40 characters and a starting amount of 0 is accepted", async () => {
+    const db = await newDb();
+    await db.execAsync(`INSERT INTO pocket (name, starting_cents) VALUES ('${"a".repeat(40)}', 0)`);
+    expect(await db.getAllAsync("SELECT starting_cents FROM pocket")).toEqual([{ starting_cents: 0 }]);
   });
 });

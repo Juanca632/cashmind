@@ -6,7 +6,7 @@ import Svg, { Line } from 'react-native-svg';
 import type { MonthGoal, MonthTotal } from '@/features/home/trends';
 import { hapticTick } from '@/shared/haptics';
 import type { EntryKind } from '@/shared/kinds';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { formatMonth, formatShortMonth } from '@/shared/months';
 import { BORDER_WIDTH, Layout, Opacity, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -34,6 +34,7 @@ const GROW_MS = 250;
  */
 export function TrendBars({ kind, totals, selected, onSelect, currentMonth, average, goals }: TrendBarsProps) {
   const theme = useTheme();
+  const money = useMoney();
   const reducedMotion = useReducedMotion();
   const [width, setWidth] = useState(0);
   const scale = Math.max(1, average ?? 0, ...totals.map((total) => total.cents), ...(goals ?? []).map((goal) => goal.goal ?? 0));
@@ -49,9 +50,9 @@ export function TrendBars({ kind, totals, selected, onSelect, currentMonth, aver
           const isSelected = total.month === selected;
           const isCurrent = total.month === currentMonth;
           const label = [
-            `${formatMonth(total.month)}: ${formatEuros(total.cents)}${isCurrent ? ' so far' : ''}`,
-            goal?.goal ? `goal ${formatEuros(goal.goal)}, ${goal.reached ? 'reached' : 'not reached'}` : null,
-            average === null ? null : `average ${formatEuros(average)}`,
+            `${formatMonth(total.month)}: ${money.format(total.cents)}${isCurrent ? ' so far' : ''}`,
+            goal?.goal ? `goal ${money.format(goal.goal)}, ${goal.reached ? 'reached' : 'not reached'}` : null,
+            average === null ? null : `average ${money.format(average)}`,
           ]
             .filter(Boolean)
             .join(', ');
@@ -139,7 +140,7 @@ export function TrendBars({ kind, totals, selected, onSelect, currentMonth, aver
               <Svg width={Size.keySample} height={BORDER_WIDTH}>
                 <Line x1={0} x2={Size.keySample} y1={BORDER_WIDTH / 2} y2={BORDER_WIDTH / 2} stroke={theme.textSecondary} strokeWidth={BORDER_WIDTH} strokeDasharray={dash} />
               </Svg>
-              <ThemedText type="caption" themeColor="textSecondary">{`Avg ${formatEuros(average)}`}</ThemedText>
+              <ThemedText type="caption" themeColor="textSecondary">{`Avg ${money.format(average)}`}</ThemedText>
             </View>
           ) : null}
           {hasGoals ? (

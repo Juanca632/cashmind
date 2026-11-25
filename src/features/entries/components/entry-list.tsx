@@ -4,22 +4,25 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from 'react-native-reanimated';
 
 import { categoryIcon } from '@/features/entries/components/category-icons';
-import { entryTitle, type Entry } from '@/features/entries/rules';
+import { entryTitle, moveTitle, type Entry, type ListItem, type MoveLine } from '@/features/entries/rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KindBadge } from '@/shared/ui/kind-badge';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 type EntryListProps = {
-  entries: Entry[];
+  /** Entries and moves, as `mergeByDate` puts them together (specs/028-move-money). */
+  items: readonly ListItem[];
   /** Today, to name the most recent days. */
   today: Date;
   /** Shown when there is nothing to list. */
   emptyText: string;
   /** Called when an entry is tapped. */
   onPress: (entry: Entry) => void;
+  /** Called when a move is tapped. */
+  onPressMove: (line: MoveLine) => void;
 };
 
 // Rows fade in and out and the others slide into place. The first render does not animate.
@@ -34,8 +37,8 @@ function dayTitle(day: string, today: Date): string {
   return formatDay(day);
 }
 
-export function EntryList({ entries, today, emptyText, onPress }: EntryListProps) {
-  if (entries.length === 0) {
+export function EntryList({ items, today, emptyText, onPress, onPressMove }: EntryListProps) {
+  if (items.length === 0) {
     return (
       <ThemedText themeColor="textSecondary" style={styles.empty}>
         {emptyText}
@@ -45,14 +48,71 @@ export function EntryList({ entries, today, emptyText, onPress }: EntryListProps
 
   return (
     <LayoutAnimationConfig skipEntering>
-      {entries.map((entry) => (
-        <Animated.View key={entry.id} entering={ENTERING} exiting={EXITING} layout={LAYOUT}>
-          <EntryRow entry={entry} today={today} onPress={onPress} />
+      {items.map((item) => (
+        <Animated.View key={listItemKey(item)} entering={ENTERING} exiting={EXITING} layout={LAYOUT}>
+          <ListRow item={item} today={today} onPress={onPress} onPressMove={onPressMove} />
         </Animated.View>
       ))}
     </LayoutAnimationConfig>
   );
 }
+
+/** A key that stays unique when entries and moves share a list. */
+export function listItemKey(item: ListItem): string {
+  return item.type === 'entry' ? `entry:${item.entry.id}` : `move:${item.move.id}`;
+}
+
+/** One row of a list: an entry or a move. */
+export function ListRow({
+  item,
+  today,
+  onPress,
+  onPressMove,
+}: {
+  item: ListItem;
+  today: Date;
+  onPress: (entry: Entry) => void;
+  onPressMove: (line: MoveLine) => void;
+}) {
+  return item.type === 'entry' ? (
+    <EntryRow entry={item.entry} today={today} onPress={onPress} />
+  ) : (
+    <MoveRow move={item.move} sign={item.sign} today={today} onPress={onPressMove} />
+  );
+}
+
+type MoveRowProps = MoveLine & {
+  today: Date;
+  onPress: (line: MoveLine) => void;
+};
+
+/** A move as one side sees it: where it went or came from, its day and a signed amount. */
+const MoveRow = memo(function MoveRow({ move, sign, today, onPress }: MoveRowProps) {
+  const theme = useTheme();
+  const money = useMoney();
+  const amount = `${sign === 1 ? '+' : '-'}${money.format(move.amountCents)}`;
+  const title = moveTitle(move, sign);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${dayTitle(move.date, today)}, ${amount}`}
+      onPress={() => onPress({ move, sign })}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
+      <KindBadge kind="savings" icon="shuffle" />
+      <View style={styles.text}>
+        <ThemedText type="smallBold" numberOfLines={1}>
+          {title}
+        </ThemedText>
+        <ThemedText type="caption" themeColor="textSecondary">
+          {dayTitle(move.date, today)}
+        </ThemedText>
+      </View>
+      <ThemedText type="smallBold" style={sign === 1 ? { color: theme.kindInk.income } : undefined}>
+        {amount}
+      </ThemedText>
+    </Pressable>
+  );
+});
 
 type EntryRowProps = {
   entry: Entry;
@@ -63,19 +123,19 @@ type EntryRowProps = {
 /** One entry: category icon, title, day and amount. Memoized for long lists. */
 export const EntryRow = memo(function EntryRow({ entry, today, onPress }: EntryRowProps) {
   const theme = useTheme();
-  const amount = `${entry.kind === 'income' ? '+' : ''}${formatEuros(entry.amountCents)}`;
+  const money = useMoney();
+  const amount = `${entry.kind === 'income' ? '+' : ''}${money.format(entry.amountCents)}`;
   const repeats = entry.recurringId !== null;
+  const parts = [entryTitle(entry), dayTitle(entry.date, today), amount, repeats ? 'recorded by a repeat' : null];
   return (
     <Pressable
       accessibilityRole="button"
       // An entry recorded by a repeat (active or stopped) says so; the others read their texts as they are.
-      accessibilityLabel={
-        repeats ? `${entryTitle(entry)}, ${dayTitle(entry.date, today)}, ${amount}, recorded by a repeat` : undefined
-      }
+      accessibilityLabel={repeats ? parts.filter(Boolean).join(', ') : undefined}
       onPress={() => onPress(entry)}
       // A full-width row highlights when pressed instead of shrinking.
       style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
-      <KindBadge kind={entry.kind} icon={categoryIcon(entry.kind, entry.category)} />
+      <KindBadge kind={entry.kind} icon={entry.kind === 'savings' ? undefined : categoryIcon(entry.kind, entry.category)} />
       <View style={styles.text}>
         <ThemedText type="smallBold" numberOfLines={1}>
           {entryTitle(entry)}

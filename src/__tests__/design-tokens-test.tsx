@@ -98,6 +98,6 @@ describe("Home's bottom actions fit the layout", () => {
     await press('Back to current month');
 
     expect(screen.queryByRole('button', { name: 'Back to current month' })).not.toBeOnTheScreen();
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
   });
 });

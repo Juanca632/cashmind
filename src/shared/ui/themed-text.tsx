@@ -4,7 +4,7 @@ import { FontFamily, ThemeColor } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'heading' | 'caption' | 'small' | 'smallBold' | 'button' | 'subtitle';
+  type?: 'default' | 'heading' | 'caption' | 'small' | 'smallBold' | 'button' | 'subtitle' | 'heroLabel' | 'figure' | 'figureFraction' | 'tileValue';
   themeColor?: ThemeColor;
 };
 
@@ -52,5 +52,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontFamily: FontFamily.medium,
+  },
+  /** The label above the hero card's big figure. */
+  heroLabel: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  /** The hero card's big figure (whole part). */
+  figure: {
+    fontFamily: FontFamily.bold,
+    fontSize: 64,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -1.5,
+    lineHeight: 72,
+  },
+  /** The decimals beside the big figure. */
+  figureFraction: {
+    fontFamily: FontFamily.semiBold,
+    fontSize: 28,
+    lineHeight: 36,
+  },
+  /** The amount on a kind tile. */
+  tileValue: {
+    fontFamily: FontFamily.bold,
+    fontSize: 18,
+    lineHeight: 24,
   },
 });

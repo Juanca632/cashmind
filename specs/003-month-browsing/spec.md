@@ -6,7 +6,7 @@
 
 **Status**: Implemented
 
-**Input**: Migrated from the OpenSpec `month-browsing` capability; updated by 008-simple-plan. History is in `docs/openspec-archive/`.
+**Input**: Migrated from the OpenSpec `month-browsing` capability; updated by 008-simple-plan, 023-settings-app-lock and 027-spaces. History is in `docs/openspec-archive/`.
 
 This is a baseline spec: it describes the current behavior of the app and is kept up to date when a later feature changes that behavior.
 
@@ -66,6 +66,7 @@ Lets the user pick any past or current month from a calendar and see how that mo
 - **FR-002** (No future months): The system SHALL NOT let the user select a month after the current month, and SHALL NOT let the user go to a year after the current year.
 - **FR-003** (How far back): The system SHALL let the user go back to the year of the first recorded entry, and always at least to the previous year. Every month has a plan (20 % until one is saved, see 002).
 - **FR-004** (Past months keep their plan): The system SHALL show past months without any option to edit the plan, and SHALL offer a way to go back to the current month. Entries of past months, including income, can be changed (see 001 FR-004).
+- **FR-005** (Top of home): Home's top row SHALL start with the month pill and end with My plan (not in past months) and a gear button that opens Settings (see 023), in every month. The space selector (see 027) sits centred under the hero card. In a pocket's space the top row holds only the pocket's edit button and the gear.
 
 ## Success Criteria *(mandatory)*
 

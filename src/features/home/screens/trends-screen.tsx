@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
-import { categorySplit } from '@/features/entries/rules';
+import { categorySplit, countsInMonth } from '@/features/entries/rules';
 import { TrendBars } from '@/features/home/components/trend-bars';
 import { TrendCategoryList } from '@/features/home/components/trend-category-list';
 import {
@@ -20,7 +20,7 @@ import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { hapticTick } from '@/shared/haptics';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
-import { formatEuros } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { formatMonth, formatMonthName, lastMonths, monthKey } from '@/shared/months';
 import { Layout } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
@@ -37,6 +37,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
  * and the categories are about; it never leaves the screen.
  */
 export default function TrendsScreen() {
+  const money = useMoney();
   const theme = useTheme();
   const today = useToday();
   const currentMonth = monthKey(today);
@@ -51,19 +52,21 @@ export default function TrendsScreen() {
   if (entries.status === 'error' || plan.status === 'error') return <DataError />;
   if (entries.status === 'loading' || plan.status === 'loading') return <ThemedView style={styles.screen} />;
 
-  const totals = monthTotals(entries.data, months, kind);
-  const average = trendAverage(totals, monthsInUse(entries.data), currentMonth);
+  // Expenses paid from a pocket are not the month's money (specs/026-pocket-spending).
+  const counted = entries.data.filter(countsInMonth);
+  const totals = monthTotals(counted, months, kind);
+  const average = trendAverage(totals, monthsInUse(counted), currentMonth);
   const cents = totals.find((total) => total.month === selected)?.cents ?? 0;
-  const goals = kind === 'savings' ? savingsGoals(entries.data, months, plan.data) : undefined;
+  const goals = kind === 'savings' ? savingsGoals(counted, months, plan.data) : undefined;
   const count = goals ? goalCount(goals) : null;
-  const inUse = monthsInUse(entries.data);
+  const inUse = monthsInUse(counted);
   const isCurrent = selected === currentMonth;
   const rows = categorySplit(
-    entries.data.filter((entry) => entry.date.slice(0, 7) === selected),
+    counted.filter((entry) => entry.date.slice(0, 7) === selected),
     kind,
   ).map((share) => {
-    const usual = trendAverage(monthTotals(entries.data, months, kind, share.category), inUse, currentMonth);
-    return { share, versusUsual: usual === null ? null : averageSentence(share.cents, usual, isCurrent, formatEuros, 'usual') };
+    const usual = trendAverage(monthTotals(counted, months, kind, share.category), inUse, currentMonth);
+    return { share, versusUsual: usual === null ? null : averageSentence(share.cents, usual, isCurrent, money.format, 'usual') };
   });
 
   return (
@@ -92,10 +95,10 @@ export default function TrendsScreen() {
               {formatMonth(selected)}
             </ThemedText>
             <ThemedText type="heading" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-              {formatEuros(cents)}
+              {money.format(cents)}
             </ThemedText>
             {average === null ? null : (
-              <ThemedText type="small">{averageSentence(cents, average, isCurrent, formatEuros, 'your average')}</ThemedText>
+              <ThemedText type="small">{averageSentence(cents, average, isCurrent, money.format, 'your average')}</ThemedText>
             )}
           </View>
           <TrendBars
@@ -114,11 +117,14 @@ export default function TrendsScreen() {
           ) : null}
         </Card>
 
-        <TrendCategoryList
-          kind={kind}
-          rows={rows}
-          onPress={(category) => router.push({ pathname: '/trend-category', params: { kind, category, month: selected } })}
-        />
+        {/* Savings go into pockets, not categories (specs/025-pockets): each pocket's space shows them. */}
+        {kind === 'savings' ? null : (
+          <TrendCategoryList
+            kind={kind}
+            rows={rows}
+            onPress={(category) => router.push({ pathname: '/trend-category', params: { kind, category, month: selected } })}
+          />
+        )}
 
         <LinkButton
           label={`Open ${formatMonthName(selected)} ›`}

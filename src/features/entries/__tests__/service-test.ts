@@ -1,5 +1,5 @@
 import { migrateDbIfNeeded } from '@/db/database';
-import { addEntry, deleteEntry, editEntry } from '@/features/entries/service';
+import { addEntry, addPocket, deleteEntry, editEntry } from '@/features/entries/service';
 
 import { RELAX_TABLES } from '../../../test-support/damaged-data';
 import { createFakeDb } from '../../../test-support/fake-sqlite';
@@ -15,7 +15,7 @@ async function newDb() {
 
 const rows = (db: any) => db.getAllAsync('SELECT * FROM entry ORDER BY id');
 
-const lunch = { date: '2026-11-05', kind: 'expense', amountCents: 900, note: 'Lunch', category: 'eating_out' } as const;
+const lunch = { date: '2026-11-05', kind: 'expense', amountCents: 900, note: 'Lunch', category: 'eating_out', pocketId: null } as const;
 
 async function withFailingWrites(db: any) {
   const fail = async () => {
@@ -29,7 +29,7 @@ describe('Invalid data is never saved (expenses)', () => {
     const db = await newDb();
     const result = await addEntry(db, { ...lunch, amountCents: 1e22 }, NOV_7);
 
-    expect(result).toEqual({ ok: false, kind: 'invalid', message: expect.stringMatching(/cannot be above/) });
+    expect(result).toEqual({ ok: false, kind: 'invalid', message: 'This amount is too large.' });
     expect(await rows(db)).toEqual([]);
   });
 
@@ -184,7 +184,10 @@ describe('Every kind can be recorded', () => {
   it.each(['income', 'savings', 'expense'] as const)('A new %s is stored', async (kind) => {
     const db = await newDb();
 
-    expect(await addEntry(db, { ...lunch, kind, category: 'other' }, NOV_7)).toEqual({ ok: true });
+    await addPocket(db, { name: 'Trip', startingCents: 0, emoji: '', color: 'blue' });
+    const pocketId = kind === 'savings' ? 1 : null;
+
+    expect(await addEntry(db, { ...lunch, kind, category: 'other', pocketId }, NOV_7)).toEqual({ ok: true });
     expect((await rows(db))[0].kind).toBe(kind);
   });
 
@@ -200,8 +203,6 @@ describe('Choose a category when recording (validation)', () => {
   it.each([
     ['income', 'salary'],
     ['income', 'freelance'],
-    ['savings', 'goal'],
-    ['savings', 'emergency_fund'],
     ['expense', 'groceries'],
     ['expense', 'other'],
   ] as const)('A %s in %s is stored with that category', async (kind, category) => {

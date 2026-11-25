@@ -140,7 +140,7 @@ describe('See the whole month', () => {
     });
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByText('November 2026', { exact: false })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     // 2000 - 20% default goal (400) - 7 * 10 spent
     await expectLeftToSpend('1 530,00 €');
     expect(seeAll(8)).toBeOnTheScreen();

@@ -8,10 +8,13 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
+import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
 import { useEntry } from '@/features/entries/hooks/use-entry';
+import { usePockets } from '@/features/entries/hooks/use-pockets';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import {
   ENTRY_MISSING,
@@ -32,7 +35,7 @@ import { monthKey } from '@/shared/months';
 import { useDiscardGuard } from '@/shared/hooks/use-discard-guard';
 import { useSubmit } from '@/shared/hooks/use-submit';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
-import { centsToInput, parseEurosToCents } from '@/shared/money';
+import { useMoney } from '@/shared/hooks/use-money';
 import { FontFamily, IconSize, Layout, Radius, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Button } from '@/shared/ui/button';
@@ -46,7 +49,7 @@ import { ErrorText } from '@/shared/ui/error-text';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export default function EntryScreen() {
-  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string }>();
+  const params = useLocalSearchParams<{ id?: string; month?: string; kind?: string; repeat?: string; pocket?: string }>();
   const id = params.id ? Number(params.id) : null;
   const loaded = useEntry(id);
   const item = useRecurringItem(loaded.status === 'ready' ? (loaded.data?.recurringId ?? null) : null);
@@ -70,6 +73,8 @@ export default function EntryScreen() {
       defaultDate={defaultEntryDate(params.month, today)}
       // An entry repeats while its item is active; Add from My plan starts with repeat on.
       initialRepeat={entry ? item.data?.active === true : params.repeat === '1'}
+      // "Spend from this pocket" opens the form already paid from that pocket.
+      defaultPocketId={params.pocket && Number.isInteger(Number(params.pocket)) ? Number(params.pocket) : null}
       today={today}
       suggestions={suggestions}
     />
@@ -81,6 +86,7 @@ function EntryForm({
   defaultKind,
   defaultDate,
   initialRepeat,
+  defaultPocketId,
   today,
   suggestions,
 }: {
@@ -88,19 +94,23 @@ function EntryForm({
   defaultKind: EntryKind;
   defaultDate: string;
   initialRepeat: boolean;
+  defaultPocketId: number | null;
   today: Date;
   /** Expenses recorded often lately, offered while adding an expense. */
   suggestions: readonly QuickAddSuggestion[];
 }) {
   const db = useSQLiteContext();
   const theme = useTheme();
-  const [amountText, setAmountText] = useState(entry ? centsToInput(entry.amountCents) : '');
+  const money = useMoney();
+  const [amountText, setAmountText] = useState(entry ? money.toInput(entry.amountCents) : '');
   const [kind, setKind] = useState<EntryKind>(entry?.kind ?? defaultKind);
   const [category, setCategory] = useState<EntryCategory>(entry?.category ?? DEFAULT_CATEGORY);
+  const [pocketId, setPocketId] = useState<number | null>(entry ? entry.pocketId : defaultPocketId);
+  const pockets = usePockets();
   const [note, setNote] = useState(entry?.note ?? '');
   const [date, setDate] = useState(entry?.date ?? defaultDate);
   const [repeat, setRepeat] = useState(initialRepeat);
-  const form = JSON.stringify({ amountText, kind, category, note, date, repeat });
+  const form = JSON.stringify({ amountText, kind, category, pocketId, note, date, repeat });
   const [savedForm] = useState(form);
   const { dialog: discardDialog, allowLeave } = useDiscardGuard(form !== savedForm);
   const { dialog: confirmDialog, ask } = useConfirm();
@@ -113,7 +123,16 @@ function EntryForm({
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
   // Only this month's entries can repeat; past months never change.
   const canRepeat = formMonth === monthKey(today);
-  const input: EntryInput = { date, kind, amountCents: parseEurosToCents(amountText) ?? 0, note: note.trim(), category };
+  // Savings go into a pocket and keep no category of their own; the others never have a pocket.
+  const input: EntryInput = {
+    date,
+    kind,
+    amountCents: money.parse(amountText) ?? 0,
+    note: note.trim(),
+    category: kind === 'savings' ? DEFAULT_CATEGORY : category,
+    // Savings go into a pocket; an expense may be paid from one; income never has one.
+    pocketId: kind === 'income' ? null : pocketId,
+  };
   const errors = validateEntry(input, today);
   const amountError = errors.find((error) => error === 'amount-not-positive' || error === 'amount-too-large');
 
@@ -122,7 +141,7 @@ function EntryForm({
   /** Fills the form from a suggestion; the kind, the date and the repeat switch stay as they are. */
   function fillFrom(suggestion: QuickAddSuggestion) {
     hapticTick();
-    setAmountText(centsToInput(suggestion.amountCents));
+    setAmountText(money.toInput(suggestion.amountCents));
     setCategory(suggestion.category);
     setNote(suggestion.note);
   }
@@ -169,8 +188,9 @@ function EntryForm({
             value={kind}
             onChange={(option) => {
               setKind(option);
-              // Categories belong to a kind: a new kind starts again from Other.
+              // Categories belong to a kind: a new kind starts again from Other, and from no pocket.
               setCategory(DEFAULT_CATEGORY);
+              setPocketId(null);
             }}
           />
 
@@ -184,12 +204,39 @@ function EntryForm({
             />
           </Card>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Category
-            </ThemedText>
-            <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
-          </View>
+          {kind === 'savings' ? (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Pocket
+              </ThemedText>
+              <PocketChoices
+                pockets={pockets.status === 'ready' ? pockets.data : []}
+                value={pocketId}
+                onChange={setPocketId}
+              />
+              {errors.includes('pocket-missing') ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {entryErrorMessage('pocket-missing')}
+                </ThemedText>
+              ) : null}
+            </View>
+          ) : (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Category
+              </ThemedText>
+              <CategoryChoices kind={kind} value={category} onChange={setCategory} layout="grid" />
+            </View>
+          )}
+
+          {kind === 'expense' && pockets.status === 'ready' && pockets.data.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Paid from
+              </ThemedText>
+              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+            </View>
+          ) : null}
 
           {kind === 'expense' ? <QuickAddRow suggestions={suggestions} onPick={fillFrom} /> : null}
 

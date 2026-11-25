@@ -45,7 +45,7 @@ describe('Income comes from what is recorded', () => {
 
     expect(screen.getByText("Add this month's income")).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Add income' })).toBeOnTheScreen();
-    expect(screen.queryByText('Left to spend')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Left to spend: /)).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Savings' })).not.toBeOnTheScreen();
   });
 
@@ -235,14 +235,14 @@ describe('Change the plan', () => {
     await expectLeftToSpend('1 400,00 €');
   });
 
-  it('My plan with no income yet asks for it instead of showing a euro goal', async () => {
+  it('My plan with no income yet asks for it instead of showing a goal', async () => {
     await startApp({ today: TODAY });
     await press('My plan');
 
-    expect(screen.getByText("Add this month's income to see it in euros.")).toBeOnTheScreen();
+    expect(screen.getByText("Add this month's income to see the amount.")).toBeOnTheScreen();
     await type('Savings percentage', '30');
     expect(screen.queryByText(partialText("of this month's"))).not.toBeOnTheScreen();
-    expect(screen.getByText("Add this month's income to see it in euros.")).toBeOnTheScreen();
+    expect(screen.getByText("Add this month's income to see the amount.")).toBeOnTheScreen();
   });
 
   it('Leaving with changes: the app asks before discarding, and keeps editing if cancelled', async () => {

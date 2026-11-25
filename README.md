@@ -6,17 +6,20 @@ All data stays on the device: no account, no bank access, no backend. The only c
 
 ## Features
 
-- **Entries:** record, edit and delete income, savings and expenses, with an amount, a category, an optional note and a date (picked from Android's calendar), in any month up to today. All of a month's entries are on the Activity screen.
+- **Entries:** record, edit and delete income, savings and expenses, with an amount, an optional note and a date (picked from Android's calendar), in any month up to today. Income and expenses have a category; savings go into a pocket. All of a month's entries are on the Activity screen.
+- **Pockets:** name a pocket for each thing you save for (a trip, emergencies), with an emoji, a colour and what you had saved before the app. Save into it, spend from it, or move money out of it to the month or to another pocket. Each pocket shows its balance, a chart of how it moved this month, what was spent from it by category, and its activity.
+- **Spaces:** home shows one space at a time, "Main" (the month's money) or a pocket, picked from the selector under the balance card.
 - **Repeat every month:** mark rent, salary or a subscription once; it is recorded on the 1st of every new month. My plan lists them under "Every month" with the month's fixed costs.
 - **Plan:** one savings percentage of each month's income (20 % by default). Changing it applies from the current month; past months keep theirs.
-- **Left to spend:** income − expenses − the larger of the savings goal and what was saved. It can go negative; the month card then turns red.
+- **Left to spend:** income + money moved into Main from pockets − expenses − the larger of the savings goal and what was saved. Expenses paid from a pocket do not count. It can go negative; the month card then turns red.
 - **Daily budget:** in the current month, left to spend shared over the days left ("≈ X / day").
 - **Spending pace:** a chart of the month's spending day by day against the plan's pace, with one sentence saying whether you are over or under it.
 - **Trends:** the last six months of spending, savings or income side by side, against your usual, with each month's categories, a category's own history, and how often the savings goal was reached.
-- **By category:** tap Income, Spent or Savings on home to see that kind split by category.
+- **By category:** tap Income or Spent on home to see that kind split by category.
 - **Savings goal bar:** the savings tile fills up as you save towards the month's goal.
 - **Repeat last income:** a new month asks for its income and can repeat last month's in one tap.
 - **Past months:** browse any month from a year/month picker; their entries stay editable.
+- **Settings:** the currency (EUR, USD or COP; changing it never converts amounts) and an app lock with the phone's fingerprint, face or PIN, on by default.
 - **Light and dark theme:** follows the phone's setting.
 - **Backup:** Android backs up the app's data automatically and restores it when the app is installed again.
 
@@ -51,5 +54,5 @@ Release APKs are built with EAS: `npx eas-cli@latest build --platform android --
 
 ## CI/CD
 
-- **CI** (pull requests into `main`): dependency audit, lint, typecheck, tests and `expo-doctor`.
+- **CI** (pushes to `develop` and pull requests into `main`): dependency audit, lint, typecheck, tests and `expo-doctor`.
 - **CD** (merges into `main`): version tag from conventional commits and a GitHub release.

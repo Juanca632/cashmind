@@ -1,4 +1,4 @@
-import { defaultEntryDate, lastDayOfMonth, totalsByKind, validateEntry, type EntryInput } from '../rules';
+import { countsInMonth, defaultEntryDate, entryErrorMessage, lastDayOfMonth, totalsByKind, validateEntry, type EntryInput } from '../rules';
 import { addDays, dayKey, formatDay } from '@/shared/days';
 import { previousMonth } from '@/shared/months';
 
@@ -6,7 +6,7 @@ const nov7 = new Date(2026, 10, 7);
 const dec3 = new Date(2026, 11, 3);
 const dec6 = new Date(2026, 11, 6);
 
-const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema', category: 'leisure' };
+const cinema: EntryInput = { date: '2026-11-07', kind: 'expense', amountCents: 1250, note: 'Cinema', category: 'leisure', pocketId: null };
 
 describe('day helpers', () => {
   it('builds day keys and moves across months and years', () => {
@@ -36,6 +36,29 @@ describe('dates of an expense', () => {
   });
 });
 
+describe('validateEntry: pockets (FR-004)', () => {
+  const saving: EntryInput = { ...cinema, kind: 'savings', category: 'other', pocketId: 2 };
+
+  it('a saving with a pocket is valid', () => {
+    expect(validateEntry(saving, nov7)).toEqual([]);
+  });
+
+  it('a saving without a pocket is "pocket-missing" with the message "Pick a pocket."', () => {
+    expect(validateEntry({ ...saving, pocketId: null }, nov7)).toEqual(['pocket-missing']);
+    expect(entryErrorMessage('pocket-missing')).toBe('Pick a pocket.');
+  });
+
+  it('income never has a pocket: "pocket-not-allowed", "Income never goes into a pocket."', () => {
+    expect(validateEntry({ ...cinema, kind: 'income', category: 'salary', pocketId: 2 }, nov7)).toEqual(['pocket-not-allowed']);
+    expect(entryErrorMessage('pocket-not-allowed')).toBe('Income never goes into a pocket.');
+  });
+
+  it('an expense may be paid from a pocket (026 FR-001), or from the month', () => {
+    expect(validateEntry({ ...cinema, pocketId: 2 }, nov7)).toEqual([]);
+    expect(validateEntry({ ...cinema, pocketId: null }, nov7)).toEqual([]);
+  });
+});
+
 describe('validateEntry', () => {
   it('accepts an expense of 12,50 € today', () => {
     expect(validateEntry(cinema, nov7)).toEqual([]);
@@ -46,7 +69,7 @@ describe('validateEntry', () => {
   });
 
   it.each(['income', 'savings', 'expense'] as const)('accepts an entry of kind %s', (kind) => {
-    expect(validateEntry({ ...cinema, kind, category: 'other' }, nov7)).toEqual([]);
+    expect(validateEntry({ ...cinema, kind, category: 'other', pocketId: kind === 'savings' ? 1 : null }, nov7)).toEqual([]);
   });
 
   it.each(['fixed', 'leisure', ''])('rejects the old or empty kind %p: only income, savings and expense exist', (kind) => {
@@ -55,7 +78,8 @@ describe('validateEntry', () => {
 
   it('accepts the smallest amount (1 cent) and rejects one above the limit', () => {
     expect(validateEntry({ ...cinema, amountCents: 1 }, nov7)).toEqual([]);
-    expect(validateEntry({ ...cinema, amountCents: 90_000_001 }, nov7)).toEqual(['amount-too-large']);
+    expect(validateEntry({ ...cinema, amountCents: 90_000_000_001 }, nov7)).toEqual(['amount-too-large']);
+    expect(validateEntry({ ...cinema, amountCents: 90_000_000_000 }, nov7)).toEqual([]);
   });
 
   it('accepts today and rejects tomorrow', () => {
@@ -92,5 +116,14 @@ describe('totals', () => {
         { kind: 'income', amountCents: 200000 },
       ]),
     ).toEqual({ income: 200000, savings: 60000, expense: 1500 });
+  });
+});
+
+describe('countsInMonth (026 FR-003)', () => {
+  it('is false only for an expense paid from a pocket', () => {
+    expect(countsInMonth({ kind: 'expense', pocketId: 3 })).toBe(false);
+    expect(countsInMonth({ kind: 'expense', pocketId: null })).toBe(true);
+    expect(countsInMonth({ kind: 'income', pocketId: null })).toBe(true);
+    expect(countsInMonth({ kind: 'savings', pocketId: 3 })).toBe(true);
   });
 });

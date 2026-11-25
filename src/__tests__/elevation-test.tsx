@@ -78,11 +78,11 @@ describe('One rule for shadows', () => {
 
   it('Month card: casts the hero shadow while there is money left to spend', async () => {
     await startApp({ today: TODAY, entries: [income(200000), ...spends(1)] });
-    expect(shadowAround(screen.getByText('Left to spend'))).toBe(LIGHT.shadow.hero);
+    expect(shadowAround(screen.getByLabelText(/^Left to spend: /))).toBe(LIGHT.shadow.hero);
   });
 
   it('Month card: casts the red shadow while the month is overspent (left to spend below 0)', async () => {
     await startApp({ today: TODAY, entries: [income(1000), { ...spends(1)[0], amountCents: 5000 }] });
-    expect(shadowAround(screen.getByText('Left to spend'))).toBe(LIGHT.shadow.heroOverspent);
+    expect(shadowAround(screen.getByLabelText(/^Left to spend: /))).toBe(LIGHT.shadow.heroOverspent);
   });
 });
