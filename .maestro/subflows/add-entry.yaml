@@ -1,7 +1,9 @@
 appId: com.juancrestrepo.cashmind
 ---
-# Env: KIND (Income | Savings | Expense), CATEGORY ("Other" by default), AMOUNT, NOTE ("" for none),
-# SUBMIT (button text: "Add income" | "Add to savings" | "Add expense").
+# Env: KIND (Income | Expense), CATEGORY ("Other" = the default one), AMOUNT, NOTE ("" for none),
+# SUBMIT (button text: "Add income" | "Add expense"). Not for Savings: a saving has a pocket, not a
+# category (025), so a flow that saves does those steps itself. Expenses stay paid from "Main" (the
+# default of "Paid from"), which only shows once a pocket exists.
 # Starts on home of a month that already has income. The form opens with the keyboard closed:
 # the amount field is tapped before typing.
 - tapOn: "Add expense"

@@ -1,5 +1,5 @@
 appId: com.juancrestrepo.cashmind
-# Smoke: entries and totals survive an app restart (real database). Specs 001, 002, 015.
+# Smoke: entries, a pocket and totals survive an app restart (real database). Specs 001, 002, 015, 025, 027.
 ---
 - runFlow: subflows/launch-clean.yaml
 - runFlow:
@@ -14,14 +14,27 @@ appId: com.juancrestrepo.cashmind
       AMOUNT: "12,50"
       NOTE: "Cinema"
       SUBMIT: "Add expense"
-- runFlow:
-    file: subflows/add-entry.yaml
-    env:
-      KIND: Savings
-      CATEGORY: Other
-      AMOUNT: "50"
-      NOTE: "Piggy bank"
-      SUBMIT: "Add to savings"
+# A saving needs a pocket (025): make one from the form's "New pocket", then pick it.
+- tapOn: "Add expense"
+- tapOn: "Savings"
+- tapOn: ".*New pocket"
+- tapOn: "Name"
+- inputText: "Rainy day"
+- hideKeyboard
+- tapOn: "Create pocket"
+- tapOn: "Rainy day"
+- tapOn: "Amount"
+- inputText: "50"
+- hideKeyboard
+- tapOn: "Note (optional)"
+- inputText: "Piggy bank"
+- hideKeyboard
+- tapOn:
+    text: "Add to savings"
+    index: 1
+- extendedWaitUntil:
+    visible: "My plan"
+    timeout: 10000
 # 2000 - 12,50 - max(400, 50) = 1 587,50.
 - assertVisible: ".*Left to spend.*1.587,50.€.*"
 # Restart without clearing the data.
@@ -36,3 +49,9 @@ appId: com.juancrestrepo.cashmind
 - assertVisible: ".*12,50.€.*"
 - assertVisible: ".*of 400.€.*"
 - assertVisible: ".*Left to spend.*1.587,50.€.*"
+# The pocket survived too: the spaces sheet lists it with its balance (027). Back closes the sheet.
+- tapOn: "Space: Main, change"
+- assertVisible: "Rainy day.*50,00.€.*"
+- assertVisible: ".*In pockets.*50,00.€.*"
+- back
+- assertVisible: "My plan"
