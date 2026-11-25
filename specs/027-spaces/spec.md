@@ -32,7 +32,7 @@
 2. *Overdrawn*: **Given** a pocket holds -50,00 €, **Then** the hero shows the red overspent look of home and "This pocket is 50,00 € short."
 3. *Top row*: the month pill and "My plan" are not shown for a pocket; an edit button (pencil, "Edit Japan trip") and the gear are, on the right; under the hero the selector shows the pocket's mark with ✈️ and "Japan trip"
 4. *Actions*: under the hero, "Save into" opens the form as Savings into that pocket, and "Spend from" opens it as an Expense paid from that pocket
-5. *Tiles*: an Overview with two tiles, "Saved" (everything saved into it, starting amount excluded) and "Spent" (everything paid from it); tapping one filters the activity list as on home, and with Spent selected "By category" shows its split
+5. *Spent*: there is no Overview section. The activity title row ends with a pill "Spent <total>" (everything ever paid from the pocket, accessible name "Spent, <amount>"); tapping it filters the activity list to its expenses, titles it "Spent" and shows "By category" with its split, and tapping it again shows everything. There is no Saved tile: savings are followed on Main (changed after 029)
 6. *Activity*: the activity card lists the pocket's savings and expenses of every month, newest first; with none it says "Nothing saved in or spent from this pocket yet."
 7. *Not month-bound*: a pocket shows every month's entries; spending pace, daily budget and Trends are not shown for it
 

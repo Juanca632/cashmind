@@ -375,33 +375,40 @@ describe('A pocket looks like home', () => {
     expect(screen.getByText('Souvenirs')).toBeOnTheScreen();
   });
 
-  it('Tiles: Saved shows 200 € "into it" without the starting amount, Spent shows 55 € "from it"', async () => {
+  it('Tiles: Main keeps its Savings tile while a pocket has no Saved tile', async () => {
+    await startApp(trip);
+    expect(screen.getByRole('button', { name: 'Savings' })).toBeOnTheScreen();
+
+    await showPocket('Japan trip');
+    expect(screen.queryByRole('button', { name: 'Savings' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
+  });
+
+  it('Spent pill: a pocket has no Overview title and no tiles; the title row ends with "Spent, 55,00 €"', async () => {
     await startApp(trip);
     await showPocket('Japan trip');
 
-    expect(screen.getByText('Overview')).toBeOnTheScreen();
-    expect(tile('Saved').getByText(exactText('300 €'))).toBeOnTheScreen();
-    expect(tile('Saved').getByText('into it')).toBeOnTheScreen();
-    expect(tile('Spent').getByText(exactText('55 €'))).toBeOnTheScreen();
-    expect(tile('Spent').getByText('from it')).toBeOnTheScreen();
+    expect(screen.queryByText('Overview')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
+    expect(screen.queryByText('from it')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: exactText('Spent, 55,00 €') })).toBeOnTheScreen();
   });
 
-  it('Tiles: tapping Saved filters the list, tapping it again shows all, and "By category" only appears with Spent selected', async () => {
+  it('Spent pill: tapping it filters the list, tapping it again shows all, and "By category" only appears with Spent selected', async () => {
     await startApp(trip);
     await showPocket('Japan trip');
     const listed = () => screen.queryAllByText(/^(August saving|September ticket|Bonus|Dinner|Lunch|Car saving)$/).map((n) => n.props.children);
 
-    await press('Saved');
-    expect(listed()).toEqual(['Bonus', 'August saving']);
     expect(screen.queryByText('By category')).not.toBeOnTheScreen();
-    await press('Saved');
-    expect(listed()).toEqual(['Dinner', 'Bonus', 'September ticket', 'August saving'].sort((a, b) => ['Dinner', 'Bonus', 'September ticket', 'August saving'].indexOf(a) - ['Dinner', 'Bonus', 'September ticket', 'August saving'].indexOf(b)));
+    expect(listed()).toEqual(['Dinner', 'Bonus', 'September ticket', 'August saving']);
 
-    await press('Spent');
+    await press(/^Spent, /);
     expect(listed()).toEqual(['Dinner', 'September ticket']);
     expect(screen.getByText('By category')).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Eating out: 35,00.€, 64.%$/)).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Transport: 20,00.€, 36.%$/)).toBeOnTheScreen();
+    await press(/^Spent, /);
+    expect(listed()).toEqual(['Dinner', 'Bonus', 'September ticket', 'August saving']);
   });
 
   it('Activity: it lists the pocket\'s entries of every month newest first, and nothing of the month or of other pockets', async () => {

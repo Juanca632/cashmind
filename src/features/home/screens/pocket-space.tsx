@@ -7,17 +7,23 @@ import { EntryList } from '@/features/entries/components/entry-list';
 import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
 import { categorySplit, entriesOfKind, mergeByDate, pocketBalances, pocketMoveLines, type Pocket } from '@/features/entries/rules';
+import { BalanceChart } from '@/features/home/components/balance-chart';
 import { SpaceSelector } from '@/features/home/components/space-selector';
+import { balanceSentence, pocketMonth } from '@/features/home/pocket-month';
+import { hapticTick } from '@/shared/haptics';
 import { useMoney } from '@/shared/hooks/use-money';
 import { useToday } from '@/shared/hooks/use-today';
+import { useTheme } from '@/shared/theme/use-theme';
 import type { EntryKind } from '@/shared/kinds';
+import { monthKey } from '@/shared/months';
 import { Layout, POCKET_COLORS, Size } from '@/shared/theme/theme';
 import { Card } from '@/shared/ui/card';
 import { DataError } from '@/shared/ui/data-error';
 import { HeroCard } from '@/shared/ui/hero-card';
 import { HeroFigure } from '@/shared/ui/hero-figure';
 import { IconButton } from '@/shared/ui/icon-button';
-import { KindTile } from '@/shared/ui/kind-tile';
+import { KIND_ICONS } from '@/shared/ui/kind-badge';
+import { Pill } from '@/shared/ui/pill';
 import { RoundAction } from '@/shared/ui/round-action';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -31,6 +37,7 @@ const EMPTY = 'Nothing saved in or spent from this pocket yet.';
  */
 export function PocketSpace({ pocket }: { pocket: Pocket }) {
   const money = useMoney();
+  const theme = useTheme();
   const today = useToday();
   const entries = usePocketEntries();
   const moves = useMoves();
@@ -54,7 +61,7 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
 
   const own = entries.data.filter((entry) => entry.pocketId === pocket.id);
   const ownMoves = pocketMoveLines(moves.data, pocket.id);
-  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own, moves.data);
+  const [{ cents, spentCents }] = pocketBalances([pocket], own, moves.data);
   const overdrawn = cents < 0;
   const tone = POCKET_COLORS[pocket.color];
   const detail = overdrawn
@@ -62,10 +69,17 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
     : pocket.startingCents > 0
       ? `Started with ${money.format(pocket.startingCents)}`
       : null;
-  // Moves show in the whole list; the Saved and Spent tiles stay savings and expenses (specs/028-move-money).
+  // Moves show in the whole list; the Spent pill stays expenses (specs/028-move-money).
   const listed = mergeByDate(entriesOfKind(own, selected), selected === null ? ownMoves : []);
   const split = selected === 'expense' ? categorySplit(own, 'expense') : [];
-  const toggle = (kind: EntryKind) => setSelected((current) => (current === kind ? null : kind));
+  const toggle = (kind: EntryKind) => {
+    hapticTick();
+    setSelected((current) => (current === kind ? null : kind));
+  };
+  // How the pocket moved this month, ending on today's balance (specs/029-pocket-balance-chart).
+  const thisMonth = pocketMonth(pocket, own, moves.data, today);
+  const sentence = balanceSentence(thisMonth.endCents - thisMonth.startCents, money.format);
+  const chartLabel = `Balance this month: from ${money.format(thisMonth.startCents)} on the 1st to ${money.format(thisMonth.endCents)} today. ${sentence}`;
 
   return (
     <ThemedView style={styles.screen}>
@@ -109,18 +123,29 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
 
         <View style={styles.section}>
           <ThemedText type="smallBold" themeColor="textSecondary">
-            Overview
+            This month
           </ThemedText>
-          <View style={styles.tiles}>
-            <KindTile kind="savings" title="Saved" value={money.formatCompact(savedCents)} detail="into it" selected={selected} onSelect={toggle} />
-            <KindTile kind="expense" title="Spent" value={money.formatCompact(spentCents)} detail="from it" selected={selected} onSelect={toggle} />
-          </View>
+          <Card>
+            <ThemedText type="smallBold">{sentence}</ThemedText>
+            <BalanceChart balance={thisMonth} month={monthKey(today)} accessibilityLabel={chartLabel} />
+          </Card>
         </View>
 
         <View style={styles.section}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {selected === 'savings' ? 'Saved' : selected === 'expense' ? 'Spent' : 'Activity'}
-          </ThemedText>
+          {/* What was ever spent from the pocket, as a filter: a trip's total, over every month. */}
+          <View style={styles.sectionTitle}>
+            <ThemedText type="smallBold" themeColor="textSecondary">
+              {selected === 'expense' ? 'Spent' : 'Activity'}
+            </ThemedText>
+            <Pill
+              label={`Spent ${money.formatCompact(spentCents)}`}
+              accessibilityLabel={`Spent, ${money.format(spentCents)}`}
+              icon={KIND_ICONS.expense}
+              selected={selected === 'expense'}
+              colors={{ fill: theme.kindTint.expense, ink: theme.kindInk.expense }}
+              onPress={() => toggle('expense')}
+            />
+          </View>
           {split.length > 0 ? <CategorySplit kind="expense" shares={split} /> : null}
           <Card style={styles.activity}>
             <EntryList
@@ -161,9 +186,10 @@ const styles = StyleSheet.create({
     gap: Layout.itemGap,
     minHeight: Size.pill,
   },
-  tiles: {
+  sectionTitle: {
+    alignItems: 'center',
     flexDirection: 'row',
-    gap: Layout.itemGap,
+    justifyContent: 'space-between',
   },
   activity: {
     gap: 0,

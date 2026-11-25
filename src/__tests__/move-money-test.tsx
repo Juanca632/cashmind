@@ -562,23 +562,20 @@ describe('Edge cases of moving money', () => {
     await expectLeftToSpend('1 300,00 €');
   });
 
-  it('Pocket tiles: Saved and Spent stay savings and expenses only; the move is in Activity and the balance', async () => {
+  it('Pocket Spent pill: it stays expenses only (no Saved tile); the move is in Activity and the balance', async () => {
     const saving = { date: '2026-11-02', kind: 'savings', amountCents: 20000, note: 'Bonus', pocketId: 1 } as const;
     const dinner = { date: '2026-11-04', kind: 'expense', amountCents: 5000, note: 'Dinner', category: 'eating_out', pocketId: 1 } as const;
     await startApp({ ...setup, pockets: [emergency], entries: [salary, rent, saving, dinner], moves: [toMain] });
     await showPocket('Emergency fund');
 
     await expectBalance('850,00 €'); // 1 000 + 200 - 50 - 300
-    expect(tile('Saved').getByText(exactText('200 €'))).toBeOnTheScreen();
-    expect(tile('Spent').getByText(exactText('50 €'))).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: exactText('Spent, 50,00 €') })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: TO_MAIN_ROW })).toBeOnTheScreen();
 
-    await press('Saved');
+    await press(/^Spent, /);
     expect(screen.queryByRole('button', { name: TO_MAIN_ROW })).not.toBeOnTheScreen();
-    await press('Saved');
-    await press('Spent');
-    expect(screen.queryByRole('button', { name: TO_MAIN_ROW })).not.toBeOnTheScreen();
-    await press('Spent');
+    await press(/^Spent, /);
     expect(screen.getByRole('button', { name: TO_MAIN_ROW })).toBeOnTheScreen();
   });
 
