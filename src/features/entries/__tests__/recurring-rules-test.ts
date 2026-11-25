@@ -36,8 +36,11 @@ describe('Recurring entries: validation (FR-007)', () => {
     expect(pocketErrorFor('pocket-missing')).toBe('Pick a pocket.');
   });
 
-  it('Income and expenses never have a pocket (FR-004)', () => {
-    expect(validateRecurring('expense', { ...rent, pocketId: 3 })).toEqual(['pocket-not-allowed']);
+  it('An expense may be paid from a pocket (026 FR-001)', () => {
+    expect(validateRecurring('expense', { ...rent, pocketId: 3 })).toEqual([]);
+  });
+
+  it('Income never has a pocket (FR-004)', () => {
     expect(validateRecurring('income', { category: 'salary', amountCents: 100, note: '', pocketId: 3 })).toEqual(['pocket-not-allowed']);
   });
 
@@ -53,24 +56,34 @@ describe('Review what repeats: Fixed costs total (US3 scenario 2)', () => {
   it('adds only the repeating expenses: 900,00 + 12,99 = 912,99, ignoring income', () => {
     expect(
       fixedCostsCents([
-        { kind: 'income', amountCents: 200000, active: true },
-        { kind: 'expense', amountCents: 90000, active: true },
-        { kind: 'expense', amountCents: 1299, active: true },
+        { kind: 'income', amountCents: 200000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 90000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
       ]),
     ).toBe(91299);
   });
 
   it('does not count savings', () => {
-    expect(fixedCostsCents([{ kind: 'savings', amountCents: 5000, active: true }])).toBe(0);
+    expect(fixedCostsCents([{ kind: 'savings', amountCents: 5000, active: true, pocketId: 1 }])).toBe(0);
   });
 
   it('does not count stopped items', () => {
     expect(
       fixedCostsCents([
-        { kind: 'expense', amountCents: 90000, active: false },
-        { kind: 'expense', amountCents: 1299, active: true },
+        { kind: 'expense', amountCents: 90000, active: false, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
       ]),
     ).toBe(1299);
+  });
+
+  it('leaves out expenses paid from a pocket (026 FR-003): 900,00 + 12,99 = 912,99', () => {
+    expect(
+      fixedCostsCents([
+        { kind: 'expense', amountCents: 90000, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 1299, active: true, pocketId: null },
+        { kind: 'expense', amountCents: 50000, active: true, pocketId: 2 },
+      ]),
+    ).toBe(91299);
   });
 
   it('is 0 with nothing repeating', () => {

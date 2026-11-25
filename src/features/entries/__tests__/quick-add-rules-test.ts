@@ -33,6 +33,24 @@ describe('quick add constants', () => {
   });
 });
 
+describe('026 Quick add only learns from expenses paid from the month', () => {
+  it('expenses paid from a pocket are not suggested, even when repeated', () => {
+    const fromPocket = [
+      exp('2026-11-03', 250, 'Ramen', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+      exp('2026-11-10', 250, 'Ramen', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+    ];
+    expect(quickAddSuggestions(fromPocket, today)).toEqual([]);
+  });
+
+  it('they do not add to the count of the same expense paid from the month', () => {
+    const mixed = [
+      exp('2026-11-03', 250, 'Café'),
+      exp('2026-11-10', 250, 'Café', 'eating_out', { pocketId: 1, pocketName: 'Japan trip' }),
+    ];
+    expect(quickAddSuggestions(mixed, today)).toEqual([]);
+  });
+});
+
 describe('US2 Which suggestions show', () => {
   it('Same thing: same note, category and amount count together; another amount, note or category is another suggestion', () => {
     const entries = [

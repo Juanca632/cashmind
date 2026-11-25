@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { CATEGORY_LABELS, isCategoryOf } from '@/features/entries/categories';
 import { useEntriesBetween } from '@/features/entries/hooks/use-entries-between';
-import { isEntryKind } from '@/features/entries/rules';
+import { countsInMonth, isEntryKind } from '@/features/entries/rules';
 import { TrendBars } from '@/features/home/components/trend-bars';
 import { averageSentence, monthsInUse, monthTotals, TREND_MONTHS, trendAverage } from '@/features/home/trends';
 import { useToday } from '@/shared/hooks/use-today';
@@ -38,8 +38,10 @@ export default function TrendCategoryScreen() {
   if (entries.status === 'error') return <DataError />;
   if (entries.status === 'loading') return <ThemedView style={styles.screen}>{title}</ThemedView>;
 
-  const totals = monthTotals(entries.data, months, kind, category);
-  const average = trendAverage(totals, monthsInUse(entries.data), currentMonth);
+  // Expenses paid from a pocket are not the month's money (specs/026-pocket-spending).
+  const counted = entries.data.filter(countsInMonth);
+  const totals = monthTotals(counted, months, kind, category);
+  const average = trendAverage(totals, monthsInUse(counted), currentMonth);
   const cents = totals.find((total) => total.month === selected)?.cents ?? 0;
 
   return (

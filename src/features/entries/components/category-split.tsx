@@ -12,13 +12,13 @@ import { Card } from '@/shared/ui/card';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 /** What one kind's month is made of, one line per category, largest first. */
-export function CategorySplit({ kind, shares }: { kind: EntryKind; shares: CategoryShare[] }) {
+export function CategorySplit({ kind, shares, title = 'By category' }: { kind: EntryKind; shares: CategoryShare[]; title?: string }) {
   const theme = useTheme();
   const money = useMoney();
   return (
     <Card>
       <ThemedText type="smallBold" themeColor="textSecondary">
-        By category
+        {title}
       </ThemedText>
       {shares.map((share) => {
         const label = CATEGORY_LABELS[share.category];

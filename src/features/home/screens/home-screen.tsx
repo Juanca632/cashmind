@@ -9,7 +9,7 @@ import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
-import { categorySplit, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
+import { categorySplit, countsInMonth, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
 import { addEntry, recordRecurringEntries } from '@/features/entries/service';
 import { SpendingPaceChart } from '@/features/home/components/spending-pace-chart';
 import { dailyAllowance, monthSummary, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
@@ -93,13 +93,15 @@ function HomeMonth({ today }: { today: Date }) {
   }
 
   const monthEntries = entries.data;
+  // Expenses paid from a pocket show in the list but count in no month figure (specs/026-pocket-spending).
+  const counted = monthEntries.filter(countsInMonth);
   const isPast = isPastMonth(month, currentMonth);
   const percent = savingsPercentFor(plan.data, month);
-  const summary = monthSummary(totalsByKind(monthEntries), percent);
+  const summary = monthSummary(totalsByKind(counted), percent);
   const hasIncome = summary.income > 0;
   const list = firstEntries(entriesOfKind(monthEntries, selected), HOME_LIST_SIZE);
   // Savings go into pockets, not categories (specs/025-pockets), so they have no split.
-  const split = selected && selected !== 'savings' ? categorySplit(monthEntries, selected) : [];
+  const split = selected && selected !== 'savings' ? categorySplit(counted, selected) : [];
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
@@ -196,7 +198,7 @@ function HomeMonth({ today }: { today: Date }) {
 
         {hasIncome ? (
           <SpendingPaceSection
-            pace={spendingPace(monthEntries, summary.income - Math.max(summary.goal, summary.saved), month, today)}
+            pace={spendingPace(counted, summary.income - Math.max(summary.goal, summary.saved), month, today)}
             month={month}
           />
         ) : null}

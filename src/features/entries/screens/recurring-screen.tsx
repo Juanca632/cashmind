@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
 import type { EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
+import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
 import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
@@ -89,6 +90,15 @@ function RecurringForm({ item }: { item: RecurringItem }) {
             <CategoryChoices kind={item.kind} value={category} onChange={setCategory} />
           )}
 
+          {item.kind === 'expense' && pockets.status === 'ready' && pockets.data.length > 0 ? (
+            <View style={styles.section}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                Paid from
+              </ThemedText>
+              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+            </View>
+          ) : null}
+
           <TextField
             label="Note (optional)"
             placeholder={NOTE_EXAMPLES[item.kind]}
@@ -120,6 +130,9 @@ const styles = StyleSheet.create({
   kind: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: Layout.itemGap,
+  },
+  section: {
     gap: Layout.itemGap,
   },
 });

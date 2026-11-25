@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { usePockets } from '@/features/entries/hooks/use-pockets';
-import { useSavingsEntries } from '@/features/entries/hooks/use-savings-entries';
+import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
 import { pocketBalances, pocketsTotal } from '@/features/entries/rules';
 import { useMoney } from '@/shared/hooks/use-money';
 import { Layout, Radius, Size } from '@/shared/theme/theme';
@@ -20,7 +20,7 @@ export default function PocketsScreen() {
   const theme = useTheme();
   const money = useMoney();
   const pockets = usePockets();
-  const savings = useSavingsEntries();
+  const savings = usePocketEntries();
   if (pockets.status === 'error' || savings.status === 'error') return <DataError />;
   if (pockets.status === 'loading' || savings.status === 'loading') return <ThemedView style={styles.screen} />;
 
@@ -49,7 +49,7 @@ export default function PocketsScreen() {
                   <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
                     {pocket.name}
                   </ThemedText>
-                  <ThemedText type="smallBold" style={{ color: theme.kindInk.savings }}>
+                  <ThemedText type="smallBold" style={{ color: cents < 0 ? theme.error : theme.kindInk.savings }}>
                     {balance}
                   </ThemedText>
                 </Pressable>

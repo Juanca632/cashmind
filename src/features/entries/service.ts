@@ -43,7 +43,7 @@ const REPEAT_CURRENT_MONTH_ONLY = 'Only entries of this month can repeat every m
 const POCKET_FAILED = 'The pocket could not be saved. Please try again.';
 const POCKET_DELETE_FAILED = 'The pocket could not be deleted. Please try again.';
 const POCKET_GONE = 'This pocket no longer exists.';
-const POCKET_IN_USE = "A pocket with savings can't be deleted.";
+const POCKET_IN_USE = "A pocket with savings or spending can't be deleted.";
 
 /** A saving's pocket must still exist; a pocket deleted meanwhile is as good as none. */
 async function rejectIfPocketGone(db: SQLiteDatabase, pocketId: number | null): Promise<WriteResult | null> {
