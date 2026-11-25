@@ -3,12 +3,17 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import {
   deleteEntry as removeRow,
+  deleteMove as removeMove,
   deletePocket as removePocket,
   getEntry,
+  getMove,
+  getMoves,
   getPocket,
+  getPocketEntries,
   getRecurringItem,
   getRecurringItemsToRecord,
   insertEntry,
+  insertMove,
   insertPocket,
   insertRecurring,
   linkEntryToRecurring,
@@ -16,19 +21,27 @@ import {
   pocketInUse,
   stopRecurring as stopRow,
   updateEntry,
+  updateMove,
   updatePocket,
   updateRecurring,
 } from '@/features/entries/repository';
 import {
   ENTRY_MISSING,
+  MOVE_MISSING,
+  MOVE_TOO_MUCH,
   POCKET_MISSING,
   RECURRING_MISSING,
   entryErrorMessage,
+  moveErrorMessage,
+  moveTooMuch,
+  pocketBalances,
   pocketErrorMessage,
   validateEntry,
+  validateMove,
   validatePocket,
   validateRecurring,
   type EntryInput,
+  type MoveInput,
   type PocketInput,
   type RecurringInput,
 } from '@/features/entries/rules';
@@ -43,7 +56,9 @@ const REPEAT_CURRENT_MONTH_ONLY = 'Only entries of this month can repeat every m
 const POCKET_FAILED = 'The pocket could not be saved. Please try again.';
 const POCKET_DELETE_FAILED = 'The pocket could not be deleted. Please try again.';
 const POCKET_GONE = 'This pocket no longer exists.';
-const POCKET_IN_USE = "A pocket with savings or spending can't be deleted.";
+const POCKET_IN_USE = "A pocket with savings, spending or moves can't be deleted.";
+const MOVE_FAILED = 'The move could not be saved. Please try again.';
+const MOVE_DELETE_FAILED = 'The move could not be deleted. Please try again.';
 
 /** A saving's pocket must still exist; a pocket deleted meanwhile is as good as none. */
 async function rejectIfPocketGone(db: SQLiteDatabase, pocketId: number | null): Promise<WriteResult | null> {
@@ -199,6 +214,53 @@ export function deletePocket(db: SQLiteDatabase, id: number): Promise<WriteResul
     if (!(await getPocket(db, id))) return rejected(POCKET_GONE);
     if (await pocketInUse(db, id)) return rejected(POCKET_IN_USE);
     await removePocket(db, id);
+    return WRITE_OK;
+  });
+}
+
+/**
+ * Why a move cannot be saved, or null: an invalid field, a pocket deleted meanwhile, or more than
+ * the From pocket holds. When editing, the move's own amount still counts as in the pocket.
+ */
+async function moveRefusal(db: SQLiteDatabase, input: MoveInput, today: Date, editedId: number | null): Promise<WriteResult | null> {
+  const [error] = validateMove(input, today);
+  if (error) return rejected(moveErrorMessage(error));
+  const from = await getPocket(db, input.fromPocketId);
+  if (!from || (input.toPocketId !== null && !(await getPocket(db, input.toPocketId)))) return rejected(POCKET_GONE);
+  const others = (await getMoves(db)).filter((move) => move.id !== editedId);
+  const [balance] = pocketBalances([from], await getPocketEntries(db), others);
+  return moveTooMuch(input.amountCents, balance.cents) ? rejected(MOVE_TOO_MUCH) : null;
+}
+
+/** Money out of a pocket, into Main or another pocket (specs/028-move-money). */
+export function addMove(db: SQLiteDatabase, input: MoveInput, today: Date): Promise<WriteResult> {
+  return attemptWrite(MOVE_FAILED, async () => {
+    // The balance is checked and the move written in one transaction, so nothing changes in between.
+    let refusal: WriteResult | null = null;
+    await db.withTransactionAsync(async () => {
+      refusal = await moveRefusal(db, input, today, null);
+      if (!refusal) await insertMove(db, { ...input, note: input.note.trim() });
+    });
+    return refusal ?? WRITE_OK;
+  });
+}
+
+export function editMove(db: SQLiteDatabase, id: number, input: MoveInput, today: Date): Promise<WriteResult> {
+  return attemptWrite(MOVE_FAILED, async () => {
+    if (!(await getMove(db, id))) return rejected(MOVE_MISSING);
+    let refusal: WriteResult | null = null;
+    await db.withTransactionAsync(async () => {
+      refusal = await moveRefusal(db, input, today, id);
+      if (!refusal) await updateMove(db, id, { ...input, note: input.note.trim() });
+    });
+    return refusal ?? WRITE_OK;
+  });
+}
+
+export function deleteMove(db: SQLiteDatabase, id: number): Promise<WriteResult> {
+  return attemptWrite(MOVE_DELETE_FAILED, async () => {
+    if (!(await getMove(db, id))) return rejected(MOVE_MISSING);
+    await removeMove(db, id);
     return WRITE_OK;
   });
 }

@@ -561,7 +561,7 @@ describe('See and manage a pocket', () => {
     await press('Edit Japan trip');
 
     expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings or spending can't be deleted. You can rename it.")).toBeOnTheScreen();
+    expect(screen.getByText("A pocket with savings, spending or moves can't be deleted. You can rename it.")).toBeOnTheScreen();
     await type('Name', 'Tokyo');
     await press('Save changes');
     expect(screen.getByRole('button', { name: 'Space: Tokyo, change' })).toBeOnTheScreen();
@@ -578,7 +578,7 @@ describe('See and manage a pocket', () => {
     await press('Edit Car');
 
     expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings or spending can't be deleted. You can rename it.")).toBeOnTheScreen();
+    expect(screen.getByText("A pocket with savings, spending or moves can't be deleted. You can rename it.")).toBeOnTheScreen();
   });
 
   it('A new pocket form has no delete button', async () => {

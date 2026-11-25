@@ -10,12 +10,16 @@ type PocketChoicesProps = {
   pockets: readonly Pocket[];
   value: number | null;
   onChange: (pocketId: number) => void;
+  /** Offers "New pocket" after the pockets; the move form leaves it out. */
+  allowNew?: boolean;
+  /** The radio group's name. */
+  label?: string;
 };
 
 /** Where a saving goes: one of the user's pockets, or a new one (specs/025-pockets). */
-export function PocketChoices({ pockets, value, onChange }: PocketChoicesProps) {
+export function PocketChoices({ pockets, value, onChange, allowNew = true, label = 'Pocket' }: PocketChoicesProps) {
   return (
-    <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel="Pocket">
+    <View style={styles.pills} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {pockets.map((pocket) => (
         <Pill
           key={pocket.id}
@@ -32,7 +36,7 @@ export function PocketChoices({ pockets, value, onChange }: PocketChoicesProps) 
           }}
         />
       ))}
-      <Pill label="New pocket" icon="plus" onPress={() => router.push('/pocket-edit')} />
+      {allowNew ? <Pill label="New pocket" icon="plus" onPress={() => router.push('/pocket-edit')} /> : null}
     </View>
   );
 }

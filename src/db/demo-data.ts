@@ -137,7 +137,7 @@ const POCKETS: [category: string, name: string, startingCents: number, emoji: st
  */
 export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM entry; DELETE FROM recurring; DELETE FROM pocket; DELETE FROM plan_version;');
+    await db.execAsync('DELETE FROM move; DELETE FROM entry; DELETE FROM recurring; DELETE FROM pocket; DELETE FROM plan_version;');
 
     // Savings go into pockets (specs/025-pockets); the emergency fund started before the app.
     const pocketIds = new Map<string, number>();
@@ -196,5 +196,14 @@ export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<voi
         );
       }
     }
+
+    // Last month the car needed a repair the month could not cover (specs/028-move-money).
+    await db.runAsync(
+      'INSERT INTO move (date, amount_cents, note, from_pocket_id, to_pocket_id) VALUES (?, ?, ?, ?, NULL)',
+      `${monthAt(today, -1)}-20`,
+      15000,
+      'Car repair',
+      pocketIds.get('emergency_fund') ?? null,
+    );
   });
 }

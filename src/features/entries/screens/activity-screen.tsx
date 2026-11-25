@@ -2,10 +2,21 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, type ListRenderItem } from 'react-native';
 
-import { EntryRow } from '@/features/entries/components/entry-list';
+import { ListRow, listItemKey } from '@/features/entries/components/entry-list';
 import { KindFilter } from '@/features/entries/components/kind-filter';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
-import { countsInMonth, EMPTY_KIND_TEXTS, entriesOfKind, isEntryKind, type Entry } from '@/features/entries/rules';
+import { useMoves } from '@/features/entries/hooks/use-moves';
+import {
+  countsInMonth,
+  EMPTY_KIND_TEXTS,
+  entriesOfKind,
+  isEntryKind,
+  mainMoveLines,
+  mergeByDate,
+  type Entry,
+  type ListItem,
+  type MoveLine,
+} from '@/features/entries/rules';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
 import { formatMonth, isValidMonthKey, monthKey } from '@/shared/months';
@@ -26,24 +37,28 @@ export default function ActivityScreen() {
   const month = isValidMonthKey(params.month) && params.month <= currentMonth ? params.month : currentMonth;
   const [kind, setKind] = useState<EntryKind | null>(isEntryKind(params.kind) ? params.kind : null);
   const entries = useMonthEntries(month);
+  const moves = useMoves();
 
   const openEntry = useCallback((entry: Entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } }), []);
-  const renderItem = useCallback<ListRenderItem<Entry>>(
-    ({ item }) => <EntryRow entry={item} today={today} onPress={openEntry} />,
-    [today, openEntry],
+  const openMove = useCallback((line: MoveLine) => router.push({ pathname: '/move', params: { id: String(line.move.id) } }), []);
+  const renderItem = useCallback<ListRenderItem<ListItem>>(
+    ({ item }) => <ListRow item={item} today={today} onPress={openEntry} onPressMove={openMove} />,
+    [today, openEntry, openMove],
   );
 
   const title = <Stack.Screen options={{ title: `Activity · ${formatMonth(month)}` }} />;
-  if (entries.status === 'error') return <DataError />;
-  if (entries.status === 'loading') return <ThemedView style={styles.screen}>{title}</ThemedView>;
+  if (entries.status === 'error' || moves.status === 'error') return <DataError />;
+  if (entries.status === 'loading' || moves.status === 'loading') return <ThemedView style={styles.screen}>{title}</ThemedView>;
+  // Money moved into Main shows in the whole list, not when one kind is picked (specs/028-move-money).
+  const lines = kind === null ? mainMoveLines(moves.data, month) : [];
 
   return (
     <ThemedView style={styles.screen}>
       {title}
       <FlatList
         // Expenses paid from a pocket show only in their pocket (specs/026-pocket-spending).
-        data={entriesOfKind(entries.data.filter(countsInMonth), kind)}
-        keyExtractor={keyOf}
+        data={mergeByDate(entriesOfKind(entries.data.filter(countsInMonth), kind), lines)}
+        keyExtractor={listItemKey}
         renderItem={renderItem}
         ListHeaderComponent={<KindFilter value={kind} onChange={setKind} />}
         ListHeaderComponentStyle={styles.header}
@@ -57,10 +72,6 @@ export default function ActivityScreen() {
       <EdgeFades />
     </ThemedView>
   );
-}
-
-function keyOf(entry: Entry): string {
-  return String(entry.id);
 }
 
 const styles = StyleSheet.create({

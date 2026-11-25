@@ -48,7 +48,7 @@ describe('Pocket balance (FR-002, SC-003)', () => {
   const saving = (pocketId: number | null, amountCents: number, kind: 'savings' | 'expense' = 'savings') => ({ kind, pocketId, amountCents });
 
   it('is the starting amount plus every saving in the pocket: 1.500,00 + 200,00 = 1.700,00', () => {
-    expect(pocketBalances([japan], [saving(1, 20000)])).toEqual([{ pocket: japan, cents: 170000, savedCents: 20000, spentCents: 0 }]);
+    expect(pocketBalances([japan], [saving(1, 20000)])).toEqual([{ pocket: japan, cents: 170000, savedCents: 20000, spentCents: 0, movedOutCents: 0, movedInCents: 0 }]);
   });
 
   it('with no savings it is the starting amount, and 0 when there is none', () => {
@@ -65,7 +65,7 @@ describe('Pocket balance (FR-002, SC-003)', () => {
 
   it('expenses paid from the pocket are subtracted: 1.700,00 - 35,00 = 1.665,00 (026 US1)', () => {
     const [b] = pocketBalances([japan], [saving(1, 20000), saving(1, 3500, 'expense')]);
-    expect(b).toEqual({ pocket: japan, cents: 166500, savedCents: 20000, spentCents: 3500 });
+    expect(b).toEqual({ pocket: japan, cents: 166500, savedCents: 20000, spentCents: 3500, movedOutCents: 0, movedInCents: 0 });
   });
 
   it('an expense only lowers its own pocket; one paid from the month touches none', () => {

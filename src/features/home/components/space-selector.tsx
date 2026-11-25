@@ -5,9 +5,10 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
-import { countsInMonth, pocketBalances, pocketsTotal, totalsByKind, type Pocket } from '@/features/entries/rules';
+import { countsInMonth, MAIN_NAME, movedIntoMain, pocketBalances, pocketsTotal, totalsByKind, type Pocket } from '@/features/entries/rules';
 import { monthSummary } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
@@ -25,8 +26,6 @@ type SpaceSelectorProps = {
   pocket: Pocket | null;
 };
 
-/** What the month's space is called, as Revolut calls its main account. */
-export const MAIN_SPACE = 'Main';
 
 /**
  * The pill centred under home's hero card that names the space on screen ("Main" or a pocket) and
@@ -40,10 +39,10 @@ export function SpaceSelector({ pocket }: SpaceSelectorProps) {
       {/* The same pill as My plan; the mark holds the emoji, so the name goes alone. */}
       <View style={styles.centred}>
         <Pill
-          label={pocket ? pocket.name : MAIN_SPACE}
+          label={pocket ? pocket.name : MAIN_NAME}
           mark={<SpaceDot pocket={pocket} size="small" />}
           trailingIcon="chevron-down"
-          accessibilityLabel={`Space: ${pocket ? pocket.name : MAIN_SPACE}, change`}
+          accessibilityLabel={`Space: ${pocket ? pocket.name : MAIN_NAME}, change`}
           onPress={() => setOpen(true)}
         />
       </View>
@@ -77,14 +76,17 @@ function SpacesSheet({ current, onClose }: { current: number | null; onClose: ()
   const month = monthKey(new Date());
   const pockets = usePockets();
   const pocketEntries = usePocketEntries();
+  const moves = useMoves();
   const monthEntries = useMonthEntries(month);
   const plan = usePlanVersions();
 
   const balances =
-    pockets.status === 'ready' && pocketEntries.status === 'ready' ? pocketBalances(pockets.data, pocketEntries.data) : [];
+    pockets.status === 'ready' && pocketEntries.status === 'ready' && moves.status === 'ready'
+      ? pocketBalances(pockets.data, pocketEntries.data, moves.data)
+      : [];
   const summary =
-    monthEntries.status === 'ready' && plan.status === 'ready'
-      ? monthSummary(totalsByKind(monthEntries.data.filter(countsInMonth)), savingsPercentFor(plan.data, month))
+    monthEntries.status === 'ready' && plan.status === 'ready' && moves.status === 'ready'
+      ? monthSummary(totalsByKind(monthEntries.data.filter(countsInMonth)), savingsPercentFor(plan.data, month), movedIntoMain(moves.data, month))
       : null;
 
   function pick(pocketId: number | null) {
@@ -107,7 +109,7 @@ function SpacesSheet({ current, onClose }: { current: number | null; onClose: ()
           <ScrollView contentContainerStyle={styles.rows} accessibilityRole="radiogroup">
             <SpaceRow
               pocket={null}
-              name={MAIN_SPACE}
+              name={MAIN_NAME}
               figure={summary && summary.income > 0 ? money.format(summary.left) : null}
               negative={summary !== null && summary.income > 0 && summary.left < 0}
               selected={current === null}

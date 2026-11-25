@@ -298,4 +298,44 @@ export const MIGRATIONS: readonly Migration[] = [
           WHEN 4 THEN 'orange' WHEN 5 THEN 'amber' WHEN 6 THEN 'green' ELSE 'slate' END;
       `),
   },
+  {
+    // Money moved out of a pocket, into Main (to_pocket_id NULL) or another pocket (specs/028-move-money).
+    // Only adds a table.
+    version: 11,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE move (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          from_pocket_id INTEGER NOT NULL REFERENCES pocket(id),
+          to_pocket_id INTEGER REFERENCES pocket(id),
+          note TEXT NOT NULL DEFAULT '',
+          CHECK (to_pocket_id IS NULL OR to_pocket_id <> from_pocket_id)
+        ) STRICT;
+      `),
+  },
+  {
+    // Each move records when it was made, to order it among the entries of its day like an entry's
+    // created_at (specs/028-move-money). SQLite cannot add a column whose default is the current
+    // time, so the table is rebuilt with every move kept; moves made before take this moment.
+    version: 12,
+    up: (db) =>
+      db.execAsync(`
+        CREATE TABLE move_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+          amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+          from_pocket_id INTEGER NOT NULL REFERENCES pocket(id),
+          to_pocket_id INTEGER REFERENCES pocket(id),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          CHECK (to_pocket_id IS NULL OR to_pocket_id <> from_pocket_id)
+        ) STRICT;
+        INSERT INTO move_new (id, date, amount_cents, from_pocket_id, to_pocket_id, note)
+          SELECT id, date, amount_cents, from_pocket_id, to_pocket_id, note FROM move;
+        DROP TABLE move;
+        ALTER TABLE move_new RENAME TO move;
+      `),
+  },
 ];

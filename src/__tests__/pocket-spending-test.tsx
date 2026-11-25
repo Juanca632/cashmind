@@ -365,7 +365,7 @@ describe('Edge cases of spending from a pocket', () => {
     await press('Edit Car');
 
     expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings or spending can't be deleted. You can rename it.")).toBeOnTheScreen();
+    expect(screen.getByText("A pocket with savings, spending or moves can't be deleted. You can rename it.")).toBeOnTheScreen();
   });
 
   it('Deleting an expense paid from a pocket gives its money back to the pocket', async () => {

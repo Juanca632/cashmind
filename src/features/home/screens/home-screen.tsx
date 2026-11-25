@@ -6,8 +6,21 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
+import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePreviousIncome } from '@/features/entries/hooks/use-previous-income';
-import { categorySplit, countsInMonth, defaultEntryDate, EMPTY_KIND_TEXTS, entriesOfKind, firstEntries, HOME_LIST_SIZE, totalsByKind } from '@/features/entries/rules';
+import {
+  categorySplit,
+  countsInMonth,
+  defaultEntryDate,
+  EMPTY_KIND_TEXTS,
+  entriesOfKind,
+  firstEntries,
+  HOME_LIST_SIZE,
+  mainMoveLines,
+  mergeByDate,
+  movedIntoMain,
+  totalsByKind,
+} from '@/features/entries/rules';
 import { addEntry, recordRecurringEntries } from '@/features/entries/service';
 import { usePocket } from '@/features/entries/hooks/use-pocket';
 import { SpaceSelector } from '@/features/home/components/space-selector';
@@ -93,6 +106,7 @@ function HomeMonth({ today }: { today: Date }) {
   const [refresh, setRefresh] = useState(0);
   const entries = useMonthEntries(month, refresh);
   const previousIncome = usePreviousIncome(month, refresh);
+  const moves = useMoves();
   // Which kind of entry the list is showing; null shows all of them.
   const [selected, setSelected] = useState<EntryKind | null>(null);
   // A repeat is tied to the month and its income as loaded: once the reload shows the new income
@@ -103,8 +117,10 @@ function HomeMonth({ today }: { today: Date }) {
   const repeatedFor = useRef<string | null>(null);
   const [repeatedKey, setRepeatedKey] = useState<string | null>(null);
 
-  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error') return <DataError topInset />;
-  if (plan.status === 'loading' || entries.status === 'loading' || previousIncome.status === 'loading') {
+  if (plan.status === 'error' || entries.status === 'error' || previousIncome.status === 'error' || moves.status === 'error') {
+    return <DataError topInset />;
+  }
+  if (plan.status === 'loading' || entries.status === 'loading' || previousIncome.status === 'loading' || moves.status === 'loading') {
     return <ThemedView style={styles.screen} />;
   }
 
@@ -114,9 +130,13 @@ function HomeMonth({ today }: { today: Date }) {
   const counted = monthEntries.filter(countsInMonth);
   const isPast = isPastMonth(month, currentMonth);
   const percent = savingsPercentFor(plan.data, month);
-  const summary = monthSummary(totalsByKind(counted), percent);
+  // Money moved out of pockets into Main adds to left to spend (specs/028-move-money).
+  const movedIn = movedIntoMain(moves.data, month);
+  const summary = monthSummary(totalsByKind(counted), percent, movedIn);
   const hasIncome = summary.income > 0;
-  const list = firstEntries(entriesOfKind(counted, selected), HOME_LIST_SIZE);
+  // Moves into Main show in the whole list only, not when one kind is picked.
+  const lines = selected === null ? mainMoveLines(moves.data, month) : [];
+  const list = firstEntries(mergeByDate(entriesOfKind(counted, selected), lines), HOME_LIST_SIZE);
   // Savings go into pockets, not categories (specs/025-pockets), so they have no split.
   const split = selected && selected !== 'savings' ? categorySplit(counted, selected) : [];
 
@@ -215,7 +235,7 @@ function HomeMonth({ today }: { today: Date }) {
 
         {hasIncome ? (
           <SpendingPaceSection
-            pace={spendingPace(counted, summary.income - Math.max(summary.goal, summary.saved), month, today)}
+            pace={spendingPace(counted, summary.income + movedIn - Math.max(summary.goal, summary.saved), month, today)}
             month={month}
           />
         ) : null}
@@ -238,10 +258,11 @@ function HomeMonth({ today }: { today: Date }) {
           {selected && split.length > 0 ? <CategorySplit kind={selected} shares={split} /> : null}
           <Card style={styles.activity}>
             <EntryList
-              entries={list.shown}
+              items={list.shown}
               today={today}
               emptyText={emptyListText(selected, isPast)}
               onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
+              onPressMove={(line) => router.push({ pathname: '/move', params: { id: String(line.move.id) } })}
             />
           </Card>
           {list.total > HOME_LIST_SIZE ? (

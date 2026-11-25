@@ -59,6 +59,7 @@ export default function RootLayout() {
                 <Stack.Screen name="trend-category" options={{ title: 'Category' }} />
                 <Stack.Screen name="settings" options={{ title: 'Settings' }} />
                 <Stack.Screen name="pocket-edit" options={{ title: 'Pocket' }} />
+                <Stack.Screen name="move" options={{ title: 'Move money' }} />
               </Stack>
             </AppLock>
           </CurrencyProvider>

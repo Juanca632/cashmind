@@ -4,20 +4,21 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 
 import { CategorySplit } from '@/features/entries/components/category-split';
 import { EntryList } from '@/features/entries/components/entry-list';
+import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
-import { categorySplit, entriesOfKind, pocketBalances, type Pocket } from '@/features/entries/rules';
+import { categorySplit, entriesOfKind, mergeByDate, pocketBalances, pocketMoveLines, type Pocket } from '@/features/entries/rules';
 import { SpaceSelector } from '@/features/home/components/space-selector';
 import { useMoney } from '@/shared/hooks/use-money';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
 import { Layout, POCKET_COLORS, Size } from '@/shared/theme/theme';
-import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { DataError } from '@/shared/ui/data-error';
 import { HeroCard } from '@/shared/ui/hero-card';
 import { HeroFigure } from '@/shared/ui/hero-figure';
 import { IconButton } from '@/shared/ui/icon-button';
 import { KindTile } from '@/shared/ui/kind-tile';
+import { RoundAction } from '@/shared/ui/round-action';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
@@ -32,6 +33,7 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
   const money = useMoney();
   const today = useToday();
   const entries = usePocketEntries();
+  const moves = useMoves();
   // Which kind the list shows; null shows both.
   const [selected, setSelected] = useState<EntryKind | null>(null);
 
@@ -47,18 +49,21 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
     }, []),
   );
 
-  if (entries.status === 'error') return <DataError topInset />;
-  if (entries.status === 'loading') return <ThemedView style={styles.screen} />;
+  if (entries.status === 'error' || moves.status === 'error') return <DataError topInset />;
+  if (entries.status === 'loading' || moves.status === 'loading') return <ThemedView style={styles.screen} />;
 
   const own = entries.data.filter((entry) => entry.pocketId === pocket.id);
-  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own);
+  const ownMoves = pocketMoveLines(moves.data, pocket.id);
+  const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own, moves.data);
   const overdrawn = cents < 0;
+  const tone = POCKET_COLORS[pocket.color];
   const detail = overdrawn
     ? `This pocket is ${money.format(-cents)} short.`
     : pocket.startingCents > 0
       ? `Started with ${money.format(pocket.startingCents)}`
       : null;
-  const listed = entriesOfKind(own, selected);
+  // Moves show in the whole list; the Saved and Spent tiles stay savings and expenses (specs/028-move-money).
+  const listed = mergeByDate(entriesOfKind(own, selected), selected === null ? ownMoves : []);
   const split = selected === 'expense' ? categorySplit(own, 'expense') : [];
   const toggle = (kind: EntryKind) => setSelected((current) => (current === kind ? null : kind));
 
@@ -76,25 +81,29 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
           </View>
         </View>
 
-        <HeroCard overspent={overdrawn} tone={POCKET_COLORS[pocket.color]}>
+        <HeroCard overspent={overdrawn} tone={tone}>
           <HeroFigure label="Balance" cents={cents} countKey={`pocket:${pocket.id}`} detail={detail} />
         </HeroCard>
         <SpaceSelector pocket={pocket} />
 
+        {/* Neutral round actions, as banking apps put them under a balance. */}
         <View style={styles.actions}>
-          <Button
-            label="Save into"
+          <RoundAction
+            label="Save"
+            accessibilityLabel="Save into"
             icon="plus"
-            variant="secondary"
-            stretch
             onPress={() => router.push({ pathname: '/entry', params: { kind: 'savings', pocket: String(pocket.id) } })}
           />
-          <Button
-            label="Spend from"
+          <RoundAction
+            label="Spend"
+            accessibilityLabel="Spend from"
             icon="minus"
-            variant="secondary"
-            stretch
             onPress={() => router.push({ pathname: '/entry', params: { kind: 'expense', pocket: String(pocket.id) } })}
+          />
+          <RoundAction
+            label="Move"
+            icon="shuffle"
+            onPress={() => router.push({ pathname: '/move', params: { from: String(pocket.id) } })}
           />
         </View>
 
@@ -115,10 +124,11 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
           {split.length > 0 ? <CategorySplit kind="expense" shares={split} /> : null}
           <Card style={styles.activity}>
             <EntryList
-              entries={listed}
+              items={listed}
               today={today}
               emptyText={EMPTY}
               onPress={(entry) => router.push({ pathname: '/entry', params: { id: String(entry.id) } })}
+              onPressMove={(line) => router.push({ pathname: '/move', params: { id: String(line.move.id) } })}
             />
           </Card>
         </View>
@@ -145,7 +155,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: Layout.itemGap,
+    justifyContent: 'space-evenly',
   },
   section: {
     gap: Layout.itemGap,

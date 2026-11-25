@@ -15,12 +15,14 @@ export type MonthSummary = {
 
 /**
  * One rule for every month: the goal is the percentage of the income, and left to spend is the
- * income minus what was spent and minus the larger of the goal and what was saved.
+ * income plus what was moved into Main from pockets, minus what was spent and minus the larger of
+ * the goal and what was saved. Moved money is neither income nor savings, so the goal does not
+ * change (specs/028-move-money).
  */
-export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number): MonthSummary {
+export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number, movedInCents = 0): MonthSummary {
   const { income, savings: saved, expense: spent } = totals;
   const goal = savingsGoal(income, savingsPercent);
-  return { income, saved, spent, goal, left: income - spent - Math.max(goal, saved) };
+  return { income, saved, spent, goal, left: income + movedInCents - spent - Math.max(goal, saved) };
 }
 
 /** What can be spent each remaining day of the current month, today included. */

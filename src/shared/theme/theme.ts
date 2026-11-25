@@ -201,6 +201,8 @@ export const Size = {
   hero: 168,
   /** The round icon badge of a list row. */
   badge: 40,
+  /** A round action under a balance (Save, Spend, Move). */
+  roundAction: 48,
   /** A small round mark inside a pill, such as a space's colour and emoji. */
   pillMark: 28,
   /** The savings goal progress bar. */

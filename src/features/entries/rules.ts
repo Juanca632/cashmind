@@ -23,9 +23,11 @@ export type Entry = {
   /** That pocket's name and emoji, read with the entry; null when there is no pocket. */
   pocketName: string | null;
   pocketEmoji: string | null;
+  /** When it was recorded ('YYYY-MM-DD HH:MM:SS'), to order it among the rows of its day; read only. */
+  createdAt?: string;
 };
 
-export type EntryInput = Omit<Entry, 'id' | 'recurringId' | 'pocketName' | 'pocketEmoji'>;
+export type EntryInput = Omit<Entry, 'id' | 'recurringId' | 'pocketName' | 'pocketEmoji' | 'createdAt'>;
 
 /** An entry that is recorded again on the 1st of every new month until it is stopped. */
 export type RecurringItem = {
@@ -290,13 +292,24 @@ export function pocketLabel(pocket: { name: string; emoji: string | null }): str
   return pocket.emoji ? `${pocket.emoji} ${pocket.name}` : pocket.name;
 }
 
-/** What a pocket holds: `cents` = starting + saved − spent, which may be below zero. */
-export type PocketBalance = { pocket: Pocket; cents: number; savedCents: number; spentCents: number };
+/**
+ * What a pocket holds: `cents` = starting + saved − spent − moved out + moved in, which may be below
+ * zero (specs/028-move-money).
+ */
+export type PocketBalance = {
+  pocket: Pocket;
+  cents: number;
+  savedCents: number;
+  spentCents: number;
+  movedOutCents: number;
+  movedInCents: number;
+};
 
-/** Each pocket's balance from its starting amount, its savings and the expenses paid from it, in the pockets' order. */
+/** Each pocket's balance from its starting amount, savings, expenses paid from it and moves, in the pockets' order. */
 export function pocketBalances(
   pockets: readonly Pocket[],
   entries: readonly Pick<Entry, 'kind' | 'pocketId' | 'amountCents'>[],
+  moves: readonly Pick<Move, 'fromPocketId' | 'toPocketId' | 'amountCents'>[] = [],
 ): PocketBalance[] {
   return pockets.map((pocket) => {
     let savedCents = 0;
@@ -306,10 +319,133 @@ export function pocketBalances(
       if (entry.kind === 'savings') savedCents += entry.amountCents;
       else if (entry.kind === 'expense') spentCents += entry.amountCents;
     }
-    return { pocket, cents: pocket.startingCents + savedCents - spentCents, savedCents, spentCents };
+    let movedOutCents = 0;
+    let movedInCents = 0;
+    for (const move of moves) {
+      if (move.fromPocketId === pocket.id) movedOutCents += move.amountCents;
+      if (move.toPocketId === pocket.id) movedInCents += move.amountCents;
+    }
+    const cents = pocket.startingCents + savedCents - spentCents - movedOutCents + movedInCents;
+    return { pocket, cents, savedCents, spentCents, movedOutCents, movedInCents };
   });
 }
 
 export function pocketsTotal(balances: readonly PocketBalance[]): number {
   return balances.reduce((sum, balance) => sum + balance.cents, 0);
+}
+
+/**
+ * Money taken out of a pocket, into Main (`toPocketId` null) or into another pocket
+ * (specs/028-move-money). The pockets' names and emojis are read with it.
+ */
+export type Move = {
+  id: number;
+  date: string;
+  amountCents: number;
+  note: string;
+  fromPocketId: number;
+  fromName: string;
+  fromEmoji: string;
+  toPocketId: number | null;
+  toName: string | null;
+  toEmoji: string | null;
+  /** When it was recorded, to order it among the entries of its day. */
+  createdAt?: string;
+};
+
+export type MoveInput = Pick<Move, 'date' | 'amountCents' | 'note' | 'fromPocketId' | 'toPocketId'>;
+
+export type MoveError = 'amount-not-positive' | 'amount-too-large' | 'date-invalid' | 'move-same-pocket';
+
+export const MOVE_MISSING = 'This move no longer exists.';
+export const MOVE_TOO_MUCH = 'There is not that much in this pocket.';
+
+export function validateMove(input: MoveInput, today: Date): MoveError[] {
+  const errors: MoveError[] = [];
+  if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
+  else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
+  if (!isValidDayKey(input.date) || input.date > dayKey(today)) errors.push('date-invalid');
+  if (input.toPocketId === input.fromPocketId) errors.push('move-same-pocket');
+  return errors;
+}
+
+export function moveErrorMessage(error: MoveError): string {
+  switch (error) {
+    case 'amount-not-positive':
+      return 'The amount must be greater than 0.';
+    case 'amount-too-large':
+      return AMOUNT_TOO_LARGE;
+    case 'date-invalid':
+      return 'Pick a date that is not in the future.';
+    case 'move-same-pocket':
+      return 'Pick another place to move it to.';
+  }
+}
+
+/** Money that is not in the pocket cannot be moved (unlike spending, which really happened). */
+export function moveTooMuch(amountCents: number, balanceCents: number): boolean {
+  return amountCents > balanceCents;
+}
+
+/** What the moves of a month added to Main: it counts in that month's left to spend. */
+export function movedIntoMain(moves: readonly Pick<Move, 'date' | 'toPocketId' | 'amountCents'>[], month: string): number {
+  return moves.reduce((sum, move) => (move.toPocketId === null && move.date.slice(0, 7) === month ? sum + move.amountCents : sum), 0);
+}
+
+/** A move as one side sees it: +1 where it arrives, -1 where it leaves. */
+export type MoveLine = { move: Move; sign: 1 | -1 };
+
+/** One row of a list: an entry or a move. */
+export type ListItem = { type: 'entry'; entry: Entry } | ({ type: 'move' } & MoveLine);
+
+/**
+ * Entries and moves in one list, newest first: by day, then by when each was recorded, so a move
+ * made after an expense of the same day lists above it. On a tie the entry goes first. Both lists
+ * come newest first and each keeps its own order.
+ */
+export function mergeByDate(entries: readonly Entry[], lines: readonly MoveLine[]): ListItem[] {
+  const items: ListItem[] = [];
+  let e = 0;
+  let m = 0;
+  while (e < entries.length || m < lines.length) {
+    if (m >= lines.length || (e < entries.length && !isNewer(lines[m].move, entries[e]))) {
+      items.push({ type: 'entry', entry: entries[e] });
+      e += 1;
+    } else {
+      items.push({ type: 'move', ...lines[m] });
+      m += 1;
+    }
+  }
+  return items;
+}
+
+/** True when the move goes above the entry: a later day, or the same day recorded later. */
+function isNewer(move: Pick<Move, 'date' | 'createdAt'>, entry: Pick<Entry, 'date' | 'createdAt'>): boolean {
+  if (move.date !== entry.date) return move.date > entry.date;
+  return (move.createdAt ?? '') > (entry.createdAt ?? '');
+}
+
+/** What a move's row is called: its note, else where it went ("To Main") or came from ("From Car"). */
+export function moveTitle(move: Move, sign: 1 | -1): string {
+  if (move.note) return move.note;
+  if (sign === -1) return `To ${move.toPocketId === null ? MAIN_NAME : pocketLabel({ name: move.toName ?? '', emoji: move.toEmoji })}`;
+  return `From ${pocketLabel({ name: move.fromName, emoji: move.fromEmoji })}`;
+}
+
+/** What the month's money is called, as Revolut calls its main account (specs/027-spaces). */
+export const MAIN_NAME = 'Main';
+
+/** The moves a pocket sees: out of it (-1) and into it (+1), in the moves' order. */
+export function pocketMoveLines(moves: readonly Move[], pocketId: number): MoveLine[] {
+  const lines: MoveLine[] = [];
+  for (const move of moves) {
+    if (move.fromPocketId === pocketId) lines.push({ move, sign: -1 });
+    else if (move.toPocketId === pocketId) lines.push({ move, sign: 1 });
+  }
+  return lines;
+}
+
+/** The moves into Main dated in a month, as Main's list shows them. */
+export function mainMoveLines(moves: readonly Move[], month: string): MoveLine[] {
+  return moves.filter((move) => move.toPocketId === null && move.date.slice(0, 7) === month).map((move) => ({ move, sign: 1 }));
 }
