@@ -89,7 +89,7 @@ CREATE TABLE move (
   - the title from `moveTitle` and the day;
   - a signed amount, `+` in the income ink and `-` in the text colour.
 - **Pocket space**:
-  - a third `Button` "Move" (`shuffle`) pushes `/move?from=<id>`;
+  - the actions become three `RoundAction`s (new shared component in `src/shared/ui/round-action.tsx`: a `Size.roundAction` (48) circle on `backgroundElement` with a `text` icon, raised, and a short name under it): Save (`plus`), Spend (`minus`) and Move (`shuffle`, pushing `/move?from=<id>`);
   - the balance uses moves;
   - the unfiltered list merges the pocket's moves (out = −1, in = +1).
 - **Home (Main)**:

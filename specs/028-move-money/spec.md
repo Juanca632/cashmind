@@ -20,7 +20,7 @@ The car breaks down and the month's money is not enough. The user has an emergen
 
 **Acceptance Scenarios**:
 
-1. *Opening*: **Given** home shows "Emergency fund" holding 1 000,00 €, **Then** under the hero there are three actions: "Save into", "Spend from" and "Move"; **When** the user taps "Move", **Then** the move form opens titled "Move money", with From set to "Emergency fund" and To set to "Main"
+1. *Opening*: **Given** home shows "Emergency fund" holding 1 000,00 €, **Then** under the selector there are three neutral round actions (the app's light surface, not the pocket's colour), with an icon and a short name under each, as banking apps put them under a balance: "Save" (read as "Save into"), "Spend" (read as "Spend from") and "Move"; **When** the user taps "Move", **Then** the move form opens titled "Move money", with From set to "Emergency fund" and To set to "Main"
 2. *Moved*: **When** they type 300,00 and save, **Then** home shows "Emergency fund" at 700,00 €, **And** its activity lists the move as "To Main" with "-300,00 €"
 3. *More left to spend*: **Given** this month has an income of 2 000,00 €, 1 800,00 € spent and a goal of 0, **Then** after the move Main's left to spend is 500,00 € instead of 200,00 €, **And** the daily budget and the spending pace follow it
 4. *Not income, not savings*: **Then** Main's Income tile, Saved tile, the savings goal, My plan and Trends are the same as before the move

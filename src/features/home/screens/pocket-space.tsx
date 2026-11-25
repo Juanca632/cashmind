@@ -12,13 +12,13 @@ import { useMoney } from '@/shared/hooks/use-money';
 import { useToday } from '@/shared/hooks/use-today';
 import type { EntryKind } from '@/shared/kinds';
 import { Layout, POCKET_COLORS, Size } from '@/shared/theme/theme';
-import { Button } from '@/shared/ui/button';
 import { Card } from '@/shared/ui/card';
 import { DataError } from '@/shared/ui/data-error';
 import { HeroCard } from '@/shared/ui/hero-card';
 import { HeroFigure } from '@/shared/ui/hero-figure';
 import { IconButton } from '@/shared/ui/icon-button';
 import { KindTile } from '@/shared/ui/kind-tile';
+import { RoundAction } from '@/shared/ui/round-action';
 import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
@@ -56,6 +56,7 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
   const ownMoves = pocketMoveLines(moves.data, pocket.id);
   const [{ cents, savedCents, spentCents }] = pocketBalances([pocket], own, moves.data);
   const overdrawn = cents < 0;
+  const tone = POCKET_COLORS[pocket.color];
   const detail = overdrawn
     ? `This pocket is ${money.format(-cents)} short.`
     : pocket.startingCents > 0
@@ -80,31 +81,28 @@ export function PocketSpace({ pocket }: { pocket: Pocket }) {
           </View>
         </View>
 
-        <HeroCard overspent={overdrawn} tone={POCKET_COLORS[pocket.color]}>
+        <HeroCard overspent={overdrawn} tone={tone}>
           <HeroFigure label="Balance" cents={cents} countKey={`pocket:${pocket.id}`} detail={detail} />
         </HeroCard>
         <SpaceSelector pocket={pocket} />
 
+        {/* Neutral round actions, as banking apps put them under a balance. */}
         <View style={styles.actions}>
-          <Button
-            label="Save into"
+          <RoundAction
+            label="Save"
+            accessibilityLabel="Save into"
             icon="plus"
-            variant="secondary"
-            stretch
             onPress={() => router.push({ pathname: '/entry', params: { kind: 'savings', pocket: String(pocket.id) } })}
           />
-          <Button
-            label="Spend from"
+          <RoundAction
+            label="Spend"
+            accessibilityLabel="Spend from"
             icon="minus"
-            variant="secondary"
-            stretch
             onPress={() => router.push({ pathname: '/entry', params: { kind: 'expense', pocket: String(pocket.id) } })}
           />
-          <Button
+          <RoundAction
             label="Move"
             icon="shuffle"
-            variant="secondary"
-            stretch
             onPress={() => router.push({ pathname: '/move', params: { from: String(pocket.id) } })}
           />
         </View>
@@ -157,7 +155,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: Layout.itemGap,
+    justifyContent: 'space-evenly',
   },
   section: {
     gap: Layout.itemGap,
