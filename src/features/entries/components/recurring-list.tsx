@@ -41,7 +41,7 @@ export function RecurringList({ items, onPress }: RecurringListProps) {
             accessibilityLabel={`${itemTitle(item)}, ${amount}, every month`}
             onPress={() => onPress(item)}
             style={({ pressed }) => [styles.row, pressed && { backgroundColor: theme.pressed }]}>
-            <KindBadge kind={item.kind} icon={categoryIcon(item.kind, item.category)} />
+            <KindBadge kind={item.kind} icon={item.kind === 'savings' ? undefined : categoryIcon(item.kind, item.category)} />
             <ThemedText type="smallBold" numberOfLines={1} style={styles.title}>
               {itemTitle(item)}
             </ThemedText>

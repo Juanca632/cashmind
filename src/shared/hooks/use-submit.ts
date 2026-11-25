@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
@@ -16,8 +16,11 @@ export function useSubmit(beforeLeave?: () => void) {
   // A ref, not state: two taps in the same frame must not write twice.
   const inProgress = useRef(false);
 
-  /** `kind` picks the vibration given when the write works: a save or a delete. */
-  async function submit(write: () => Promise<WriteResult>, kind: 'save' | 'delete' = 'save') {
+  /**
+   * `kind` picks the vibration given when the write works: a save or a delete. `leaveTo` goes back
+   * to that screen instead of the previous one, when the previous one shows what was just deleted.
+   */
+  async function submit(write: () => Promise<WriteResult>, kind: 'save' | 'delete' = 'save', leaveTo?: Href) {
     if (inProgress.current) return;
     inProgress.current = true;
     setSubmitting(true);
@@ -28,7 +31,8 @@ export function useSubmit(beforeLeave?: () => void) {
         else hapticSuccess();
         // The form stays disabled while it leaves, so a second tap cannot save twice.
         beforeLeave?.();
-        if (router.canGoBack()) router.back();
+        if (leaveTo) router.dismissTo(leaveTo);
+        else if (router.canGoBack()) router.back();
         else router.replace('/');
         return;
       }

@@ -3,6 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { act, screen, within } from 'expo-router/testing-library';
 
 import {
+  DEFAULT_POCKET,
   answerDialog,
   breakDeviceWrites,
   choose,
@@ -103,6 +104,7 @@ describe('See savings progress at a glance', () => {
 
     await press('Add expense');
     await choose('Savings');
+    await choose(DEFAULT_POCKET);
     await type('Amount', '100,00');
     await press('Add to savings');
 

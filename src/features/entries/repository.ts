@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { ALL_CATEGORIES, isCategoryOf } from '@/features/entries/categories';
-import type { Entry, EntryInput, RecurringInput, RecurringItem } from '@/features/entries/rules';
+import type { Entry, EntryInput, Pocket, PocketInput, RecurringInput, RecurringItem } from '@/features/entries/rules';
 import { ENTRY_KINDS } from '@/shared/kinds';
 import {
   DataFormatError,
@@ -13,9 +13,27 @@ import {
   readText,
 } from '@/shared/read-checks';
 
-type EntryRow = Record<'id' | 'date' | 'kind' | 'amount_cents' | 'note' | 'category' | 'recurring_id', unknown>;
+type EntryRow = Record<
+  'id' | 'date' | 'kind' | 'amount_cents' | 'note' | 'category' | 'recurring_id' | 'pocket_id' | 'pocket_name',
+  unknown
+>;
 
-const COLUMNS = 'id, date, kind, amount_cents, note, category, recurring_id';
+/** Every entry query reads its pocket's name too, so titles need no other lookup. */
+const COLUMNS =
+  'entry.id, entry.date, entry.kind, entry.amount_cents, entry.note, entry.category, entry.recurring_id, entry.pocket_id, pocket.name AS pocket_name';
+const FROM_ENTRY = 'entry LEFT JOIN pocket ON pocket.id = entry.pocket_id';
+
+/** A saving has a pocket and its name; income and expenses have neither. */
+function readPocket(kind: string, row: { pocket_id: unknown; pocket_name: unknown }, table: string) {
+  if (kind !== 'savings') {
+    if (row.pocket_id !== null) throw new DataFormatError(`${table}.pocket_id`);
+    return { pocketId: null, pocketName: null };
+  }
+  return {
+    pocketId: readInteger(row.pocket_id, `${table}.pocket_id`),
+    pocketName: readText(row.pocket_name, 'pocket.name'),
+  };
+}
 
 /** A kind and a category of that kind's list; a category from another kind's list is as unreadable as an unknown one. */
 function readKindAndCategory(row: { kind: unknown; category: unknown }, table: string) {
@@ -35,13 +53,14 @@ function toEntry(row: EntryRow): Entry {
     note: readText(row.note, 'entry.note'),
     category,
     recurringId: row.recurring_id === null ? null : readInteger(row.recurring_id, 'entry.recurring_id'),
+    ...readPocket(kind, row, 'entry'),
   };
 }
 
 /** Entries of a month ('YYYY-MM'), newest first. */
 export async function getEntriesOfMonth(db: SQLiteDatabase, month: string): Promise<Entry[]> {
   const rows = await db.getAllAsync<EntryRow>(
-    `SELECT ${COLUMNS} FROM entry WHERE substr(date, 1, 7) = ? ORDER BY date DESC, id DESC`,
+    `SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE substr(entry.date, 1, 7) = ? ORDER BY entry.date DESC, entry.id DESC`,
     month,
   );
   return rows.map(toEntry);
@@ -50,9 +69,17 @@ export async function getEntriesOfMonth(db: SQLiteDatabase, month: string): Prom
 /** Entries from the start of `fromMonth` to the end of `toMonth` ('YYYY-MM'), oldest first. */
 export async function getEntriesBetween(db: SQLiteDatabase, fromMonth: string, toMonth: string): Promise<Entry[]> {
   const rows = await db.getAllAsync<EntryRow>(
-    `SELECT ${COLUMNS} FROM entry WHERE substr(date, 1, 7) BETWEEN ? AND ? ORDER BY date, id`,
+    `SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE substr(entry.date, 1, 7) BETWEEN ? AND ? ORDER BY entry.date, entry.id`,
     fromMonth,
     toMonth,
+  );
+  return rows.map(toEntry);
+}
+
+/** Every saving of every month, newest first: what the pockets hold (specs/025-pockets). */
+export async function getSavingsEntries(db: SQLiteDatabase): Promise<Entry[]> {
+  const rows = await db.getAllAsync<EntryRow>(
+    `SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE entry.kind = 'savings' ORDER BY entry.date DESC, entry.id DESC`,
   );
   return rows.map(toEntry);
 }
@@ -87,30 +114,32 @@ export async function getFirstEntryMonth(db: SQLiteDatabase): Promise<string | n
 }
 
 export async function getEntry(db: SQLiteDatabase, id: number): Promise<Entry | null> {
-  const row = await db.getFirstAsync<EntryRow>(`SELECT ${COLUMNS} FROM entry WHERE id = ?`, id);
+  const row = await db.getFirstAsync<EntryRow>(`SELECT ${COLUMNS} FROM ${FROM_ENTRY} WHERE entry.id = ?`, id);
   return row ? toEntry(row) : null;
 }
 
 export async function insertEntry(db: SQLiteDatabase, input: EntryInput, recurringId: number | null = null): Promise<void> {
   await db.runAsync(
-    'INSERT INTO entry (date, kind, amount_cents, note, category, recurring_id) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO entry (date, kind, amount_cents, note, category, recurring_id, pocket_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
     input.date,
     input.kind,
     input.amountCents,
     input.note,
     input.category,
     recurringId,
+    input.pocketId,
   );
 }
 
 export async function updateEntry(db: SQLiteDatabase, id: number, input: EntryInput): Promise<void> {
   await db.runAsync(
-    'UPDATE entry SET date = ?, kind = ?, amount_cents = ?, note = ?, category = ? WHERE id = ?',
+    'UPDATE entry SET date = ?, kind = ?, amount_cents = ?, note = ?, category = ?, pocket_id = ? WHERE id = ?',
     input.date,
     input.kind,
     input.amountCents,
     input.note,
     input.category,
+    input.pocketId,
     id,
   );
 }
@@ -124,9 +153,14 @@ export async function linkEntryToRecurring(db: SQLiteDatabase, id: number, recur
   await db.runAsync('UPDATE entry SET recurring_id = ? WHERE id = ?', recurringId, id);
 }
 
-type RecurringRow = Record<'id' | 'kind' | 'category' | 'amount_cents' | 'note' | 'active' | 'last_month', unknown>;
+type RecurringRow = Record<
+  'id' | 'kind' | 'category' | 'amount_cents' | 'note' | 'active' | 'last_month' | 'pocket_id' | 'pocket_name',
+  unknown
+>;
 
-const RECURRING_COLUMNS = 'id, kind, category, amount_cents, note, active, last_month';
+const RECURRING_COLUMNS =
+  'recurring.id, recurring.kind, recurring.category, recurring.amount_cents, recurring.note, recurring.active, recurring.last_month, recurring.pocket_id, pocket.name AS pocket_name';
+const FROM_RECURRING = 'recurring LEFT JOIN pocket ON pocket.id = recurring.pocket_id';
 
 function toRecurring(row: RecurringRow): RecurringItem {
   const { kind, category } = readKindAndCategory(row, 'recurring');
@@ -139,27 +173,28 @@ function toRecurring(row: RecurringRow): RecurringItem {
     note: readText(row.note, 'recurring.note'),
     active: row.active === 1,
     lastMonth: readMonth(row.last_month, 'recurring.last_month'),
+    ...readPocket(kind, row, 'recurring'),
   };
 }
 
 /** The monthly items that still repeat, income first, then savings, then expenses, oldest first. */
 export async function getActiveRecurringItems(db: SQLiteDatabase): Promise<RecurringItem[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    `SELECT ${RECURRING_COLUMNS} FROM recurring WHERE active = 1
-     ORDER BY CASE kind WHEN 'income' THEN 0 WHEN 'savings' THEN 1 ELSE 2 END, id`,
+    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE recurring.active = 1
+     ORDER BY CASE recurring.kind WHEN 'income' THEN 0 WHEN 'savings' THEN 1 ELSE 2 END, recurring.id`,
   );
   return rows.map(toRecurring);
 }
 
 export async function getRecurringItem(db: SQLiteDatabase, id: number): Promise<RecurringItem | null> {
-  const row = await db.getFirstAsync<RecurringRow>(`SELECT ${RECURRING_COLUMNS} FROM recurring WHERE id = ?`, id);
+  const row = await db.getFirstAsync<RecurringRow>(`SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE recurring.id = ?`, id);
   return row ? toRecurring(row) : null;
 }
 
 /** Active items that have no entry yet in `month`. */
 export async function getRecurringItemsToRecord(db: SQLiteDatabase, month: string): Promise<RecurringItem[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    `SELECT ${RECURRING_COLUMNS} FROM recurring WHERE active = 1 AND last_month < ? ORDER BY id`,
+    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE recurring.active = 1 AND recurring.last_month < ? ORDER BY recurring.id`,
     month,
   );
   return rows.map(toRecurring);
@@ -168,25 +203,27 @@ export async function getRecurringItemsToRecord(db: SQLiteDatabase, month: strin
 /** A new active item whose entry for `lastMonth` already exists; returns its id. */
 export async function insertRecurring(
   db: SQLiteDatabase,
-  item: Pick<RecurringItem, 'kind' | 'category' | 'amountCents' | 'note' | 'lastMonth'>,
+  item: Pick<RecurringItem, 'kind' | 'category' | 'amountCents' | 'note' | 'lastMonth' | 'pocketId'>,
 ): Promise<number> {
   const result = await db.runAsync(
-    'INSERT INTO recurring (kind, category, amount_cents, note, last_month) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO recurring (kind, category, amount_cents, note, last_month, pocket_id) VALUES (?, ?, ?, ?, ?, ?)',
     item.kind,
     item.category,
     item.amountCents,
     item.note,
     item.lastMonth,
+    item.pocketId,
   );
   return result.lastInsertRowId;
 }
 
 export async function updateRecurring(db: SQLiteDatabase, id: number, input: RecurringInput): Promise<void> {
   await db.runAsync(
-    'UPDATE recurring SET category = ?, amount_cents = ?, note = ? WHERE id = ?',
+    'UPDATE recurring SET category = ?, amount_cents = ?, note = ?, pocket_id = ? WHERE id = ?',
     input.category,
     input.amountCents,
     input.note,
+    input.pocketId,
     id,
   );
 }
@@ -207,4 +244,47 @@ export async function markRecurringRecorded(db: SQLiteDatabase, id: number, mont
     month,
   );
   return result.changes === 1;
+}
+
+type PocketRow = Record<'id' | 'name' | 'starting_cents', unknown>;
+
+function toPocket(row: PocketRow): Pocket {
+  const startingCents = readInteger(row.starting_cents, 'pocket.starting_cents');
+  if (startingCents < 0) throw new DataFormatError('pocket.starting_cents');
+  return { id: readInteger(row.id, 'pocket.id'), name: readText(row.name, 'pocket.name'), startingCents };
+}
+
+/** Every pocket, in the order they were made. */
+export async function getPockets(db: SQLiteDatabase): Promise<Pocket[]> {
+  const rows = await db.getAllAsync<PocketRow>('SELECT id, name, starting_cents FROM pocket ORDER BY id');
+  return rows.map(toPocket);
+}
+
+export async function getPocket(db: SQLiteDatabase, id: number): Promise<Pocket | null> {
+  const row = await db.getFirstAsync<PocketRow>('SELECT id, name, starting_cents FROM pocket WHERE id = ?', id);
+  return row ? toPocket(row) : null;
+}
+
+/** True when a saving or a monthly saving (even a stopped one) points to the pocket. */
+export async function pocketInUse(db: SQLiteDatabase, id: number): Promise<boolean> {
+  const row = await db.getFirstAsync(
+    'SELECT 1 FROM entry WHERE pocket_id = ? UNION ALL SELECT 1 FROM recurring WHERE pocket_id = ? LIMIT 1',
+    id,
+    id,
+  );
+  return row !== null;
+}
+
+/** Returns the new pocket's id. */
+export async function insertPocket(db: SQLiteDatabase, input: PocketInput): Promise<number> {
+  const result = await db.runAsync('INSERT INTO pocket (name, starting_cents) VALUES (?, ?)', input.name, input.startingCents);
+  return result.lastInsertRowId;
+}
+
+export async function updatePocket(db: SQLiteDatabase, id: number, input: PocketInput): Promise<void> {
+  await db.runAsync('UPDATE pocket SET name = ?, starting_cents = ? WHERE id = ?', input.name, input.startingCents, id);
+}
+
+export async function deletePocket(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM pocket WHERE id = ?', id);
 }

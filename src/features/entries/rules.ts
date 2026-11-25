@@ -17,9 +17,13 @@ export type Entry = {
   category: EntryCategory;
   /** The monthly item this entry was recorded by or marked from; null when it never repeated. */
   recurringId: number | null;
+  /** The pocket of a saving (specs/025-pockets); null for income and expenses. */
+  pocketId: number | null;
+  /** That pocket's name, read with the entry; null when there is no pocket. */
+  pocketName: string | null;
 };
 
-export type EntryInput = Omit<Entry, 'id' | 'recurringId'>;
+export type EntryInput = Omit<Entry, 'id' | 'recurringId' | 'pocketName'>;
 
 /** An entry that is recorded again on the 1st of every new month until it is stopped. */
 export type RecurringItem = {
@@ -31,10 +35,13 @@ export type RecurringItem = {
   active: boolean;
   /** The latest month 'YYYY-MM' that already has this item's entry. */
   lastMonth: string;
+  /** The pocket a monthly saving goes into; null for income and expenses. */
+  pocketId: number | null;
+  pocketName: string | null;
 };
 
 /** What can change on a monthly item; its kind is fixed. */
-export type RecurringInput = Pick<RecurringItem, 'category' | 'amountCents' | 'note'>;
+export type RecurringInput = Pick<RecurringItem, 'category' | 'amountCents' | 'note' | 'pocketId'>;
 
 export const RECURRING_MISSING = 'This monthly entry no longer exists.';
 
@@ -44,7 +51,15 @@ export function validateRecurring(kind: EntryKind, input: RecurringInput): Entry
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
   else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
   if (!isCategoryOf(kind, input.category)) errors.push('category-invalid');
+  const pocketError = checkPocket(kind, input.pocketId);
+  if (pocketError) errors.push(pocketError);
   return errors;
+}
+
+/** Savings need a pocket; income and expenses never have one. */
+function checkPocket(kind: EntryKind, pocketId: number | null): EntryError | null {
+  if (kind === 'savings') return pocketId === null ? 'pocket-missing' : null;
+  return pocketId === null ? null : 'pocket-not-allowed';
 }
 
 /** What the monthly expenses add up to; repeating income and savings are not costs. */
@@ -52,19 +67,31 @@ export function fixedCostsCents(items: readonly Pick<RecurringItem, 'kind' | 'am
   return items.reduce((sum, item) => (item.active && item.kind === 'expense' ? sum + item.amountCents : sum), 0);
 }
 
-export type EntryError = 'amount-not-positive' | 'amount-too-large' | 'kind-invalid' | 'date-invalid' | 'category-invalid';
+export type EntryError =
+  | 'amount-not-positive'
+  | 'amount-too-large'
+  | 'kind-invalid'
+  | 'date-invalid'
+  | 'category-invalid'
+  | 'pocket-missing'
+  | 'pocket-not-allowed';
 
 export function validateEntry(input: EntryInput, today: Date): EntryError[] {
   const errors: EntryError[] = [];
   if (!Number.isInteger(input.amountCents) || input.amountCents <= 0) errors.push('amount-not-positive');
   else if (!isValidCents(input.amountCents)) errors.push('amount-too-large');
   if (!ENTRY_KINDS.includes(input.kind)) errors.push('kind-invalid');
-  else if (!isCategoryOf(input.kind, input.category)) errors.push('category-invalid');
+  else {
+    if (!isCategoryOf(input.kind, input.category)) errors.push('category-invalid');
+    const pocketError = checkPocket(input.kind, input.pocketId);
+    if (pocketError) errors.push(pocketError);
+  }
   if (!isValidDayKey(input.date) || input.date > dayKey(today)) errors.push('date-invalid');
   return errors;
 }
 
 export const ENTRY_MISSING = 'This entry no longer exists.';
+export const POCKET_MISSING = 'Pick a pocket.';
 
 export function entryErrorMessage(error: EntryError): string {
   switch (error) {
@@ -78,6 +105,10 @@ export function entryErrorMessage(error: EntryError): string {
       return 'Pick a date that is not in the future.';
     case 'category-invalid':
       return 'Pick a category for this kind.';
+    case 'pocket-missing':
+      return POCKET_MISSING;
+    case 'pocket-not-allowed':
+      return 'Only savings go into a pocket.';
   }
 }
 
@@ -143,9 +174,10 @@ export function categorySplit(entries: readonly Pick<Entry, 'kind' | 'amountCent
     .sort((a, b) => b.cents - a.cents || order.indexOf(a.category) - order.indexOf(b.category));
 }
 
-/** What a row is called: its note, else its category, else (Other) its kind. */
-export function entryTitle(entry: Pick<Entry, 'kind' | 'category' | 'note'>): string {
+/** What a row is called: its note, else its pocket (savings) or category, else its kind. */
+export function entryTitle(entry: Pick<Entry, 'kind' | 'category' | 'note'> & { pocketName?: string | null }): string {
   if (entry.note) return entry.note;
+  if (entry.kind === 'savings') return entry.pocketName ?? KIND_LABELS.savings;
   return entry.category === 'other' ? KIND_LABELS[entry.kind] : CATEGORY_LABELS[entry.category];
 }
 
@@ -188,4 +220,45 @@ export function quickAddSuggestions(entries: readonly Entry[], today: Date): Qui
 /** The months ('YYYY-MM') that hold the days quickAddSuggestions looks at. */
 export function quickAddRange(today: Date): { from: string; to: string } {
   return { from: monthKey(dayToDate(addDays(dayKey(today), -(QUICK_ADD_DAYS - 1)))), to: monthKey(today) };
+}
+
+/** A place the user saves for, with money saved before the app (specs/025-pockets). */
+export type Pocket = { id: number; name: string; startingCents: number };
+
+export type PocketInput = Pick<Pocket, 'name' | 'startingCents'>;
+
+export const POCKET_NAME_MAX = 40;
+
+export type PocketError = 'pocket-name' | 'amount-too-large';
+
+export function validatePocket(input: PocketInput): PocketError[] {
+  const errors: PocketError[] = [];
+  const name = input.name.trim();
+  if (name.length === 0 || name.length > POCKET_NAME_MAX) errors.push('pocket-name');
+  if (!isValidCents(input.startingCents)) errors.push('amount-too-large');
+  return errors;
+}
+
+export function pocketErrorMessage(error: PocketError): string {
+  return error === 'pocket-name' ? 'Give the pocket a name.' : AMOUNT_TOO_LARGE;
+}
+
+export type PocketBalance = { pocket: Pocket; cents: number };
+
+/** Each pocket's starting amount plus every saving in it, in the pockets' order. */
+export function pocketBalances(
+  pockets: readonly Pocket[],
+  savings: readonly Pick<Entry, 'kind' | 'pocketId' | 'amountCents'>[],
+): PocketBalance[] {
+  return pockets.map((pocket) => ({
+    pocket,
+    cents: savings.reduce(
+      (sum, entry) => (entry.kind === 'savings' && entry.pocketId === pocket.id ? sum + entry.amountCents : sum),
+      pocket.startingCents,
+    ),
+  }));
+}
+
+export function pocketsTotal(balances: readonly PocketBalance[]): number {
+  return balances.reduce((sum, balance) => sum + balance.cents, 0);
 }

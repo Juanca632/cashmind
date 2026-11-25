@@ -5,6 +5,7 @@ import { fireEvent, screen, testRouter, within } from 'expo-router/testing-libra
 import { dayKey } from '@/shared/days';
 
 import {
+  DEFAULT_POCKET,
   DELETE_DIALOG,
   DISCARD_DIALOG,
   answerDialog,
@@ -114,7 +115,7 @@ describe('Three kinds of entry', () => {
   });
 
   it('One entry of each kind is recorded and listed in Activity under its own kind of figure', async () => {
-    await startApp({ today: TODAY });
+    await startApp({ today: TODAY, pockets: [{ name: DEFAULT_POCKET }] });
     for (const [kind, amount, note, button] of [
       ['Income', '2000', 'Pay', 'Add income'],
       ['Savings', '150', 'Piggy bank', 'Add to savings'],
@@ -122,6 +123,7 @@ describe('Three kinds of entry', () => {
     ] as const) {
       await press('Add expense');
       await choose(kind);
+      if (kind === 'Savings') await choose(DEFAULT_POCKET);
       await type('Amount', amount);
       await typeNote(note);
       await press(button);
@@ -164,12 +166,14 @@ describe('Savings entries count towards the savings goal', () => {
     await startApp({
       today: TODAY,
       plans: [[30, '2026-07']],
+      pockets: [{ name: DEFAULT_POCKET }],
       entries: [{ ...salary, amountCents: 300000 }],
     });
     expect(tile('Savings').getByText(exactText('of 900 €'))).toBeOnTheScreen();
 
     await press('Add expense');
     await choose('Savings');
+    await choose(DEFAULT_POCKET);
     await type('Amount', '600');
     await press('Add to savings');
 
@@ -288,9 +292,10 @@ describe('Edit and delete an expense', () => {
   });
 
   it('An entry can change kind when edited', async () => {
-    await startApp({ today: TODAY, entries: [salary, cinema] });
+    await startApp({ today: TODAY, pockets: [{ name: DEFAULT_POCKET }], entries: [salary, cinema] });
     await press(/Cinema/);
     await choose('Savings');
+    await choose(DEFAULT_POCKET);
     await press('Save changes');
 
     expect(tile('Spent').getByText(exactText('0 €'))).toBeOnTheScreen();
@@ -406,7 +411,7 @@ describe('Month expense list', () => {
     expect(notes).toEqual(['Dated later', 'Recorded afternoon', 'Recorded noon', 'Recorded morning']);
   });
 
-  it('Without a note a row shows the name of its kind, with the date and amount', async () => {
+  it('Without a note a row shows the name of its kind (a saving, the name of its pocket), with the date and amount', async () => {
     await startApp({
       today: TODAY,
       entries: [
@@ -417,7 +422,7 @@ describe('Month expense list', () => {
     });
 
     expect(screen.getByText(exactText('5,00 €')).parent).toHaveTextContent(/Expense.*Tue 3 Nov.*5,00.€$/);
-    expect(screen.getByText(exactText('150,00 €')).parent).toHaveTextContent(/Savings.*Mon 2 Nov.*150,00.€$/);
+    expect(screen.getByText(exactText('150,00 €')).parent).toHaveTextContent(new RegExp(`${DEFAULT_POCKET}.*Mon 2 Nov.*150,00.€$`));
     expect(screen.getByText(partialText('2 000,00 €')).parent).toHaveTextContent(/Income.*Sun 1 Nov.*2.000,00.€$/);
   });
 
@@ -480,6 +485,7 @@ describe('Look inside one kind', () => {
 
     await press(addLabel);
     expect(screen.getByRole('radio', { name: kind })).toBeSelected();
+    if (kind === 'Savings') await choose(DEFAULT_POCKET);
     await type('Amount', '1');
     await typeNote('Added inside');
     await press(addLabel);

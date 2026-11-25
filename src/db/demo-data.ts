@@ -124,24 +124,40 @@ const MONTHS: Entry[][] = [
   ],
 ];
 
+/** The demo's pockets: the savings category they hold, their name and what they started with. */
+const POCKETS: [string, string, number][] = [
+  ['emergency_fund', 'Emergency fund', 120000],
+  ['travel', 'Summer trip', 0],
+  ['investments', 'Investments', 0],
+];
+
 /**
  * Replaces everything in the demo database with six invented months ending today. Only ever called
  * on the separate demo database, so real data is never involved.
  */
 export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.execAsync('DELETE FROM entry; DELETE FROM recurring; DELETE FROM plan_version;');
+    await db.execAsync('DELETE FROM entry; DELETE FROM recurring; DELETE FROM pocket; DELETE FROM plan_version;');
+
+    // Savings go into pockets (specs/025-pockets); the emergency fund started before the app.
+    const pocketIds = new Map<string, number>();
+    for (const [category, name, startingCents] of POCKETS) {
+      const row = await db.runAsync('INSERT INTO pocket (name, starting_cents) VALUES (?, ?)', name, startingCents);
+      pocketIds.set(category, row.lastInsertRowId);
+    }
+    const pocketOf = (kind: Kind, category: string) => (kind === 'savings' ? (pocketIds.get(category) ?? null) : null);
 
     // The monthly entries repeat every month, so My plan lists them; this month already has them.
     const recurringIds = new Map<string, number>();
     for (const [kind, cents, note, category] of RECURRING) {
       const row = await db.runAsync(
-        'INSERT INTO recurring (kind, category, amount_cents, note, last_month) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO recurring (kind, category, amount_cents, note, last_month, pocket_id) VALUES (?, ?, ?, ?, ?, ?)',
         kind,
         category,
         cents,
         note,
         monthAt(today, 0),
+        pocketOf(kind, category),
       );
       recurringIds.set(note, row.lastInsertRowId);
     }
@@ -163,13 +179,14 @@ export async function seedDemoData(db: SQLiteDatabase, today: Date): Promise<voi
         const lastDay = new Date(today.getFullYear(), today.getMonth() + offset + 1, 0).getDate();
         const safeDay = Math.min(day, lastDay, offset === 0 ? today.getDate() : lastDay);
         await db.runAsync(
-          'INSERT INTO entry (date, kind, amount_cents, note, category, recurring_id) VALUES (?, ?, ?, ?, ?, ?)',
+          'INSERT INTO entry (date, kind, amount_cents, note, category, recurring_id, pocket_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
           `${month}-${String(safeDay).padStart(2, '0')}`,
           kind,
           cents,
           note,
           category,
           recurringIds.get(note) ?? null,
+          pocketOf(kind, category),
         );
       }
     }

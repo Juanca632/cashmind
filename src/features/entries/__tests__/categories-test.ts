@@ -74,7 +74,7 @@ describe('Choose a category when recording: the fixed lists', () => {
 
 describe('Validation and unreadable data: a category must belong to the kind', () => {
   const today = new Date(2026, 10, 13);
-  const base: EntryInput = { date: '2026-11-10', kind: 'expense', amountCents: 1000, note: '', category: 'groceries' };
+  const base: EntryInput = { date: '2026-11-10', kind: 'expense', amountCents: 1000, note: '', category: 'groceries', pocketId: null };
 
   it('accepts a category of the kind', () => {
     expect(validateEntry(base, today)).toEqual([]);
