@@ -117,7 +117,7 @@ export default function TrendsScreen() {
           ) : null}
         </Card>
 
-        {/* Savings go into pockets, not categories (specs/025-pockets): My pockets shows them. */}
+        {/* Savings go into pockets, not categories (specs/025-pockets): each pocket's space shows them. */}
         {kind === 'savings' ? null : (
           <TrendCategoryList
             kind={kind}

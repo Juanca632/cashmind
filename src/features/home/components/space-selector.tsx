@@ -8,14 +8,14 @@ import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
-import { countsInMonth, MAIN_NAME, movedIntoMain, pocketBalances, pocketsTotal, totalsByKind, type Pocket } from '@/features/entries/rules';
-import { monthSummary } from '@/features/home/month-summary';
+import { MAIN_NAME, pocketBalances, pocketsTotal, type Pocket } from '@/features/entries/rules';
+import { monthFigures } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { hapticTick } from '@/shared/haptics';
 import { useMoney } from '@/shared/hooks/use-money';
 import { monthKey } from '@/shared/months';
-import { Hero, IconSize, Layout, POCKET_COLORS, Radius, Size } from '@/shared/theme/theme';
+import { Hero, IconSize, Layout, POCKET_COLORS, Radius, SCRIM, Size } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { KIND_ICONS } from '@/shared/ui/kind-badge';
 import { Pill } from '@/shared/ui/pill';
@@ -86,7 +86,7 @@ function SpacesSheet({ current, onClose }: { current: number | null; onClose: ()
       : [];
   const summary =
     monthEntries.status === 'ready' && plan.status === 'ready' && moves.status === 'ready'
-      ? monthSummary(totalsByKind(monthEntries.data.filter(countsInMonth)), savingsPercentFor(plan.data, month), movedIntoMain(moves.data, month))
+      ? monthFigures(monthEntries.data, moves.data, savingsPercentFor(plan.data, month), month)
       : null;
 
   function pick(pocketId: number | null) {
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   scrim: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: SCRIM,
   },
   sheet: {
     borderTopLeftRadius: Radius.dialog,

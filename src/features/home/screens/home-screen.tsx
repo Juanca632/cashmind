@@ -26,7 +26,7 @@ import { usePocket } from '@/features/entries/hooks/use-pocket';
 import { SpaceSelector } from '@/features/home/components/space-selector';
 import { SpendingPaceChart } from '@/features/home/components/spending-pace-chart';
 import { PocketSpace } from '@/features/home/screens/pocket-space';
-import { dailyAllowance, monthSummary, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
+import { dailyAllowance, monthFigures, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
 import { ADD_LABELS, KIND_LABELS, type EntryKind } from '@/shared/kinds';
@@ -132,7 +132,7 @@ function HomeMonth({ today }: { today: Date }) {
   const percent = savingsPercentFor(plan.data, month);
   // Money moved out of pockets into Main adds to left to spend (specs/028-move-money).
   const movedIn = movedIntoMain(moves.data, month);
-  const summary = monthSummary(totalsByKind(counted), percent, movedIn);
+  const summary = monthFigures(monthEntries, moves.data, percent, month);
   const hasIncome = summary.income > 0;
   // Moves into Main show in the whole list only, not when one kind is picked.
   const lines = selected === null ? mainMoveLines(moves.data, month) : [];

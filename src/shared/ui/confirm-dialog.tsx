@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { Layout, Radius, Size } from '@/shared/theme/theme';
+import { Layout, Radius, SCRIM, Size } from '@/shared/theme/theme';
 import { Button } from '@/shared/ui/button';
 import { useTheme } from '@/shared/theme/use-theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     padding: Layout.dialogPadding,
   },
   scrim: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: SCRIM,
   },
   card: {
     borderRadius: Radius.dialog,

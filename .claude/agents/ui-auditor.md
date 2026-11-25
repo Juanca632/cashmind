@@ -23,7 +23,7 @@ Invoke the skills `expo:expo-design-system` and `expo:expo-native-ui`, and use t
 
 - **Consistency:** hardcoded colors, spacing, font sizes or radii instead of theme tokens; the same element styled differently on two screens.
 - **States:** empty, error and validation states; what the user sees with no income yet, no entries, or a negative left to spend.
-- **Money display:** euro formatting is the same everywhere; long amounts do not wrap, clip or break the layout.
+- **Money display:** the chosen currency (EUR, USD or COP) is formatted the same everywhere; long amounts do not wrap, clip or break the layout.
 - **Layout:** safe areas, the keyboard covering inputs, small screens, large system font.
 - **Feedback:** pressed states, confirmation before destructive actions, clear results after saving.
 - **Accessibility:** touch targets of at least 48dp, labels and roles on interactive elements, text contrast in both themes.

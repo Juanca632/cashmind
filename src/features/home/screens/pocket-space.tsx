@@ -32,8 +32,9 @@ import { ThemedView } from '@/shared/ui/themed-view';
 const EMPTY = 'Nothing saved in or spent from this pocket yet.';
 
 /**
- * Home showing one pocket (specs/027-spaces): the same hero, tiles and activity card as the month,
- * in the pocket's colour, over every month's savings and expenses paid from it.
+ * Home showing one pocket (specs/027-spaces): the month's hero and activity card in the pocket's
+ * colour, with its actions, this month's balance chart (specs/029) and every month's savings,
+ * expenses paid from it and moves.
  */
 export function PocketSpace({ pocket }: { pocket: Pocket }) {
   const money = useMoney();

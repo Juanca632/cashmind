@@ -132,6 +132,9 @@ export const Hero = {
   ring: '#34C3A5',
 } as const;
 
+/** The dimmed layer behind a dialog or a sheet, in both themes. */
+export const SCRIM = 'rgba(0, 0, 0, 0.45)';
+
 /** The colours a pocket can have (specs/027-spaces). Deep enough for `Hero.text` in both themes. */
 export const POCKET_COLOR_NAMES = ['blue', 'indigo', 'purple', 'pink', 'orange', 'amber', 'green', 'slate'] as const;
 export type PocketColor = (typeof POCKET_COLOR_NAMES)[number];
