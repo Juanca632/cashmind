@@ -6,7 +6,7 @@ import { Hero, Layout, POCKET_COLORS } from '@/shared/theme/theme';
 import { useTheme } from '@/shared/theme/use-theme';
 import { Pill } from '@/shared/ui/pill';
 
-type PaidFromChoicesProps = {
+type SpaceChoicesProps = {
   pockets: readonly Pocket[];
   /** null: paid from the month. */
   value: number | null;
@@ -15,8 +15,8 @@ type PaidFromChoicesProps = {
   label?: string;
 };
 
-/** Where an expense is paid from: the month, or one of the pockets (specs/026-pocket-spending). */
-export function PaidFromChoices({ pockets, value, onChange, label = 'Paid from' }: PaidFromChoicesProps) {
+/** A choice of space: Main (the month) or one of the pockets, as where an expense is paid from (specs/026-pocket-spending, 027-spaces). */
+export function SpaceChoices({ pockets, value, onChange, label = 'Paid from' }: SpaceChoicesProps) {
   const theme = useTheme();
   const options: { id: number | null; label: string; name: string; fill: string; ink: string; ring: string }[] = [
     // "Main" is the month's money, named as on home's space selector (specs/027-spaces).

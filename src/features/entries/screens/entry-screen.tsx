@@ -8,7 +8,7 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
-import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
+import { SpaceChoices } from '@/features/entries/components/space-choices';
 import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
@@ -240,7 +240,7 @@ function EntryForm({
               <ThemedText type="smallBold" themeColor="textSecondary">
                 Paid from
               </ThemedText>
-              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+              <SpaceChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
             </View>
           ) : null}
 

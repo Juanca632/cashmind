@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { AmountField } from '@/features/entries/components/amount-field';
-import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
+import { SpaceChoices } from '@/features/entries/components/space-choices';
 import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { useMove, useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
@@ -154,7 +154,7 @@ function MoveForm({ move, defaultFrom, pockets, entries, moves }: MoveFormProps)
               To
             </ThemedText>
             {intoMain ? (
-              <PaidFromChoices pockets={toChoices} value={toId} onChange={setToId} label="To" />
+              <SpaceChoices pockets={toChoices} value={toId} onChange={setToId} label="To" />
             ) : (
               <PocketChoices pockets={toChoices} value={toId} onChange={setToId} label="To" />
             )}
