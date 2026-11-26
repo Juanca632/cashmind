@@ -52,7 +52,7 @@ export function SpaceSelector({ pocket }: SpaceSelectorProps) {
 }
 
 /** A space's round mark: the month's green with a house, or the pocket's colour with its emoji. */
-function SpaceDot({ pocket, size = 'large' }: { pocket: Pocket | null; size?: 'small' | 'large' }) {
+export function SpaceDot({ pocket, size = 'large' }: { pocket: Pocket | null; size?: 'small' | 'large' }) {
   const base = pocket ? POCKET_COLORS[pocket.color].base : Hero.background;
   const small = size === 'small';
   return (
@@ -86,7 +86,7 @@ function SpacesSheet({ current, onClose }: { current: number | null; onClose: ()
       : [];
   const summary =
     monthEntries.status === 'ready' && plan.status === 'ready' && moves.status === 'ready'
-      ? monthFigures(monthEntries.data, moves.data, savingsPercentFor(plan.data, month), month)
+      ? monthFigures(monthEntries.data, moves.data, savingsPercentFor(plan.data, month), month, money.unitCents)
       : null;
 
   function pick(pocketId: number | null) {

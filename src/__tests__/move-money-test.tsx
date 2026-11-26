@@ -3,19 +3,21 @@ import { fireEvent, screen, testRouter, within } from 'expo-router/testing-libra
 
 import { seedDevice } from '../test-support/fake-sqlite';
 import {
-  DISCARD_DIALOG,
   answerDialog,
+  DISCARD_DIALOG,
   exactText,
   expectBalance,
   expectDialog,
   expectLeftToSpend,
   expectNoDialog,
-  headerTitles,
   expectPocketBalance,
+  headerTitles,
   openSpaces,
   partialText,
   pickSpace,
   press,
+  savedPart,
+  savingsBlock,
   showPocket,
   startApp,
   type,
@@ -65,10 +67,73 @@ const fireFrom = (name: string) => chooseIn('From', name);
 const TO_MAIN_ROW = moveRow('To Main', 'Fri 20 Nov', '-300,00 €');
 const FROM_EMERGENCY_ROW = moveRow('From Emergency fund', 'Fri 20 Nov', '+300,00 €');
 
-describe('Take money out of a pocket for the month (Story 1)', () => {
-  const setup = { today: TODAY, plans: NO_GOAL, pockets: [emergency], entries: [salary, rent] };
+describe('Stored moves into Main keep counting (031 Story 2, FR-004)', () => {
+  const setup = { today: TODAY, plans: NO_GOAL, pockets: [emergency], entries: [salary, rent], moves: [toMain] };
 
-  it('Opening: a pocket offers "Save into", "Spend from" and "Move"; "Move" opens "Move money" with From the pocket and To "Main"', async () => {
+  it('Still counted: Main\'s left to spend is 500,00 € instead of 200,00 €, and the daily budget and the pace follow it', async () => {
+    await startApp({ ...setup, moves: [] });
+    await expectLeftToSpend('200,00 €');
+    expect(labelOf(/^Spending pace/)).toMatch(partialText('to 2 000,00 €.'));
+
+    await startApp(setup);
+    await expectLeftToSpend('500,00 €');
+    expect(labelOf(/^Left to spend/)).toMatch(partialText('≈ 83,33 € / day · 6 days left'));
+    expect(labelOf(/^Spending pace/)).toMatch(partialText('to 2 300,00 €.'));
+  });
+
+  it('Still counted: it is not income, not savings, and Trends does not show it', async () => {
+    await startApp({ ...setup, plans: [[20, '2026-01']] });
+    expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
+    expect(tile('Spent').getByText(exactText('1 800 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('0 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
+    await expectLeftToSpend('100,00 €'); // 2 000 + 300 - 1 800 - 400
+
+    await press(/^See trends/);
+    expect(screen.queryByLabelText(/300,00/)).not.toBeOnTheScreen();
+    expect(screen.queryByText(partialText('2 300'))).not.toBeOnTheScreen();
+  });
+
+  it('Still counted: Main\'s list and Activity show "From Emergency fund" with "+300,00 €", and the pocket\'s list "To Main"', async () => {
+    const extras = [2, 4, 5, 6].map((d) => ({ date: `2026-11-0${d}`, kind: 'expense', amountCents: 100, note: `Extra ${d}` }) as const);
+    await startApp({ ...setup, entries: [salary, ...extras] });
+
+    expect(screen.getByRole('button', { name: FROM_EMERGENCY_ROW })).toBeOnTheScreen();
+    await press('See all 6 entries');
+    expect(screen.getByRole('button', { name: FROM_EMERGENCY_ROW })).toBeOnTheScreen();
+    await testRouter.back();
+    await showPocket('Emergency fund');
+    expect(screen.getByRole('button', { name: TO_MAIN_ROW })).toBeOnTheScreen();
+    await expectBalance('700,00 €');
+  });
+
+  it('Still counted: a past month keeps its figure (a move dated in October lifts October, not November)', async () => {
+    await startApp({
+      ...setup,
+      entries: [salary, rent, { date: '2026-10-01', kind: 'income', amountCents: 100000, note: 'Oct pay' }],
+      moves: [{ ...toMain, date: '2026-10-20' }],
+    });
+    await expectLeftToSpend('200,00 €');
+    await press(/^Month:/);
+    await press('Oct');
+    await expectLeftToSpend('1 300,00 €');
+  });
+
+  it('Still counted: a note shows as the stored move\'s title in both lists', async () => {
+    await startApp({ ...setup, moves: [{ ...toMain, note: 'Car repair' }] });
+    expect(screen.getByRole('button', { name: moveRow('Car repair', '.+', '+300,00 €') })).toBeOnTheScreen();
+    await showPocket('Emergency fund');
+    expect(screen.getByRole('button', { name: moveRow('Car repair', '.+', '-300,00 €') })).toBeOnTheScreen();
+  });
+});
+
+describe('Move only between pockets (031 Story 1)', () => {
+  const setup = { today: TODAY, plans: NO_GOAL, pockets: [emergency, japan], entries: [salary, rent] };
+  const travel = { name: 'Travel', startingCents: 60000 };
+  const investing = { name: 'Investing' };
+  const newPocketPill = () => screen.getByRole('button', { name: /New pocket/ });
+
+  it('Opening: a pocket offers "Save into", "Spend from" and "Move"; "Move" opens "Move money" with From the pocket', async () => {
     await startApp(setup);
     await showPocket('Emergency fund');
     expect(screen.getByRole('button', { name: 'Save into' })).toBeOnTheScreen();
@@ -78,88 +143,56 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
 
     expect(screen).toHavePathname('/move');
     expect(headerTitles()).toContain('Move money');
-    expect(radiosOf('From')).toEqual(['Emergency fund']);
+    expect(radiosOf('From')).toEqual(['Emergency fund', 'Japan trip']);
     expect(within(screen.getByLabelText('From')).getByRole('radio', { name: 'Emergency fund' })).toBeSelected();
-    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Main' })).toBeSelected();
   });
 
   it('Opening: Main\'s space has no "Move" action', async () => {
-    await startApp({ ...setup, pockets: [emergency, japan] });
+    await startApp(setup);
     expect(screen.queryByRole('button', { name: 'Move' })).not.toBeOnTheScreen();
   });
 
-  it('Moved: typing 300,00 and saving leaves "Emergency fund" at 700,00 € and lists "To Main" with "-300,00 €"', async () => {
-    await startApp(setup);
-    await showPocket('Emergency fund');
-    await expectBalance('1 000,00 €');
+  it('To: it offers every other pocket and "New pocket", never "Main", with the first other pocket chosen', async () => {
+    await startApp({ ...setup, pockets: [travel, investing, { name: 'Car' }] });
+    await showPocket('Travel');
     await press('Move');
-    await type('Amount', '300');
+
+    expect(radiosOf('To')).toEqual(['Investing', 'Car']);
+    expect(within(screen.getByLabelText('To')).queryByRole('radio', { name: 'Main' })).not.toBeOnTheScreen();
+    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Investing' })).toBeSelected();
+    expect(newPocketPill()).toBeOnTheScreen();
+    expect(screen.queryByRole('radio', { name: /Main/ })).not.toBeOnTheScreen();
+  });
+
+  it('Moved: moving 200,00 € from "Travel" to "Investing" leaves 400,00 € and 200,00 € more, and Main does not change', async () => {
+    await startApp({ ...setup, pockets: [travel, investing] });
+    await expectLeftToSpend('200,00 €');
+    const card = labelOf(/^Left to spend/);
+    const pace = labelOf(/^Spending pace/);
+    await showPocket('Travel');
+    await expectBalance('600,00 €');
+    await press('Move');
+    await type('Amount', '200');
     await press('Move');
 
     expect(screen).toHavePathname('/');
-    expect(screen.getByRole('button', { name: 'Space: Emergency fund, change' })).toBeOnTheScreen();
-    await expectBalance('700,00 €');
-    expect(screen.getByRole('button', { name: moveRow('To Main', '.+', '-300,00 €') })).toBeOnTheScreen();
-    expect(await movesInDb()).toEqual([{ date: '2026-11-25', amount_cents: 30000, from_pocket_id: 1, to_pocket_id: null, note: '' }]);
-  });
+    await expectBalance('400,00 €');
+    await expectPocketBalance('Investing', '200,00 €');
+    expect(await movesInDb()).toEqual([{ date: '2026-11-25', amount_cents: 20000, from_pocket_id: 1, to_pocket_id: 2, note: '' }]);
 
-  it('More left to spend: Main goes from 200,00 € to 500,00 €, and the daily budget and the pace follow it', async () => {
-    await startApp(setup);
+    await pickSpace(/^Main/);
     await expectLeftToSpend('200,00 €');
-    expect(labelOf(/^Left to spend/)).toMatch(partialText('≈ 33,33 € / day · 6 days left'));
-    expect(labelOf(/^Spending pace/)).toMatch(partialText('to 2 000,00 €.'));
-
-    await showPocket('Emergency fund');
-    await press('Move');
-    await type('Amount', '300');
-    await press('Move');
-    await pickSpace(/^Main/);
-
-    await expectLeftToSpend('500,00 €');
-    expect(labelOf(/^Left to spend/)).toMatch(partialText('≈ 83,33 € / day · 6 days left'));
-    expect(screen.getByText(exactText('≈ 83,33 € / day · 6 days left'))).toBeOnTheScreen();
-    expect(labelOf(/^Spending pace/)).toMatch(partialText('to 2 300,00 €.'));
+    expect(labelOf(/^Left to spend/)).toBe(card);
+    expect(labelOf(/^Spending pace/)).toBe(pace);
+    expect(screen.queryByText(partialText('From Travel'))).not.toBeOnTheScreen();
+    expect(screen.queryByText(partialText('To Investing'))).not.toBeOnTheScreen();
   });
 
-  it('Not income, not savings: the Income and Savings tiles, the goal and Trends are the same after the move', async () => {
-    await startApp({ ...setup, plans: [[20, '2026-01']] });
-    expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
-
-    await showPocket('Emergency fund');
-    await press('Move');
-    await type('Amount', '300');
-    await press('Move');
-    await pickSpace(/^Main/);
-
-    expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
-    expect(tile('Spent').getByText(exactText('1 800 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('0 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
-    await expectLeftToSpend('100,00 €'); // 2 000 + 300 - 1 800 - 400
-
-    await press(/^See trends/);
-    expect(screen.queryByLabelText(/300,00/)).not.toBeOnTheScreen();
-    expect(screen.queryByText(partialText('2 300'))).not.toBeOnTheScreen();
-  });
-
-  it('In Main\'s list: Main\'s list and Activity show the move on its day as "From Emergency fund" with "+300,00 €"', async () => {
-    const extras = [2, 4, 5, 6].map((d) => ({ date: `2026-11-0${d}`, kind: 'expense', amountCents: 100, note: `Extra ${d}` }) as const);
-    await startApp({ ...setup, entries: [salary, ...extras], moves: [toMain] });
-
-    expect(screen.getByRole('button', { name: FROM_EMERGENCY_ROW })).toBeOnTheScreen();
-    await press('See all 6 entries');
-    expect(screen.getByRole('button', { name: FROM_EMERGENCY_ROW })).toBeOnTheScreen();
-  });
-
-  it('Date: the form starts on today and the date can be changed; a move into Main counts in the month of its date', async () => {
+  it('Date: the form starts on today and the date can be changed with the date field', async () => {
     jest.spyOn(DateTimePickerAndroid, 'open').mockImplementation((args) => {
       (args.onValueChange as unknown as (event: unknown, date: Date) => void)({}, new Date(2026, 9, 20));
     });
-    await startApp({
-      ...setup,
-      entries: [salary, rent, { date: '2026-10-01', kind: 'income', amountCents: 100000, note: 'Oct pay' }],
-    });
+    await startApp(setup);
     await showPocket('Emergency fund');
     await press('Move');
     expect(screen.getByRole('button', { name: /^Date: Wed 25 Nov/ })).toBeOnTheScreen();
@@ -168,26 +201,21 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
     await type('Amount', '300');
     await press('Move');
 
-    expect(await movesInDb()).toEqual([expect.objectContaining({ date: '2026-10-20', amount_cents: 30000 })]);
-    await pickSpace(/^Main/);
-    await expectLeftToSpend('200,00 €'); // November is untouched
-    await press(/^Month:/);
-    await press('Oct');
-    await expectLeftToSpend('1 300,00 €'); // October: 1 000 + 300
+    expect(await movesInDb()).toEqual([expect.objectContaining({ date: '2026-10-20', amount_cents: 30000, to_pocket_id: 2 })]);
   });
 
-  it('Note: a note shows as the move\'s title instead of "To Main" and "From Emergency fund"', async () => {
+  it('Note: a note shows as the move\'s title instead of "To Japan trip" and "From Emergency fund"', async () => {
     await startApp(setup);
     await showPocket('Emergency fund');
     await press('Move');
     await type('Amount', '300');
-    await typeNote('Car repair');
+    await typeNote('Flights');
     await press('Move');
 
-    expect(screen.getByRole('button', { name: moveRow('Car repair', '.+', '-300,00 €') })).toBeOnTheScreen();
-    expect(screen.queryByText('To Main')).not.toBeOnTheScreen();
-    await pickSpace(/^Main/);
-    expect(screen.getByRole('button', { name: moveRow('Car repair', '.+', '+300,00 €') })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: moveRow('Flights', '.+', '-300,00 €') })).toBeOnTheScreen();
+    expect(screen.queryByText('To Japan trip')).not.toBeOnTheScreen();
+    await showPocket('Japan trip');
+    expect(screen.getByRole('button', { name: moveRow('Flights', '.+', '+300,00 €') })).toBeOnTheScreen();
     expect(screen.queryByText('From Emergency fund')).not.toBeOnTheScreen();
   });
 
@@ -204,7 +232,7 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
   });
 
   it('Amount: an amount above the app limit is refused with "This amount is too large."', async () => {
-    await startApp({ ...setup, pockets: [{ name: 'Emergency fund', startingCents: 90_000_000_000 }] });
+    await startApp({ ...setup, pockets: [{ name: 'Emergency fund', startingCents: 90_000_000_000 }, japan] });
     await showPocket('Emergency fund');
     await press('Move');
     await type('Amount', '900000000,01');
@@ -213,26 +241,98 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
     expect(screen.getByText('This amount is too large.')).toBeOnTheScreen();
     expect(await movesInDb()).toEqual([]);
   });
-});
 
-describe('Move money between pockets (Story 2)', () => {
-  const setup = { today: TODAY, plans: NO_GOAL, pockets: [emergency, japan], entries: [salary, rent] };
-  const moveToJapan = async () => {
+  it('From changes: choosing the pocket that was To as From makes To the first other pocket', async () => {
+    await startApp({ ...setup, pockets: [travel, investing, { name: 'Car' }] });
+    await showPocket('Travel');
+    await press('Move');
+    await chooseTo('Car');
+    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Car' })).toBeSelected();
+
+    await fireFrom('Car');
+
+    expect(within(screen.getByLabelText('From')).getByRole('radio', { name: 'Car' })).toBeSelected();
+    expect(radiosOf('To')).toEqual(['Travel', 'Investing']);
+    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Travel' })).toBeSelected();
+  });
+
+  it('From changes: To never offers the From pocket and From offers every pocket', async () => {
+    await startApp({ ...setup, pockets: [emergency, japan, car] });
     await showPocket('Emergency fund');
     await press('Move');
-    await chooseTo('Japan trip');
-    await type('Amount', '300');
-    await press('Move');
-  };
 
-  it('To another pocket: moving 300,00 € from "Emergency fund" to "Japan trip" leaves 700,00 € and 800,00 €', async () => {
+    expect(radiosOf('From')).toEqual(['Emergency fund', 'Japan trip', 'Car']);
+    expect(radiosOf('To')).toEqual(['Japan trip', 'Car']);
+    await fireFrom('Japan trip');
+    expect(radiosOf('To')).toEqual(['Emergency fund', 'Car']);
+  });
+
+  it('From changes: the move then leaves that pocket', async () => {
     await startApp(setup);
-    await moveToJapan();
+    await showPocket('Emergency fund');
+    await press('Move');
+    await fireFrom('Japan trip');
+    await type('Amount', '100');
+    await press('Move');
 
-    expect(screen).toHavePathname('/');
-    await expectPocketBalance('Emergency fund', '700,00 €');
-    await expectPocketBalance('Japan trip', '800,00 €');
-    expect(await movesInDb()).toEqual([{ date: '2026-11-25', amount_cents: 30000, from_pocket_id: 1, to_pocket_id: 2, note: '' }]);
+    expect(await movesInDb()).toEqual([expect.objectContaining({ from_pocket_id: 2, to_pocket_id: 1, amount_cents: 10000 })]);
+    await expectPocketBalance('Japan trip', '400,00 €');
+    await expectPocketBalance('Emergency fund', '1 100,00 €');
+  });
+
+  it('One pocket: To offers only "New pocket" and Move cannot be saved until another pocket is made and chosen', async () => {
+    await startApp({ ...setup, pockets: [emergency] });
+    await showPocket('Emergency fund');
+    await press('Move');
+
+    expect(within(screen.getByLabelText('To')).queryAllByRole('radio')).toEqual([]);
+    expect(newPocketPill()).toBeOnTheScreen();
+    await type('Amount', '100');
+    expect(screen.getByRole('button', { name: 'Move' })).toBeDisabled();
+    await press('Move');
+    expect(await movesInDb()).toEqual([]);
+  });
+
+  it('New pocket: making one from To brings the user back to the form, which lists it and can then be saved', async () => {
+    await startApp({ ...setup, pockets: [emergency] });
+    await showPocket('Emergency fund');
+    await press('Move');
+    await press(/New pocket/);
+
+    expect(screen).toHavePathname('/pocket-edit');
+    await type('Name', 'Japan trip');
+    await press('Create pocket');
+
+    expect(screen).toHavePathname('/move');
+    expect(radiosOf('To')).toEqual(['Japan trip']);
+    await chooseTo('Japan trip');
+    await type('Amount', '100');
+    await press('Move');
+    expect(await movesInDb()).toEqual([expect.objectContaining({ from_pocket_id: 1, to_pocket_id: 2, amount_cents: 10000 })]);
+    await expectPocketBalance('Japan trip', '100,00 €');
+  });
+
+  it('Spend stays: "Spend from" a pocket still records an expense that leaves the pocket', async () => {
+    await startApp(setup);
+    await showPocket('Emergency fund');
+    await press('Spend from');
+    await type('Amount', '40');
+    await press('Add expense');
+
+    await expectBalance('960,00 €');
+    await pickSpace(/^Main/);
+    await expectLeftToSpend('200,00 €');
+  });
+
+  it('Total: "In pockets" is the same after a move between pockets', async () => {
+    const inPockets = () => screen.getByText(/^In pockets/);
+    await startApp(setup);
+    await openSpaces();
+    expect(inPockets()).toHaveTextContent(/1.500,00.€$/);
+
+    await startApp({ ...setup, moves: [toJapan] });
+    await openSpaces();
+    expect(inPockets()).toHaveTextContent(/1.500,00.€$/);
   });
 
   it('Both lists: "Emergency fund" lists "To Japan trip" with "-300,00 €" and "Japan trip" lists "From Emergency fund" with "+300,00 €"', async () => {
@@ -243,90 +343,15 @@ describe('Move money between pockets (Story 2)', () => {
     await showPocket('Japan trip');
     expect(screen.getByRole('button', { name: FROM_EMERGENCY_ROW })).toBeOnTheScreen();
   });
-
-  it('No month change: none of Main\'s figures or lists change', async () => {
-    await startApp(setup);
-    await expectLeftToSpend('200,00 €');
-    const before = {
-      card: labelOf(/^Left to spend/),
-      pace: labelOf(/^Spending pace/),
-      rows: screen.getAllByRole('button').map((b) => b.props.accessibilityLabel).filter((l) => /Pay|Rent/.test(l ?? '')),
-    };
-    await moveToJapan();
-    await pickSpace(/^Main/);
-
-    await expectLeftToSpend('200,00 €');
-    expect(labelOf(/^Left to spend/)).toBe(before.card);
-    expect(labelOf(/^Spending pace/)).toBe(before.pace);
-    expect(screen.queryByText(partialText('From Emergency fund'))).not.toBeOnTheScreen();
-    expect(screen.queryByText(partialText('To Japan trip'))).not.toBeOnTheScreen();
-    expect(screen.getAllByRole('button').map((b) => b.props.accessibilityLabel).filter((l) => /Pay|Rent/.test(l ?? ''))).toEqual(before.rows);
-  });
-
-  it('Choices: To offers "Main" and every other pocket, never the From pocket; From offers every pocket and no "New pocket"', async () => {
-    await startApp({ ...setup, pockets: [emergency, japan, car] });
-    await showPocket('Emergency fund');
-    await press('Move');
-
-    expect(radiosOf('From')).toEqual(['Emergency fund', 'Japan trip', 'Car']);
-    expect(radiosOf('To')).toEqual(['Main', 'Japan trip', 'Car']);
-    expect(screen.queryByRole('radio', { name: /New pocket/ })).not.toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /New pocket/ })).not.toBeOnTheScreen();
-
-    await chooseTo('Car');
-    await fireFrom('Japan trip');
-    expect(radiosOf('To')).toEqual(['Main', 'Emergency fund', 'Car']);
-  });
-
-  it('Choices: changing From to the pocket chosen as To sets To back to "Main"', async () => {
-    await startApp(setup);
-    await showPocket('Emergency fund');
-    await press('Move');
-    await chooseTo('Japan trip');
-    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Japan trip' })).toBeSelected();
-
-    await fireFrom('Japan trip');
-
-    expect(within(screen.getByLabelText('From')).getByRole('radio', { name: 'Japan trip' })).toBeSelected();
-    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Main' })).toBeSelected();
-  });
-
-  it('Choices: with only one pocket To offers only "Main"', async () => {
-    await startApp({ ...setup, pockets: [emergency] });
-    await showPocket('Emergency fund');
-    await press('Move');
-    expect(radiosOf('To')).toEqual(['Main']);
-  });
-
-  it('Choices: From can be changed, and the move then leaves that pocket', async () => {
-    await startApp(setup);
-    await showPocket('Emergency fund');
-    await press('Move');
-    await fireFrom('Japan trip');
-    await type('Amount', '100');
-    await press('Move');
-
-    expect(await movesInDb()).toEqual([expect.objectContaining({ from_pocket_id: 2, to_pocket_id: null, amount_cents: 10000 })]);
-    await expectPocketBalance('Japan trip', '400,00 €');
-    await expectPocketBalance('Emergency fund', '1 000,00 €');
-  });
-
-  it('Total: "In pockets" is the same after a move between pockets and lower by the amount after a move into Main', async () => {
-    const inPockets = () => screen.getByText(/^In pockets/);
-    await startApp(setup);
-    await openSpaces();
-    expect(inPockets()).toHaveTextContent(/1.500,00.€$/);
-
-    await startApp({ ...setup, moves: [toJapan] });
-    await openSpaces();
-    expect(inPockets()).toHaveTextContent(/1.500,00.€$/);
-
-    await startApp({ ...setup, moves: [toMain] });
-    await openSpaces();
-    expect(inPockets()).toHaveTextContent(/1.200,00.€$/);
-  });
 });
 
+describe('Stored moves into Main: spaces total (031 Story 2)', () => {
+  it('Total: "In pockets" is lower by the amount of a stored move into Main', async () => {
+    await startApp({ today: TODAY, plans: NO_GOAL, pockets: [emergency, japan], entries: [salary, rent], moves: [toMain] });
+    await openSpaces();
+    expect(screen.getByText(/^In pockets/)).toHaveTextContent(/1.200,00.€$/);
+  });
+});
 
 describe('Fix or undo a move (Story 3)', () => {
   const setup = { today: TODAY, plans: NO_GOAL, pockets: [emergency, japan], entries: [salary, rent], moves: [{ ...toMain, note: 'Car repair' }] };
@@ -342,6 +367,7 @@ describe('Fix or undo a move (Story 3)', () => {
     expect(screen).toHavePathname('/move');
     expect(within(screen.getByLabelText('From')).getByRole('radio', { name: 'Emergency fund' })).toBeSelected();
     expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Main' })).toBeSelected();
+    expect(radiosOf('To')).toEqual(['Main', 'Japan trip']);
     expect(screen.getByLabelText('Amount')).toHaveDisplayValue(/^300[,.]00$/);
     expect(screen.getByLabelText('Note (optional)')).toHaveDisplayValue('Car repair');
     expect(screen.getByRole('button', { name: /^Date: Fri 20 Nov/ })).toBeOnTheScreen();
@@ -381,6 +407,36 @@ describe('Fix or undo a move (Story 3)', () => {
     await pickSpace(/^Main/);
     await expectLeftToSpend('200,00 €');
     expect(await movesInDb()).toEqual([expect.objectContaining({ from_pocket_id: 1, to_pocket_id: 2 })]);
+  });
+
+  it('Edit: a stored move into Main can change its amount, date or note and stay in Main', async () => {
+    await startApp(setup);
+    await openMove();
+    await typeNote('Tyres');
+    await press('Save changes');
+
+    expect(screen).toHavePathname('/');
+    expect(await movesInDb()).toEqual([expect.objectContaining({ to_pocket_id: null, note: 'Tyres', amount_cents: 30000 })]);
+  });
+
+  it('No way back: once saved into a pocket, reopening it offers no "Main"', async () => {
+    await startApp(setup);
+    await openMove();
+    await chooseTo('Japan trip');
+    await press('Save changes');
+    await showPocket('Emergency fund');
+    await press(moveRow('Car repair', 'Fri 20 Nov', '-300,00 €'));
+
+    expect(screen).toHavePathname('/move');
+    expect(radiosOf('To')).toEqual(['Japan trip']);
+    expect(within(screen.getByLabelText('To')).getByRole('radio', { name: 'Japan trip' })).toBeSelected();
+  });
+
+  it('Edit: another stored move into Main still offers Main, and a pocket-to-pocket move never does', async () => {
+    await startApp({ ...setup, moves: [{ ...toJapan, note: 'Flights' }] });
+    await showPocket('Emergency fund');
+    await press(moveRow('Flights', 'Fri 20 Nov', '-300,00 €'));
+    expect(radiosOf('To')).toEqual(['Japan trip']);
   });
 
   it('Delete: "Delete move" asks first through the shared dialog', async () => {
@@ -638,14 +694,13 @@ describe('Lists keep time order (FR-006)', () => {
     expect(order()).toEqual(['Lunch', 'From Emergency fund']);
   });
 
-  it('Main: a move recorded through the form after an expense lists above it', async () => {
-    await startApp({ ...base, entries: [salary, lunch], raw: [stamp('Lunch', '2026-11-25 09:00:00')] });
+  it('Pocket: a move recorded through the form after a pocket expense lists above it', async () => {
+    await startApp({ ...base, entries: [salary, { ...lunch, pocketId: 1 }], raw: [stamp('Lunch', '2026-11-25 09:00:00')] });
     await showPocket('Emergency fund');
     await press('Move');
     await type('Amount', '100');
     await press('Move');
-    await pickSpace(/^Main/);
-    expect(order()).toEqual(['From Emergency fund', 'Lunch']);
+    expect(order()).toEqual(['To Japan trip', 'Lunch']);
   });
 
   it('Pocket: a move out made after a pocket expense of the same day lists above it, and below one recorded later', async () => {

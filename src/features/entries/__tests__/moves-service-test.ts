@@ -19,6 +19,16 @@ async function twoPockets() {
   return db;
 }
 
+/** A move into Main stored by an earlier version: the app can no longer create one. */
+const seedIntoMain = (db: any, over: { amount?: number; date?: string; from?: number; note?: string } = {}) =>
+  db.runAsync(
+    "INSERT INTO move (date, amount_cents, from_pocket_id, to_pocket_id, note, created_at) VALUES (?, ?, ?, NULL, ?, datetime('now'))",
+    over.date ?? '2026-11-20',
+    over.amount ?? 30000,
+    over.from ?? 1,
+    over.note ?? '',
+  );
+const ONLY_POCKETS = 'Money can only move to another pocket.';
 const moves = (db: any) =>
   db.getAllAsync('SELECT id, date, amount_cents, from_pocket_id, to_pocket_id, note FROM move ORDER BY id');
 const pockets = (db: any) => db.getAllAsync('SELECT id FROM pocket ORDER BY id');
@@ -27,18 +37,30 @@ const input = (over: Partial<{ date: string; amountCents: number; note: string; 
   amountCents: 30000,
   note: '',
   fromPocketId: 1,
-  toPocketId: null as number | null,
+  toPocketId: 2 as number | null,
   ...over,
 });
 const TOO_MUCH = 'There is not that much in this pocket.';
 
-describe('Take money out of a pocket: addMove (Story 1, FR-001)', () => {
-  it('Moved: a move into Main is stored with its date, amount, pockets and a trimmed note', async () => {
+describe('Move only between pockets: addMove (031 Story 1, FR-003)', () => {
+  it('Moved: a move into another pocket is stored with its date, amount, pockets and a trimmed note', async () => {
     const db = await twoPockets();
-    expect(await addMove(db, input({ note: '  Car repair  ' }), NOV_25)).toEqual({ ok: true });
+    expect(await addMove(db, input({ note: '  Flights  ' }), NOV_25)).toEqual({ ok: true });
     expect(await moves(db)).toEqual([
-      { id: 1, date: '2026-11-20', amount_cents: 30000, from_pocket_id: 1, to_pocket_id: null, note: 'Car repair' },
+      { id: 1, date: '2026-11-20', amount_cents: 30000, from_pocket_id: 1, to_pocket_id: 2, note: 'Flights' },
     ]);
+  });
+
+  it('Refused writes: a new move with no To pocket is refused with "Money can only move to another pocket." and nothing is stored', async () => {
+    const db = await twoPockets();
+    expect(await addMove(db, input({ toPocketId: null }), NOV_25)).toEqual({ ok: false, kind: 'invalid', message: ONLY_POCKETS });
+    expect(await moves(db)).toEqual([]);
+  });
+
+  it('Refused writes: a move into Main is refused even when the pocket holds the money', async () => {
+    const db = await twoPockets();
+    expect(await addMove(db, input({ toPocketId: null, amountCents: 1 }), NOV_25)).toMatchObject({ ok: false, message: ONLY_POCKETS });
+    expect(await moves(db)).toEqual([]);
   });
 
   it('a move into another pocket stores both pockets', async () => {
@@ -50,6 +72,7 @@ describe('Take money out of a pocket: addMove (Story 1, FR-001)', () => {
   it('a move changes no entry', async () => {
     const db = await twoPockets();
     await addMove(db, input(), NOV_25);
+    expect(await moves(db)).toHaveLength(1);
     expect(await db.getAllAsync('SELECT * FROM entry')).toEqual([]);
   });
 
@@ -112,7 +135,7 @@ describe('Not enough in the pocket (FR-005)', () => {
     await addPocket(db, { name: 'Boat', startingCents: 1000, emoji: '', color: 'blue' });
     expect(await addMove(db, input({ amountCents: 1 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
     await addEntry(db, { date: '2026-11-03', kind: 'expense', amountCents: 5000, note: '', category: 'other', pocketId: 2 }, NOV_25);
-    expect(await addMove(db, input({ fromPocketId: 2, amountCents: 1 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
+    expect(await addMove(db, input({ fromPocketId: 2, toPocketId: 1, amountCents: 1 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
     expect(await moves(db)).toEqual([]);
   });
 });
@@ -144,8 +167,8 @@ describe('Fix or undo a move: editMove and deleteMove (Story 3)', () => {
   it('editing so the move goes out of another pocket checks that pocket, without the move itself', async () => {
     const db = await twoPockets();
     await addMove(db, input({ amountCents: 30000 }), NOV_25);
-    expect(await editMove(db, 1, input({ fromPocketId: 2, amountCents: 50001 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
-    expect(await editMove(db, 1, input({ fromPocketId: 2, amountCents: 50000 }), NOV_25)).toEqual({ ok: true });
+    expect(await editMove(db, 1, input({ fromPocketId: 2, toPocketId: 1, amountCents: 50001 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
+    expect(await editMove(db, 1, input({ fromPocketId: 2, toPocketId: 1, amountCents: 50000 }), NOV_25)).toEqual({ ok: true });
   });
 
   it('a move that does not exist cannot be edited or deleted', async () => {
@@ -159,7 +182,7 @@ describe('Fix or undo a move: editMove and deleteMove (Story 3)', () => {
     await addMove(db, input(), NOV_25);
     expect(await editMove(db, 1, input({ amountCents: 0 }), NOV_25)).toMatchObject({ ok: false, kind: 'invalid' });
     expect(await editMove(db, 1, input({ toPocketId: 9 }), NOV_25)).toMatchObject({ ok: false, kind: 'invalid' });
-    expect(await moves(db)).toEqual([expect.objectContaining({ amount_cents: 30000, to_pocket_id: null })]);
+    expect(await moves(db)).toEqual([expect.objectContaining({ amount_cents: 30000, to_pocket_id: 2 })]);
   });
 
   it('Delete: the move is gone and the pocket holds its money again', async () => {
@@ -169,6 +192,64 @@ describe('Fix or undo a move: editMove and deleteMove (Story 3)', () => {
     expect(await deleteMove(db, 1)).toEqual({ ok: true });
     expect(await moves(db)).toEqual([]);
     expect(await addMove(db, input({ amountCents: 100000 }), NOV_25)).toEqual({ ok: true });
+  });
+});
+
+describe('Earlier moves into Main stay (031 Story 2, FR-003, FR-004)', () => {
+  it('Edit: amount, date and note of a stored move into Main can change while it stays in Main', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    expect(await editMove(db, 1, input({ toPocketId: null, date: '2026-11-21', amountCents: 12000, note: 'Car' }), NOV_25)).toEqual({ ok: true });
+    expect(await moves(db)).toEqual([{ id: 1, date: '2026-11-21', amount_cents: 12000, from_pocket_id: 1, to_pocket_id: null, note: 'Car' }]);
+  });
+
+  it('Edit: a stored move into Main can be moved to a pocket instead', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    expect(await editMove(db, 1, input({ toPocketId: 2 }), NOV_25)).toEqual({ ok: true });
+    expect(await moves(db)).toEqual([expect.objectContaining({ from_pocket_id: 1, to_pocket_id: 2 })]);
+  });
+
+  it('No way back: once saved into a pocket, it cannot be set back to Main', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    await editMove(db, 1, input({ toPocketId: 2 }), NOV_25);
+    expect(await editMove(db, 1, input({ toPocketId: null }), NOV_25)).toEqual({ ok: false, kind: 'invalid', message: ONLY_POCKETS });
+    expect(await moves(db)).toEqual([expect.objectContaining({ to_pocket_id: 2 })]);
+  });
+
+  it('Refused writes: an edit that sets To to Main on a move that was not into Main is refused and nothing changes', async () => {
+    const db = await twoPockets();
+    await addMove(db, input({ amountCents: 30000 }), NOV_25);
+    expect(await editMove(db, 1, input({ toPocketId: null, amountCents: 10000 }), NOV_25)).toEqual({ ok: false, kind: 'invalid', message: ONLY_POCKETS });
+    expect(await moves(db)).toEqual([expect.objectContaining({ amount_cents: 30000, to_pocket_id: 2 })]);
+  });
+
+  it('keeping Main while editing still checks that the pocket holds the money, counting the move\'s own amount', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db, { amount: 30000 });
+    expect(await editMove(db, 1, input({ toPocketId: null, amountCents: 100001 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
+    expect(await editMove(db, 1, input({ toPocketId: null, amountCents: 100000 }), NOV_25)).toEqual({ ok: true });
+  });
+
+  it('a stored move into Main still counts against its pocket: 700,00 is left, so a new move of 700,01 is refused', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    expect(await addMove(db, input({ amountCents: 70001 }), NOV_25)).toMatchObject({ ok: false, message: TOO_MUCH });
+    expect(await addMove(db, input({ amountCents: 70000 }), NOV_25)).toEqual({ ok: true });
+  });
+
+  it('Delete: a stored move into Main can be deleted', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    expect(await deleteMove(db, 1)).toEqual({ ok: true });
+    expect(await moves(db)).toEqual([]);
+  });
+
+  it('a pocket a stored move into Main comes from cannot be deleted', async () => {
+    const db = await twoPockets();
+    await seedIntoMain(db);
+    expect(await deletePocket(db, 1)).toMatchObject({ ok: false });
   });
 });
 

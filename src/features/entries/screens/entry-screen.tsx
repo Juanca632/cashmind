@@ -8,7 +8,7 @@ import { KeyboardAvoidingView, Pressable, StyleSheet, Switch, TextInput, View } 
 import { DEFAULT_CATEGORY, type EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
-import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
+import { SpaceChoices } from '@/features/entries/components/space-choices';
 import { PocketChoices } from '@/features/entries/components/pocket-choices';
 import { KindSegmented } from '@/features/entries/components/kind-segmented';
 import { QuickAddRow } from '@/features/entries/components/quick-add-row';
@@ -69,7 +69,9 @@ export default function EntryScreen() {
   return (
     <EntryForm
       entry={entry}
-      defaultKind={params.kind === 'savings' || params.kind === 'income' ? params.kind : 'expense'}
+      // Add from My plan is for what repeats: income and expenses, never savings (specs/030-split-savings).
+      kinds={entry === null && params.repeat === '1' ? REPEAT_KINDS : FORM_KINDS}
+      defaultKind={params.kind === 'income' || (params.kind === 'savings' && params.repeat !== '1') ? params.kind : 'expense'}
       defaultDate={defaultEntryDate(params.month, today)}
       // An entry repeats while its item is active; Add from My plan starts with repeat on.
       initialRepeat={entry ? item.data?.active === true : params.repeat === '1'}
@@ -83,6 +85,7 @@ export default function EntryScreen() {
 
 function EntryForm({
   entry,
+  kinds,
   defaultKind,
   defaultDate,
   initialRepeat,
@@ -91,6 +94,8 @@ function EntryForm({
   suggestions,
 }: {
   entry: Entry | null;
+  /** The kinds the form offers. */
+  kinds: readonly EntryKind[];
   defaultKind: EntryKind;
   defaultDate: string;
   initialRepeat: boolean;
@@ -121,8 +126,9 @@ function EntryForm({
   const firstDay = `${formMonth}-01`;
   const todayKey = dayKey(today);
   const lastDay = lastDayOfMonth(formMonth) < todayKey ? lastDayOfMonth(formMonth) : todayKey;
-  // Only this month's entries can repeat; past months never change.
-  const canRepeat = formMonth === monthKey(today);
+  // Only this month's income and expenses can repeat; past months never change, and savings are
+  // split from home each month (specs/030-split-savings).
+  const canRepeat = formMonth === monthKey(today) && kind !== 'savings';
   // Savings go into a pocket and keep no category of their own; the others never have a pocket.
   const input: EntryInput = {
     date,
@@ -184,7 +190,7 @@ function EntryForm({
         {confirmDialog}
         <ScreenScroll>
           <KindSegmented
-            kinds={FORM_KINDS}
+            kinds={kinds}
             value={kind}
             onChange={(option) => {
               setKind(option);
@@ -234,7 +240,7 @@ function EntryForm({
               <ThemedText type="smallBold" themeColor="textSecondary">
                 Paid from
               </ThemedText>
-              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+              <SpaceChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
             </View>
           ) : null}
 
@@ -301,6 +307,7 @@ function EntryForm({
 
 /** The kinds in the order the entry form offers them (ENTRY_KINDS has another order): expenses are the most common. */
 const FORM_KINDS: readonly EntryKind[] = ['expense', 'income', 'savings'];
+const REPEAT_KINDS: readonly EntryKind[] = ['expense', 'income'];
 
 const styles = StyleSheet.create({
   screen: {

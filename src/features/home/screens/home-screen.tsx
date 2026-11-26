@@ -23,9 +23,11 @@ import {
 } from '@/features/entries/rules';
 import { addEntry, recordRecurringEntries } from '@/features/entries/service';
 import { usePocket } from '@/features/entries/hooks/use-pocket';
+import { SavingsCard } from '@/features/home/components/savings-card';
 import { SpaceSelector } from '@/features/home/components/space-selector';
 import { SpendingPaceChart } from '@/features/home/components/spending-pace-chart';
 import { PocketSpace } from '@/features/home/screens/pocket-space';
+import { savedByPocket, toSplit } from '@/features/home/split-savings';
 import { dailyAllowance, monthFigures, paceSentence, spendingPace, type DailyAllowance, type SpendingPace } from '@/features/home/month-summary';
 import { usePlanVersions } from '@/features/plan/hooks/use-plan-versions';
 import { savingsPercentFor } from '@/features/plan/rules';
@@ -108,7 +110,7 @@ function HomeMonth({ today }: { today: Date }) {
   const previousIncome = usePreviousIncome(month, refresh);
   const moves = useMoves();
   // Which kind of entry the list is showing; null shows all of them.
-  const [selected, setSelected] = useState<EntryKind | null>(null);
+  const [selected, setSelected] = useState<TileKind | null>(null);
   // A repeat is tied to the month and its income as loaded: once the reload shows the new income
   // (or the month changes) the key changes, so a tap made before the reload cannot record it twice.
   const loadedIncome = entries.status === 'ready' ? totalsByKind(entries.data).income : 0;
@@ -132,13 +134,12 @@ function HomeMonth({ today }: { today: Date }) {
   const percent = savingsPercentFor(plan.data, month);
   // Money moved out of pockets into Main adds to left to spend (specs/028-move-money).
   const movedIn = movedIntoMain(moves.data, month);
-  const summary = monthFigures(monthEntries, moves.data, percent, month);
+  const summary = monthFigures(monthEntries, moves.data, percent, month, money.unitCents);
   const hasIncome = summary.income > 0;
   // Moves into Main show in the whole list only, not when one kind is picked.
   const lines = selected === null ? mainMoveLines(moves.data, month) : [];
   const list = firstEntries(mergeByDate(entriesOfKind(counted, selected), lines), HOME_LIST_SIZE);
-  // Savings go into pockets, not categories (specs/025-pockets), so they have no split.
-  const split = selected && selected !== 'savings' ? categorySplit(counted, selected) : [];
+  const split = selected ? categorySplit(counted, selected) : [];
 
   async function repeatIncome(amountCents: number) {
     if (repeatedFor.current === repeatKey) return;
@@ -156,11 +157,12 @@ function HomeMonth({ today }: { today: Date }) {
     Alert.alert('Something went wrong', result.message);
   }
   const toggle = (kind: EntryKind) => {
+    // Only the income and spent tiles filter; savings are one block that opens Split (specs/030-split-savings).
+    if (kind === 'savings') return;
     hapticTick();
     setSelected(kind === selected ? null : kind);
   };
   const openNewEntry = (kind?: EntryKind) => router.push({ pathname: '/entry', params: { month, kind } });
-  const savingsDone = summary.goal > 0 && summary.saved >= summary.goal;
   const overspent = hasIncome && summary.left < 0;
 
   return (
@@ -221,15 +223,14 @@ function HomeMonth({ today }: { today: Date }) {
             <View style={styles.tiles}>
               <KindTile kind="income" value={money.formatCompact(summary.income)} detail="received" selected={selected} onSelect={toggle} />
               <KindTile kind="expense" title="Spent" value={money.formatCompact(summary.spent)} detail="this month" selected={selected} onSelect={toggle} />
-              <KindTile
-                kind="savings"
-                value={money.formatCompact(summary.saved)}
-                detail={summary.goal === 0 ? 'No goal' : savingsDone ? 'Goal reached' : `of ${money.formatCompact(summary.goal)}`}
-                progress={summary.goal > 0 ? Math.min(summary.saved / summary.goal, 1) : undefined}
-                selected={selected}
-                onSelect={toggle}
-              />
             </View>
+            {/* One block for the savings goal and where it goes (specs/030-split-savings). */}
+            <SavingsCard
+              savedCents={summary.saved}
+              goalCents={summary.goal}
+              toSplitCents={isPast ? null : toSplit(summary.goal, summary.saved)}
+              pocketCount={savedByPocket(monthEntries, month).size}
+            />
           </View>
         ) : null}
 
@@ -318,14 +319,16 @@ function SpendingPaceSection({ pace, month }: { pace: SpendingPace; month: strin
   );
 }
 
+/** The kinds home's tiles filter the list by. */
+type TileKind = Exclude<EntryKind, 'savings'>;
+
 /** Tile and filter titles; expenses read as what was spent. */
-const TILE_TITLES: Record<EntryKind, string> = {
+const TILE_TITLES: Record<TileKind, string> = {
   income: KIND_LABELS.income,
-  savings: KIND_LABELS.savings,
   expense: 'Spent',
 };
 
-function emptyListText(selected: EntryKind | null, isPast: boolean): string {
+function emptyListText(selected: TileKind | null, isPast: boolean): string {
   if (selected) return EMPTY_KIND_TEXTS[selected];
   if (isPast) return 'Nothing was recorded this month.';
   return 'Record what you earn, spend and save.';

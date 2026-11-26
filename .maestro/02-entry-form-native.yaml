@@ -1,5 +1,5 @@
 appId: com.juancrestrepo.cashmind
-# Smoke: Android calendar, keyboard and back button on the entry form (017 US2, 001 US3-4, 022).
+# Smoke: Android calendar, keyboard and back button on the entry form (017 US2, 001 US3-4, 022, 033).
 ---
 - runFlow: subflows/launch-clean.yaml
 - runFlow:
@@ -23,6 +23,16 @@ appId: com.juancrestrepo.cashmind
 - tapOn: "Keep editing"
 - assertVisible: "Date: .* 1 .*"
 # The keyboard stays closed after "Keep editing", so the next back asks again.
+- back
+- assertVisible: "Discard changes?"
+- tapOn: "Discard"
+- assertVisible: "My plan"
+# A long amount stays whole in view (033): grouped, with the first digit not scrolled out of the field.
+- tapOn: "Add expense"
+- tapOn: "Amount"
+- inputText: "1500000"
+- assertVisible: "1.500.000"
+- hideKeyboard
 - back
 - assertVisible: "Discard changes?"
 - tapOn: "Discard"

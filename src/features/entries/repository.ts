@@ -191,11 +191,17 @@ function toRecurring(row: RecurringRow): RecurringItem {
   };
 }
 
-/** The monthly items that still repeat, income first, then savings, then expenses, oldest first. */
+/**
+ * Savings no longer repeat (specs/030-split-savings): items of that kind from older versions stay
+ * stored as they are but are never listed or recorded again.
+ */
+const REPEATS = "recurring.active = 1 AND recurring.kind <> 'savings'";
+
+/** The monthly items that still repeat, income first, then expenses, oldest first. */
 export async function getActiveRecurringItems(db: SQLiteDatabase): Promise<RecurringItem[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE recurring.active = 1
-     ORDER BY CASE recurring.kind WHEN 'income' THEN 0 WHEN 'savings' THEN 1 ELSE 2 END, recurring.id`,
+    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE ${REPEATS}
+     ORDER BY CASE recurring.kind WHEN 'income' THEN 0 ELSE 1 END, recurring.id`,
   );
   return rows.map(toRecurring);
 }
@@ -208,7 +214,7 @@ export async function getRecurringItem(db: SQLiteDatabase, id: number): Promise<
 /** Active items that have no entry yet in `month`. */
 export async function getRecurringItemsToRecord(db: SQLiteDatabase, month: string): Promise<RecurringItem[]> {
   const rows = await db.getAllAsync<RecurringRow>(
-    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE recurring.active = 1 AND recurring.last_month < ? ORDER BY recurring.id`,
+    `SELECT ${RECURRING_COLUMNS} FROM ${FROM_RECURRING} WHERE ${REPEATS} AND recurring.last_month < ? ORDER BY recurring.id`,
     month,
   );
   return rows.map(toRecurring);
@@ -287,10 +293,20 @@ export async function getPocket(db: SQLiteDatabase, id: number): Promise<Pocket 
   return row ? toPocket(row) : null;
 }
 
-/** True when an entry, a monthly item (even a stopped one) or a move on either side points to the pocket. */
+/**
+ * A repeating saving from before 030 that no entry points to: it shows nowhere and records
+ * nothing, so it goes with its empty pocket (specs/030-split-savings).
+ */
+const UNUSED_OLD_SAVING = "recurring.kind = 'savings' AND NOT EXISTS (SELECT 1 FROM entry WHERE entry.recurring_id = recurring.id)";
+
+/**
+ * True when an entry, a monthly item (even a stopped one) or a move on either side points to the
+ * pocket, except an unused old repeating saving.
+ */
 export async function pocketInUse(db: SQLiteDatabase, id: number): Promise<boolean> {
   const row = await db.getFirstAsync(
-    `SELECT 1 FROM entry WHERE pocket_id = ? UNION ALL SELECT 1 FROM recurring WHERE pocket_id = ?
+    `SELECT 1 FROM entry WHERE pocket_id = ?
+     UNION ALL SELECT 1 FROM recurring WHERE pocket_id = ? AND NOT (${UNUSED_OLD_SAVING})
      UNION ALL SELECT 1 FROM move WHERE from_pocket_id = ? OR to_pocket_id = ? LIMIT 1`,
     id,
     id,
@@ -323,8 +339,12 @@ export async function updatePocket(db: SQLiteDatabase, id: number, input: Pocket
   );
 }
 
+/** Deletes an empty pocket, with any unused old repeating saving left in it, in one transaction. */
 export async function deletePocket(db: SQLiteDatabase, id: number): Promise<void> {
-  await db.runAsync('DELETE FROM pocket WHERE id = ?', id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(`DELETE FROM recurring WHERE pocket_id = ? AND ${UNUSED_OLD_SAVING}`, id);
+    await db.runAsync('DELETE FROM pocket WHERE id = ?', id);
+  });
 }
 
 type MoveRow = Record<

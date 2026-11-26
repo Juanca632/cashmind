@@ -6,8 +6,7 @@ import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
 import type { EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
-import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
-import { PocketChoices } from '@/features/entries/components/pocket-choices';
+import { SpaceChoices } from '@/features/entries/components/space-choices';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import { RECURRING_MISSING, entryErrorMessage, validateRecurring, type RecurringItem } from '@/features/entries/rules';
@@ -35,7 +34,8 @@ export default function RecurringScreen() {
 
   if (loaded.status === 'error') return <DataError />;
   if (loaded.status === 'loading') return <ThemedView style={styles.screen} />;
-  if (!loaded.data?.active) return <MessageScreen title={RECURRING_MISSING} />;
+  // Savings no longer repeat (specs/030-split-savings): an old repeating saving is as good as gone.
+  if (!loaded.data?.active || loaded.data.kind === 'savings') return <MessageScreen title={RECURRING_MISSING} />;
   return <RecurringForm item={loaded.data} />;
 }
 
@@ -84,18 +84,14 @@ function RecurringForm({ item }: { item: RecurringItem }) {
             error={amountError ? entryErrorMessage(amountError) : null}
           />
 
-          {item.kind === 'savings' ? (
-            <PocketChoices pockets={pockets.status === 'ready' ? pockets.data : []} value={pocketId} onChange={setPocketId} />
-          ) : (
-            <CategoryChoices kind={item.kind} value={category} onChange={setCategory} />
-          )}
+          <CategoryChoices kind={item.kind} value={category} onChange={setCategory} />
 
           {item.kind === 'expense' && pockets.status === 'ready' && pockets.data.length > 0 ? (
             <View style={styles.section}>
               <ThemedText type="smallBold" themeColor="textSecondary">
                 Paid from
               </ThemedText>
-              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+              <SpaceChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
             </View>
           ) : null}
 

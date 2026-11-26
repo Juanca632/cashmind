@@ -142,10 +142,12 @@ describe('Keep my budget in my own currency', () => {
     expect(amountField().props.keyboardType).toBe('number-pad');
   });
 
-  it('Pick pesos: an amount with cents still shows its decimals, so nothing looks rounded', async () => {
+  it('Pick pesos: an amount with cents shows without them, cut towards zero, and is stored unchanged (032)', async () => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary, cinema] });
     await pickAndGoBack('Colombian peso');
-    shown('$ 12,50');
+    shown('$ 12');
+    notShown('$ 12,50');
+    expect(await storedAmounts()).toEqual([1250, 300000]);
   });
 
   it('No conversion: 50,00 € shows "$ 50" in pesos and 50,00 € again after switching back; nothing stored changes', async () => {
@@ -321,7 +323,6 @@ describe('Type amounts in that currency', () => {
   it.each([
     ['EUR', '12,50'],
     ['EUR', '12.50'],
-    ['USD', '12,50'],
     ['USD', '12.50'],
   ])('Euro and dollar decimals: %s with "%s" saves 12.50', async (code, typed) => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary], raw: store(code) });
@@ -365,9 +366,9 @@ describe('Type amounts in that currency', () => {
   });
 
   it.each([
-    ['EUR', '12,50', '45000,00'],
-    ['USD', '12.50', '45000.00'],
-    ['COP', '12,50', '45000'],
+    ['EUR', '12,50', '45 000,00'],
+    ['USD', '12.50', '45,000.00'],
+    ['COP', '12,50', '45.000'],
   ])('Editing: in %s an existing entry opens as "%s" and 45 000 as "%s"', async (code, small, big) => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary, cinema, rent], raw: store(code) });
     await press(/Cinema/);
