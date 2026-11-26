@@ -176,8 +176,8 @@ describe('Journey: the chart follows what the user records', () => {
     await expectBalance('540,00 €');
   });
 
-  it('Moving money out of the pocket to Main lowers today\'s value and the sentence says "Down 300,00 € this month"', async () => {
-    await startApp({ today: TODAY, pockets: [{ name: 'Emergency fund', startingCents: 100000 }], entries: [salary] });
+  it('Moving money out of the pocket to another pocket lowers today\'s value and the sentence says "Down 300,00 € this month"', async () => {
+    await startApp({ today: TODAY, pockets: [{ name: 'Emergency fund', startingCents: 100000 }, { name: 'Car' }], entries: [salary] });
     await showPocket('Emergency fund');
     await press('Move');
     await type('Amount', '300');

@@ -62,6 +62,7 @@ const POCKET_GONE = 'This pocket no longer exists.';
 const POCKET_IN_USE = "A pocket with savings, spending or moves can't be deleted.";
 const MOVE_FAILED = 'The move could not be saved. Please try again.';
 const MOVE_DELETE_FAILED = 'The move could not be deleted. Please try again.';
+const MOVE_TO_POCKET_ONLY = 'Money can only move to another pocket.';
 
 /** A saving's pocket must still exist; a pocket deleted meanwhile is as good as none. */
 async function rejectIfPocketGone(db: SQLiteDatabase, pocketId: number | null): Promise<WriteResult | null> {
@@ -270,9 +271,13 @@ async function moveRefusal(db: SQLiteDatabase, input: MoveInput, today: Date, ed
   return moveTooMuch(input.amountCents, balance.cents) ? rejected(MOVE_TOO_MUCH) : null;
 }
 
-/** Money out of a pocket, into Main or another pocket (specs/028-move-money). */
+/**
+ * Money from one pocket into another (specs/028-move-money). Savings never go back into Main
+ * (specs/031-pocket-moves-only): only a move stored into Main by an earlier version stays there.
+ */
 export function addMove(db: SQLiteDatabase, input: MoveInput, today: Date): Promise<WriteResult> {
   return attemptWrite(MOVE_FAILED, async () => {
+    if (input.toPocketId === null) return rejected(MOVE_TO_POCKET_ONLY);
     // The balance is checked and the move written in one transaction, so nothing changes in between.
     let refusal: WriteResult | null = null;
     await db.withTransactionAsync(async () => {
@@ -285,7 +290,9 @@ export function addMove(db: SQLiteDatabase, input: MoveInput, today: Date): Prom
 
 export function editMove(db: SQLiteDatabase, id: number, input: MoveInput, today: Date): Promise<WriteResult> {
   return attemptWrite(MOVE_FAILED, async () => {
-    if (!(await getMove(db, id))) return rejected(MOVE_MISSING);
+    const current = await getMove(db, id);
+    if (!current) return rejected(MOVE_MISSING);
+    if (input.toPocketId === null && current.toPocketId !== null) return rejected(MOVE_TO_POCKET_ONLY);
     let refusal: WriteResult | null = null;
     await db.withTransactionAsync(async () => {
       refusal = await moveRefusal(db, input, today, id);
