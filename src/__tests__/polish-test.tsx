@@ -3,13 +3,15 @@ import * as Haptics from 'expo-haptics';
 import { act, screen, within } from 'expo-router/testing-library';
 
 import {
-  DEFAULT_POCKET,
   answerDialog,
   breakDeviceWrites,
   choose,
+  DEFAULT_POCKET,
   exactText,
   expectLeftToSpend,
+  partialText,
   press,
+  savingsBlock,
   startApp,
   type,
 } from '../test-support/app';
@@ -67,7 +69,7 @@ describe('See savings progress at a glance', () => {
   it('Partly saved: a goal of 400,00 € and 100,00 € saved show a bar a quarter full under "of 400 €"', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(10000)] });
 
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
     expect(bar()).toBeTruthy();
     expect(fillWidth()).toBe('25%');
   });
@@ -76,14 +78,14 @@ describe('See savings progress at a glance', () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(40000)] });
 
     expect(fillWidth()).toBe('100%');
-    expect(tile('Savings').getByText('Goal reached')).toBeOnTheScreen();
+    expect(savingsBlock().getByText(/^✓ In \d+ pockets?$/)).toBeOnTheScreen();
   });
 
   it('Goal reached: more than the goal saved keeps the bar full, never beyond', async () => {
     await startApp({ today: TODAY, entries: [salary(200000), saving(60000)] });
 
     expect(fillWidth()).toBe('100%');
-    expect(tile('Savings').getByText('Goal reached')).toBeOnTheScreen();
+    expect(savingsBlock().getByText(/^✓ In \d+ pockets?$/)).toBeOnTheScreen();
   });
 
   it('Normal month (002): 150,00 € saved of 400,00 € is a little over a third full', async () => {
@@ -103,7 +105,7 @@ describe('See savings progress at a glance', () => {
   it('No goal: a 0 % plan says "No goal" and shows no bar', async () => {
     await startApp({ today: TODAY, plans: [[0, '2026-07']], entries: [salary(200000), saving(10000)] });
 
-    expect(tile('Savings').getByText('No goal')).toBeOnTheScreen();
+    expect(savingsBlock().getByText('No goal')).toBeOnTheScreen();
     expect(bar()).toBeNull();
   });
 

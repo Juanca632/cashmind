@@ -96,7 +96,7 @@ The user has money saved from before using the app, for trips, the car and emerg
 - **FR-004** (Savings need a pocket): Every saving belongs to exactly one pocket. Income and expenses never do. The entry and monthly entry forms show pocket choices instead of savings categories for savings.
 - **FR-005** (My pockets): Home's Overview title MUST link to "My pockets" ("See pockets ›"). It shows "Total saved" (the sum of all balances), one row per pocket in creation order, and "New pocket".
 - **FR-006** (Pocket screen): It shows the balance, the starting amount when there is one, the pocket's savings newest first, and "Edit".
-- **FR-007** (Delete): Only a pocket with no saving and no monthly saving can be deleted, after the shared confirmation dialog.
+- **FR-007** (Delete): Only a pocket with no saving and no monthly saving can be deleted, after the shared confirmation dialog. Since 030, an old monthly saving that recorded no entry no longer counts, and is deleted with the pocket.
 - **FR-008** (Migration): Updating MUST create one pocket per savings category used by any saving or monthly saving, in the categories' order (Emergency fund, Investments, Travel, Goal, Other), named after the category, with a starting amount of 0. Each saving and monthly saving goes into its category's pocket. No data may be lost or changed otherwise.
 - **FR-009** (Baseline spec): `specs/001-expenses` FR-010 and FR-013 MUST describe pockets for savings.
 

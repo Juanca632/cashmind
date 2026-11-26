@@ -44,7 +44,9 @@ import {
   type MoveInput,
   type PocketInput,
   type RecurringInput,
+  type RecurringItem,
 } from '@/features/entries/rules';
+import { dayKey } from '@/shared/days';
 import { monthKey } from '@/shared/months';
 import { WRITE_OK, attemptWrite, rejected, type WriteResult } from '@/shared/write-result';
 
@@ -53,6 +55,7 @@ const DELETE_FAILED = 'The entry could not be deleted. Please try again.';
 const RECURRING_FAILED = 'The monthly entry could not be saved. Please try again.';
 const STOP_FAILED = 'The monthly entry could not be stopped. Please try again.';
 const REPEAT_CURRENT_MONTH_ONLY = 'Only entries of this month can repeat every month.';
+const SAVINGS_NEVER_REPEAT = "Savings don't repeat: split them from home each month.";
 const POCKET_FAILED = 'The pocket could not be saved. Please try again.';
 const POCKET_DELETE_FAILED = 'The pocket could not be deleted. Please try again.';
 const POCKET_GONE = 'This pocket no longer exists.';
@@ -74,8 +77,11 @@ function rejectIfInvalid(input: EntryInput, today: Date): WriteResult | null {
   return error ? rejected(entryErrorMessage(error)) : null;
 }
 
-function rejectRepeatOutsideThisMonth(input: EntryInput, today: Date, choice: RepeatChoice): WriteResult | null {
-  return choice.repeat && input.date.slice(0, 7) !== monthKey(today) ? rejected(REPEAT_CURRENT_MONTH_ONLY) : null;
+/** Only this month's income and expenses can repeat; savings are split from home (specs/030-split-savings). */
+function rejectInvalidRepeat(input: EntryInput, today: Date, choice: RepeatChoice): WriteResult | null {
+  if (!choice.repeat) return null;
+  if (input.kind === 'savings') return rejected(SAVINGS_NEVER_REPEAT);
+  return input.date.slice(0, 7) !== monthKey(today) ? rejected(REPEAT_CURRENT_MONTH_ONLY) : null;
 }
 
 /** A new item from the entry; this month already has its entry, so it is recorded from next month. */
@@ -88,7 +94,7 @@ export function addEntry(db: SQLiteDatabase, input: EntryInput, today: Date, cho
   return attemptWrite(WRITE_FAILED, async () => {
     const refusal =
       rejectIfInvalid(input, today) ??
-      rejectRepeatOutsideThisMonth(input, today, choice) ??
+      rejectInvalidRepeat(input, today, choice) ??
       (await rejectIfPocketGone(db, input.pocketId));
     if (refusal) return refusal;
     if (!choice.repeat) {
@@ -116,7 +122,7 @@ export function editEntry(
   return attemptWrite(WRITE_FAILED, async () => {
     const refusal =
       rejectIfInvalid(input, today) ??
-      rejectRepeatOutsideThisMonth(input, today, choice) ??
+      rejectInvalidRepeat(input, today, choice) ??
       (await rejectIfPocketGone(db, input.pocketId));
     if (refusal) return refusal;
     const current = await getEntry(db, id);
@@ -161,11 +167,43 @@ export async function recordRecurringEntries(db: SQLiteDatabase, today: Date): P
   return recorded;
 }
 
+/** One pocket's part of the month's savings, as split on home (specs/030-split-savings). */
+export type SavingShare = { pocketId: number; amountCents: number };
+
+const SAVINGS_FAILED = 'The savings could not be saved. Please try again.';
+const NOTHING_TO_SAVE = 'Type an amount for at least one pocket.';
+
+/**
+ * Records one saving per pocket with an amount above 0, dated today with no note. All of them are
+ * recorded or none: one invalid amount or a pocket deleted meanwhile refuses the whole split.
+ */
+export function addSavings(db: SQLiteDatabase, shares: readonly SavingShare[], today: Date): Promise<WriteResult> {
+  return attemptWrite(SAVINGS_FAILED, async () => {
+    const inputs: EntryInput[] = shares
+      .filter((share) => share.amountCents !== 0)
+      .map(({ pocketId, amountCents }) => ({ date: dayKey(today), kind: 'savings', amountCents, note: '', category: 'other', pocketId }));
+    if (inputs.length === 0) return rejected(NOTHING_TO_SAVE);
+    for (const input of inputs) {
+      const refusal = rejectIfInvalid(input, today) ?? (await rejectIfPocketGone(db, input.pocketId));
+      if (refusal) return refusal;
+    }
+    await db.withTransactionAsync(async () => {
+      for (const input of inputs) await insertEntry(db, input);
+    });
+    return WRITE_OK;
+  });
+}
+
+/** Whether an item still repeats: active, and not a saving, as savings no longer repeat (specs/030-split-savings). */
+function repeats(item: RecurringItem | null): item is RecurringItem {
+  return item?.active === true && item.kind !== 'savings';
+}
+
 /** Changes an active item from next month on; entries already recorded keep their values. */
 export function editRecurring(db: SQLiteDatabase, id: number, input: RecurringInput): Promise<WriteResult> {
   return attemptWrite(RECURRING_FAILED, async () => {
     const item = await getRecurringItem(db, id);
-    if (!item?.active) return rejected(RECURRING_MISSING);
+    if (!repeats(item)) return rejected(RECURRING_MISSING);
     const [error] = validateRecurring(item.kind, input);
     if (error) return rejected(entryErrorMessage(error));
     const gone = await rejectIfPocketGone(db, input.pocketId);
@@ -179,7 +217,7 @@ export function editRecurring(db: SQLiteDatabase, id: number, input: RecurringIn
 export function stopRecurring(db: SQLiteDatabase, id: number): Promise<WriteResult> {
   return attemptWrite(STOP_FAILED, async () => {
     const item = await getRecurringItem(db, id);
-    if (!item?.active) return rejected(RECURRING_MISSING);
+    if (!repeats(item)) return rejected(RECURRING_MISSING);
     await stopRow(db, id);
     return WRITE_OK;
   });

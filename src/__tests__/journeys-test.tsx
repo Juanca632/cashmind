@@ -1,17 +1,19 @@
 import { screen, within } from 'expo-router/testing-library';
 
 import {
-  DEFAULT_POCKET,
   answerDialog,
   choose,
+  DEFAULT_POCKET,
   exactText,
   expectLeftToSpend,
+  partialText,
   press,
   record,
   reopenApp,
+  savedPart,
+  savingsBlock,
   startApp,
   type,
-
   typeNote,
 } from '../test-support/app';
 
@@ -38,17 +40,17 @@ describe('Journey: first use, recording income, savings and expenses, changing t
     expect(screen).toHavePathname('/');
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
     await expectLeftToSpend('1 600,00 €');
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
 
     await record('Expense', '900', 'Rent');
     await expectLeftToSpend('700,00 €');
 
     await record('Savings', '150', 'Piggy bank');
     await expectLeftToSpend('700,00 €');
-    expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('150 €'))).toBeOnTheScreen();
 
     await record('Savings', '450', 'Bonus saved');
-    expect(tile('Savings').getByText('Goal reached')).toBeOnTheScreen();
+    expect(savingsBlock().getByText(/^✓ In \d+ pockets?$/)).toBeOnTheScreen();
     await expectLeftToSpend('500,00 €');
 
     await reopenApp();
@@ -61,7 +63,7 @@ describe('Journey: first use, recording income, savings and expenses, changing t
     await type('Savings percentage', '80');
     await press('Save plan');
     expect(screen).toHavePathname('/');
-    expect(tile('Savings').getByText(exactText('of 1 600 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 1 600 €'))).toBeOnTheScreen();
     // The goal (1600,00 €) is now above what was saved (600,00 €).
     await expectLeftToSpend('-500,00 €');
   });
@@ -85,7 +87,7 @@ describe('Journey: a new month, repeating the last income and browsing back', ()
 
     expect(screen.queryByText("Add this month's income")).not.toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('1 500 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 375 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 375 €'))).toBeOnTheScreen();
     await expectLeftToSpend('1 125,00 €');
     expect(screen.queryByText('November trip')).not.toBeOnTheScreen();
 
@@ -94,7 +96,7 @@ describe('Journey: a new month, repeating the last income and browsing back', ()
     expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(screen.getByText('November trip')).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('1 500 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 375 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 375 €'))).toBeOnTheScreen();
     await expectLeftToSpend('825,00 €');
 
     await press('Back to current month');
@@ -136,7 +138,7 @@ describe('Journey: income edge cases', () => {
     await press('Add income');
 
     expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 750 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 750 €'))).toBeOnTheScreen();
     await expectLeftToSpend('1 650,00 €');
 
     await press('Back to current month');

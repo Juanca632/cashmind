@@ -375,12 +375,12 @@ describe('A pocket looks like home', () => {
     expect(screen.getByText('Souvenirs')).toBeOnTheScreen();
   });
 
-  it('Tiles: Main keeps its Savings tile while a pocket has no Saved tile', async () => {
+  it('Tiles: Main keeps its Savings block while a pocket has no Saved tile', async () => {
     await startApp(trip);
-    expect(screen.getByRole('button', { name: 'Savings' })).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^(Split savings|Savings)$/)).toBeOnTheScreen();
 
     await showPocket('Japan trip');
-    expect(screen.queryByRole('button', { name: 'Savings' })).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^(Split savings|Savings)$/)).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Saved' })).not.toBeOnTheScreen();
   });
 
@@ -572,19 +572,6 @@ describe('Recognise each pocket', () => {
     await showPocket('Japan trip');
     expect(within(screen.getByRole('button', { name: /Dinner/ })).getByText(partialText('35,00'))).toBeOnTheScreen();
     expect(screen.queryByText(partialText('from ✈️ Japan trip'))).not.toBeOnTheScreen();
-  });
-
-  it('Everywhere: the monthly entry form shows the emoji on the pocket choices', async () => {
-    await startApp({
-      today: TODAY,
-      entries: [salary],
-      pockets: [japan],
-      raw: ["INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 30000, 'Plan', 1, '2026-11', 1)"],
-    });
-    await press('My plan');
-    await press(/^Plan, .*every month$/);
-
-    expect(within(screen.getByRole('radio', { name: 'Japan trip' })).getByText('✈️ Japan trip')).toBeOnTheScreen();
   });
 
   it('Update: pockets made before this version open with their names and balances, no emoji and colours in turn', async () => {

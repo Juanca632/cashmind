@@ -1,10 +1,10 @@
-import { fireEvent, screen, testRouter, within } from 'expo-router/testing-library';
+import { screen, testRouter, within } from 'expo-router/testing-library';
 
 import { seedDevice } from '../test-support/fake-sqlite';
 import {
-  DISCARD_DIALOG,
   answerDialog,
   choose,
+  DISCARD_DIALOG,
   exactText,
   expectBalance,
   expectDialog,
@@ -17,6 +17,8 @@ import {
   pickSpace,
   press,
   reopenApp,
+  savedPart,
+  savingsBlock,
   showPocket,
   spaceRows,
   startApp,
@@ -121,16 +123,16 @@ describe('Create my pockets, with what I already have', () => {
   it('Not this month\'s savings: the Savings tile, left to spend and the savings figure do not change', async () => {
     await startApp({ today: TODAY, plans: [[25, '2026-01']], entries: [salary] });
     await expectLeftToSpend('3 000,00 €');
-    expect(tile('Savings').getByText(exactText('0 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 1 000 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('0 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 1 000 €'))).toBeOnTheScreen();
 
     await createPocket('Japan trip', '1500');
     await pickSpace(/^Main/);
 
     expect(screen).toHavePathname('/');
     await expectLeftToSpend('3 000,00 €');
-    expect(tile('Savings').getByText(exactText('0 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 1 000 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('0 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 1 000 €'))).toBeOnTheScreen();
   });
 
   it('Not this month\'s savings: Trends shows no savings for the starting amount', async () => {
@@ -235,7 +237,7 @@ describe('Save into a pocket', () => {
     await press('Add to savings');
 
     expect(screen).toHavePathname('/');
-    expect(tile('Savings').getByText(exactText('200 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('200 €'))).toBeOnTheScreen();
     await expectLeftToSpend('3 000,00 €');
     await pocketRow('Japan trip', '1 700,00 €');
     await openSpaces();
@@ -305,10 +307,6 @@ describe('Save into a pocket', () => {
     expect(screen.getByText('Japan trip')).toBeOnTheScreen();
     expect(screen.getByText('Bonus')).toBeOnTheScreen();
     expect(screen.queryByText('Car')).not.toBeOnTheScreen();
-
-    await press('Savings');
-    expect(screen.getByText('Japan trip')).toBeOnTheScreen();
-    expect(screen.queryByText('Bonus')).toBeOnTheScreen();
   });
 
   it('Titles: the pocket name is also the title in the Activity list', async () => {
@@ -386,51 +384,6 @@ describe('Save into a pocket', () => {
       pockets: [{ name: 'Car', startingCents: 1 }],
     });
     await pocketRow('Car', '300,06 €');
-  });
-
-  describe('Monthly savings', () => {
-    const monthly = (pocketId: number) =>
-      `INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 30000, 'Plan', 1, '2026-11', ${pocketId})`;
-
-    it('a saving that repeats records into the same pocket each month', async () => {
-      await startApp({ today: TODAY, entries: [salary], pockets: [japan], raw: [monthly(1)] });
-      await reopenApp(DEC_4);
-
-      await pocketRow('Japan trip', '1 800,00 €');
-    });
-
-    it('marking a new saving to repeat keeps its pocket for next month', async () => {
-      await startApp({ today: TODAY, entries: [salary], pockets: [japan, { name: 'Car' }] });
-      await press('Add expense');
-      await choose('Savings');
-      await choose('Car');
-      await type('Amount', '40');
-      await typeNote('Monthly car');
-      await fireEvent(screen.getByRole('switch', { name: 'Repeat every month' }), 'valueChange', true);
-      await press('Add to savings');
-
-      await reopenApp(DEC_4);
-      await pocketRow('Car', '80,00 €');
-      await pocketRow('Japan trip', '1 500,00 €');
-    });
-
-    it('the monthly entry form shows the pocket choices and lets the user change the pocket', async () => {
-      await startApp({ today: TODAY, entries: [salary], pockets: [japan, { name: 'Car' }], raw: [monthly(1)] });
-      await press('My plan');
-      await press(/^Plan, .*every month$/);
-
-      expect(screen).toHavePathname('/recurring');
-      expect(screen.getByRole('radio', { name: 'Japan trip' })).toBeSelected();
-      expect(screen.getByRole('radio', { name: 'Car' })).not.toBeSelected();
-      expect(screen.queryByRole('radio', { name: 'Emergency fund' })).not.toBeOnTheScreen();
-
-      await choose('Car');
-      await press('Save changes');
-
-      await reopenApp(DEC_4);
-      await pocketRow('Car', '300,00 €');
-      await pocketRow('Japan trip', '1 500,00 €');
-    });
   });
 });
 
@@ -567,20 +520,6 @@ describe('See and manage a pocket', () => {
     expect(screen.getByRole('button', { name: 'Space: Tokyo, change' })).toBeOnTheScreen();
   });
 
-  it('Cannot delete with a monthly saving even without savings', async () => {
-    await startApp({
-      today: TODAY,
-      entries: [salary],
-      pockets: [{ name: 'Car' }],
-      raw: ["INSERT INTO recurring (kind, category, amount_cents, note, active, last_month, pocket_id) VALUES ('savings', 'other', 500, 'x', 1, '2026-11', 1)"],
-    });
-    await showPocket('Car');
-    await press('Edit Car');
-
-    expect(screen.queryByRole('button', { name: 'Delete pocket' })).not.toBeOnTheScreen();
-    expect(screen.getByText("A pocket with savings, spending or moves can't be deleted. You can rename it.")).toBeOnTheScreen();
-  });
-
   it('A new pocket form has no delete button', async () => {
     await startApp({ today: TODAY, entries: [salary] });
     await openSpaces();
@@ -627,11 +566,12 @@ describe('My savings so far move into pockets', () => {
     ]);
   });
 
-  it('Update: the monthly saving records into its category\'s pocket next month', async () => {
+  it('Update: the old monthly saving is not recorded next month (030)', async () => {
     await startAppOnReleasedVersion(TODAY, 8, V8_DATA);
     await reopenApp(DEC_4);
 
-    await pocketRow('Investments', '200,00 €');
+    await pocketRow('Investments', '0,00 €');
+    await pocketRow('Emergency fund', '100,00 €');
   });
 
   it('Unused categories: Goal and Other become no pocket', async () => {
@@ -647,8 +587,8 @@ describe('My savings so far move into pockets', () => {
     await expectLeftToSpend('3 187,50 €');
     expect(tile('Income').getByText(exactText('4 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('12,50 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 800 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('150 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 800 €'))).toBeOnTheScreen();
     expect(screen.getByText('Hotel')).toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
     // The saving with no note is titled with its new pocket.
@@ -657,17 +597,6 @@ describe('My savings so far move into pockets', () => {
 });
 
 describe('Edge cases', () => {
-  it('Home\'s savings split: with the Savings tile selected there is no "By category" split', async () => {
-    await startApp({
-      today: TODAY,
-      entries: [salary, { date: '2026-11-03', kind: 'savings', amountCents: 10000, note: 'x' }],
-    });
-    await press('Savings');
-
-    expect(screen.queryByText('By category')).not.toBeOnTheScreen();
-    expect(screen.getByText('x')).toBeOnTheScreen();
-  });
-
   it('Trends: with Savings selected there is the chart and goals, but no category list', async () => {
     await startApp({
       today: TODAY,

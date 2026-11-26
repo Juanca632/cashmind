@@ -1,6 +1,14 @@
 import { screen, within } from 'expo-router/testing-library';
 
-import { exactText, expectLeftToSpend, press, startAppOnReleasedVersion } from '../test-support/app';
+import {
+  exactText,
+  expectLeftToSpend,
+  partialText,
+  press,
+  savedPart,
+  savingsBlock,
+  startAppOnReleasedVersion,
+} from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 
@@ -28,8 +36,8 @@ describe('App updates: opening the app on a database left by released version 3'
     expect(await screen.findByLabelText(/^Left to spend: /)).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('950 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('150 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
     await expectLeftToSpend('650,00 €');
     expect(screen.getByText('Rent')).toBeOnTheScreen();
     expect(screen.getByText('Cinema')).toBeOnTheScreen();
@@ -43,6 +51,6 @@ describe('App updates: opening the app on a database left by released version 3'
     await press('Sep');
 
     expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 500 €'))).toBeOnTheScreen();
   });
 });

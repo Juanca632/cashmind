@@ -216,6 +216,8 @@ export const Size = {
   amountInput: 120,
   /** The big percentage input of My plan. */
   percentInput: 72,
+  /** An amount field at the end of a row, such as each pocket's on the Split screen. */
+  rowAmountInput: 136,
   /** A right-aligned percentage column. */
   percentColumn: 44,
   /** The drawing area of a chart. */
