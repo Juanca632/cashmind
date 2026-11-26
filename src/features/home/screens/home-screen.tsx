@@ -134,7 +134,7 @@ function HomeMonth({ today }: { today: Date }) {
   const percent = savingsPercentFor(plan.data, month);
   // Money moved out of pockets into Main adds to left to spend (specs/028-move-money).
   const movedIn = movedIntoMain(moves.data, month);
-  const summary = monthFigures(monthEntries, moves.data, percent, month);
+  const summary = monthFigures(monthEntries, moves.data, percent, month, money.unitCents);
   const hasIncome = summary.income > 0;
   // Moves into Main show in the whole list only, not when one kind is picked.
   const lines = selected === null ? mainMoveLines(moves.data, month) : [];

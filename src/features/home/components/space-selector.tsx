@@ -86,7 +86,7 @@ function SpacesSheet({ current, onClose }: { current: number | null; onClose: ()
       : [];
   const summary =
     monthEntries.status === 'ready' && plan.status === 'ready' && moves.status === 'ready'
-      ? monthFigures(monthEntries.data, moves.data, savingsPercentFor(plan.data, month), month)
+      ? monthFigures(monthEntries.data, moves.data, savingsPercentFor(plan.data, month), month, money.unitCents)
       : null;
 
   function pick(pocketId: number | null) {

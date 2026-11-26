@@ -95,7 +95,7 @@ function PlanForm({ initialPercent, incomeCents, recurring }: PlanFormProps) {
                   {percent === null
                     ? ' '
                     : incomeCents > 0
-                      ? `${money.formatCompact(savingsGoal(incomeCents, percent))} of this month's ${money.formatCompact(incomeCents)}`
+                      ? `${money.formatCompact(savingsGoal(incomeCents, percent, money.unitCents))} of this month's ${money.formatCompact(incomeCents)}`
                       : 'Add this month\'s income to see the amount.'}
                 </ThemedText>
                 {percentText.trim() !== '' && percent === null ? <ErrorText>{PERCENT_INVALID}</ErrorText> : null}

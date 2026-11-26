@@ -148,3 +148,29 @@ describe('Split it across pockets - the shares', () => {
     expect(shares).toEqual([300_000_000_000_000, 600_000_000_000_000]);
   });
 });
+
+describe('Pesos never show cents: Split shares (032 FR-003)', () => {
+  it('thirds of $ 246.913 are whole pesos and the remainder goes to the first pocket', () => {
+    const previous = new Map([[1, 100], [2, 100], [3, 100]]);
+    const shares = shareOut(24691300, previous, [1, 2, 3], 100);
+    expect(shares).toEqual([8230500, 8230400, 8230400]);
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(24691300);
+  });
+
+  it('every share is a multiple of 100 hundredths and they add up, whatever the weights', () => {
+    const previous = new Map([[1, 1], [2, 3], [3, 7], [4, 13]]);
+    const shares = shareOut(24691300, previous, [1, 2, 3, 4], 100);
+    shares.forEach((share) => expect(share % 100).toBe(0));
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(24691300);
+  });
+
+  it('the remainder goes to the first pocket with a share, not to one with none', () => {
+    const previous = new Map([[2, 100], [3, 100]]);
+    expect(shareOut(10100, previous, [1, 2, 3], 100)).toEqual([0, 5100, 5000]);
+  });
+
+  it('without a unit, shares keep their cents', () => {
+    const previous = new Map([[1, 100], [2, 100], [3, 100]]);
+    expect(shareOut(10000, previous, [1, 2, 3])).toEqual([3334, 3333, 3333]);
+  });
+});

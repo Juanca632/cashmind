@@ -146,3 +146,23 @@ describe('US4 Savings goals across months', () => {
     expect(goalCount(goals).of).toBe(0);
   });
 });
+
+describe('Pesos never show cents: goals per month (032)', () => {
+  const income = [inc('2026-11-05', 123456700)];
+  const versions = [{ effectiveMonth: '2026-01', savingsPercent: 20 }];
+
+  it('in pesos the goal is rounded down to the whole peso', () => {
+    const goals = savingsGoals(income, MONTHS, versions, 100);
+    expect(goals.at(-1)?.goal).toBe(24691300);
+  });
+
+  it('in other currencies it keeps the cent', () => {
+    expect(savingsGoals(income, MONTHS, versions).at(-1)?.goal).toBe(24691340);
+  });
+
+  it('reached compares the savings with the rounded goal', () => {
+    const entries = [...income, sav('2026-11-10', 24691300)];
+    expect(savingsGoals(entries, MONTHS, versions, 100).at(-1)?.reached).toBe(true);
+    expect(savingsGoals(entries, MONTHS, versions).at(-1)?.reached).toBe(false);
+  });
+});

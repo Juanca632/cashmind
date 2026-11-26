@@ -142,10 +142,12 @@ describe('Keep my budget in my own currency', () => {
     expect(amountField().props.keyboardType).toBe('number-pad');
   });
 
-  it('Pick pesos: an amount with cents still shows its decimals, so nothing looks rounded', async () => {
+  it('Pick pesos: an amount with cents shows without them, cut towards zero, and is stored unchanged (032)', async () => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary, cinema] });
     await pickAndGoBack('Colombian peso');
-    shown('$ 12,50');
+    shown('$ 12');
+    notShown('$ 12,50');
+    expect(await storedAmounts()).toEqual([1250, 300000]);
   });
 
   it('No conversion: 50,00 € shows "$ 50" in pesos and 50,00 € again after switching back; nothing stored changes', async () => {

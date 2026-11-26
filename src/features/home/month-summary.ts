@@ -20,9 +20,9 @@ export type MonthSummary = {
  * the goal and what was saved. Moved money is neither income nor savings, so the goal does not
  * change (specs/028-move-money).
  */
-export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number, movedInCents = 0): MonthSummary {
+export function monthSummary(totals: Record<EntryKind, number>, savingsPercent: number, movedInCents = 0, unitCents = 1): MonthSummary {
   const { income, savings: saved, expense: spent } = totals;
-  const goal = savingsGoal(income, savingsPercent);
+  const goal = savingsGoal(income, savingsPercent, unitCents);
   return { income, saved, spent, goal, left: income + movedInCents - spent - Math.max(goal, saved) };
 }
 
@@ -35,8 +35,10 @@ export function monthFigures(
   moves: readonly Pick<Move, 'date' | 'toPocketId' | 'amountCents'>[],
   savingsPercent: number,
   month: string,
+  /** The currency's smallest unit in hundredths (`Money.unitCents`); the goal is rounded down to it. */
+  unitCents = 1,
 ): MonthSummary {
-  return monthSummary(totalsByKind(entries.filter(countsInMonth)), savingsPercent, movedIntoMain(moves, month));
+  return monthSummary(totalsByKind(entries.filter(countsInMonth)), savingsPercent, movedIntoMain(moves, month), unitCents);
 }
 
 /** What can be spent each remaining day of the current month, today included. */

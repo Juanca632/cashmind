@@ -31,16 +31,23 @@ export function previousSplit(entries: readonly SavingLike[], month: string): Ma
 
 /**
  * Shares `amountCents` out over the pockets in their order, in the proportions of `previous`.
- * Each share is rounded down to the cent and the remainder goes to the first pocket with a share,
+ * Each share is rounded down to the currency's smallest unit (`unitCents`: the cent, or the whole
+ * peso) and the remainder goes to the first pocket with a share,
  * so the shares always add up to the amount. Pockets with no previous share get 0, and so do all
  * of them when nothing was split before.
  */
-export function shareOut(amountCents: number, previous: ReadonlyMap<number, number>, pocketIds: readonly number[]): number[] {
+export function shareOut(
+  amountCents: number,
+  previous: ReadonlyMap<number, number>,
+  pocketIds: readonly number[],
+  unitCents = 1,
+): number[] {
   const weights = pocketIds.map((id) => Math.max(previous.get(id) ?? 0, 0));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   if (total === 0 || amountCents <= 0) return pocketIds.map(() => 0);
   // BigInt: amount × weight can pass the largest exact number for big amounts.
-  const shares = weights.map((weight) => Number((BigInt(amountCents) * BigInt(weight)) / BigInt(total)));
+  const unit = BigInt(unitCents);
+  const shares = weights.map((weight) => Number(((BigInt(amountCents) * BigInt(weight)) / BigInt(total) / unit) * unit));
   const first = weights.findIndex((weight) => weight > 0);
   shares[first] += amountCents - shares.reduce((sum, share) => sum + share, 0);
   return shares;
