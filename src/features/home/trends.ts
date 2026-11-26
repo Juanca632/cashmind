@@ -70,11 +70,16 @@ export function averageSentence(
 export type MonthGoal = { month: string; goal: number | null; reached: boolean };
 
 /** Each month's goal, by the same rule as home: its plan percentage of its income. */
-export function savingsGoals(entries: readonly TrendEntry[], months: readonly string[], versions: readonly PlanVersion[]): MonthGoal[] {
+export function savingsGoals(
+  entries: readonly TrendEntry[],
+  months: readonly string[],
+  versions: readonly PlanVersion[],
+  unitCents = 1,
+): MonthGoal[] {
   const income = monthTotals(entries, months, 'income');
   const saved = monthTotals(entries, months, 'savings');
   return months.map((month, i) => {
-    const goal = savingsGoal(income[i].cents, savingsPercentFor(versions, month));
+    const goal = savingsGoal(income[i].cents, savingsPercentFor(versions, month), unitCents);
     return goal > 0 ? { month, goal, reached: saved[i].cents >= goal } : { month, goal: null, reached: false };
   });
 }

@@ -57,7 +57,7 @@ export default function TrendsScreen() {
   const totals = monthTotals(counted, months, kind);
   const average = trendAverage(totals, monthsInUse(counted), currentMonth);
   const cents = totals.find((total) => total.month === selected)?.cents ?? 0;
-  const goals = kind === 'savings' ? savingsGoals(counted, months, plan.data) : undefined;
+  const goals = kind === 'savings' ? savingsGoals(counted, months, plan.data, money.unitCents) : undefined;
   const count = goals ? goalCount(goals) : null;
   const inUse = monthsInUse(counted);
   const isCurrent = selected === currentMonth;

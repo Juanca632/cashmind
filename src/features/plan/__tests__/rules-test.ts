@@ -130,3 +130,28 @@ describe('month formatting', () => {
     expect(formatShortMonth('2026-09')).toBe('Sep');
   });
 });
+
+describe('Pesos never show cents: the savings goal (032 FR-002)', () => {
+  it('20 % of $ 1.234.567 (123456700 hundredths) is rounded down to the whole peso, 24691300', () => {
+    expect(savingsGoal(123456700, 20, 100)).toBe(24691300);
+  });
+
+  it('the same income in cents-currencies keeps the cent: 24691340', () => {
+    expect(savingsGoal(123456700, 20)).toBe(24691340);
+    expect(savingsGoal(123456700, 20, 1)).toBe(24691340);
+  });
+
+  it('an income with cents is rounded down to the peso, never up: 33 % of 100,99 is 33', () => {
+    expect(savingsGoal(10099, 33, 100)).toBe(3300);
+    expect(savingsGoal(199, 99, 100)).toBe(100);
+  });
+
+  it('a goal under one peso is 0', () => {
+    expect(savingsGoal(199, 20, 100)).toBe(0);
+  });
+
+  it('0 % and 100 % stay exact', () => {
+    expect(savingsGoal(123456700, 0, 100)).toBe(0);
+    expect(savingsGoal(123456700, 100, 100)).toBe(123456700);
+  });
+});

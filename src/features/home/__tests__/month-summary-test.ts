@@ -1,4 +1,4 @@
-import { monthSummary } from '../month-summary';
+import { monthFigures, monthSummary } from '../month-summary';
 
 const totals = (income: number, savings: number, expense: number) => ({ income, savings, expense });
 
@@ -65,5 +65,29 @@ describe('monthSummary with money moved into Main (028 FR-004)', () => {
 
   it('omitting it is the same as 0', () => {
     expect(monthSummary(totals(200000, 15000, 90000), 20)).toEqual(monthSummary(totals(200000, 15000, 90000), 20, 0));
+  });
+});
+
+describe('Pesos never show cents: left to spend (032)', () => {
+  it('income $ 1.234.567, spent $ 100.000, 20 %: goal $ 246.913 and left $ 887.654', () => {
+    const summary = monthSummary(totals(123456700, 0, 10000000), 20, 0, 100);
+    expect(summary.goal).toBe(24691300);
+    expect(summary.left).toBe(88765400);
+  });
+
+  it('without a unit the goal keeps its cents: left is 887 653,60', () => {
+    const summary = monthSummary(totals(123456700, 0, 10000000), 20);
+    expect(summary.goal).toBe(24691340);
+    expect(summary.left).toBe(88765360);
+  });
+
+  it('monthFigures passes the unit on', () => {
+    const entries = [
+      { kind: 'income', amountCents: 123456700, pocketId: null },
+      { kind: 'expense', amountCents: 10000000, pocketId: null },
+    ] as const;
+    expect(monthFigures(entries, [], 20, '2026-11', 100).goal).toBe(24691300);
+    expect(monthFigures(entries, [], 20, '2026-11', 100).left).toBe(88765400);
+    expect(monthFigures(entries, [], 20, '2026-11').goal).toBe(24691340);
   });
 });

@@ -31,11 +31,28 @@ describe('Keep my budget in my own currency: formats (FR-003)', () => {
     expect(flat(cop.format(5000))).toBe('$ 50');
   });
 
-  it('Colombian peso: an amount with cents shows 2 decimals, "$ 1.234,56" and "$ 12,50"', () => {
+  it('Colombian peso: an amount with cents is cut towards zero, "$ 12" and "$ 1.234"', () => {
     const cop = moneyFor('COP');
-    expect(flat(cop.format(123456))).toBe('$ 1.234,56');
-    expect(flat(cop.format(1250))).toBe('$ 12,50');
-    expect(flat(cop.formatCompact(1250))).toBe('$ 12,50');
+    expect(flat(cop.format(123456))).toBe('$ 1.234');
+    expect(flat(cop.format(1250))).toBe('$ 12');
+    expect(flat(cop.formatCompact(1250))).toBe('$ 12');
+    expect(flat(cop.format(1299))).toBe('$ 12');
+  });
+
+  it('Colombian peso: a negative amount with cents is cut towards zero, "- $ 100"', () => {
+    const cop = moneyFor('COP');
+    expect(flat(cop.format(-10050))).toMatch(/^[-−] ?\$ 100$/);
+    expect(flat(cop.formatCompact(-10050))).toMatch(/^[-−] ?\$ 100$/);
+  });
+
+  it('Colombian peso: less than one peso shows as "$ 0"', () => {
+    expect(flat(moneyFor('COP').format(99))).toBe('$ 0');
+  });
+
+  it('unitCents is 100 for pesos and 1 for Euro and US dollar', () => {
+    expect(moneyFor('COP').unitCents).toBe(100);
+    expect(moneyFor('EUR').unitCents).toBe(1);
+    expect(moneyFor('USD').unitCents).toBe(1);
   });
 
   it('Zero is shown in each currency', () => {

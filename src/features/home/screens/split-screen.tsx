@@ -35,6 +35,7 @@ import { ThemedView } from '@/shared/ui/themed-view';
 
 /** Splits what is left of this month's savings goal into pockets (specs/030-split-savings). */
 export default function SplitScreen() {
+  const money = useMoney();
   const today = useToday();
   const month = monthKey(today);
   const plan = usePlanVersions();
@@ -48,7 +49,7 @@ export default function SplitScreen() {
   if (plan.status !== 'ready' || entries.status !== 'ready' || moves.status !== 'ready' || pockets.status !== 'ready' || pocketEntries.status !== 'ready') {
     return <ThemedView style={styles.screen} />;
   }
-  const summary = monthFigures(entries.data, moves.data, savingsPercentFor(plan.data, month), month);
+  const summary = monthFigures(entries.data, moves.data, savingsPercentFor(plan.data, month), month, money.unitCents);
   return (
     <SplitForm
       month={month}
@@ -76,7 +77,7 @@ function SplitForm({ month, today, toSplitCents, pockets, pocketEntries }: Split
   const ink = theme.kindInk.savings;
   // Filled once, like last month's split; a pocket made later from here starts empty.
   const [initial] = useState<Record<number, string>>(() => {
-    const shares = shareOut(toSplitCents, previousSplit(pocketEntries, month), pockets.map((pocket) => pocket.id));
+    const shares = shareOut(toSplitCents, previousSplit(pocketEntries, month), pockets.map((pocket) => pocket.id), money.unitCents);
     return Object.fromEntries(pockets.map((pocket, at) => [pocket.id, shares[at] > 0 ? money.toInput(shares[at]) : '']));
   });
   const [texts, setTexts] = useState(initial);

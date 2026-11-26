@@ -27,7 +27,10 @@ export function savingsPercentFor(versions: readonly PlanVersion[], month: strin
   return match ? match.savingsPercent : DEFAULT_SAVINGS_PERCENT;
 }
 
-/** The savings goal for an income, rounded down to the cent. */
-export function savingsGoal(incomeCents: number, percent: number): number {
-  return Math.floor((incomeCents * percent) / 100);
+/**
+ * The savings goal for an income, rounded down to the currency's smallest unit: the cent, or the
+ * whole peso (`unitCents` 100, specs/032-whole-pesos).
+ */
+export function savingsGoal(incomeCents: number, percent: number, unitCents = 1): number {
+  return Math.floor((incomeCents * percent) / (100 * unitCents)) * unitCents;
 }

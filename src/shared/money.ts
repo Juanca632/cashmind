@@ -25,6 +25,8 @@ export type Money = {
   symbolFirst: boolean;
   placeholder: string;
   keyboard: 'decimal-pad' | 'number-pad';
+  /** The smallest amount the currency shows, in hundredths: 100 for pesos (no cents), else 1. */
+  unitCents: number;
 };
 
 const isWhole = (cents: number) => cents % 100 === 0;
@@ -58,6 +60,9 @@ function hundredths(match: RegExpExecArray | null): number | null {
 const withDecimals = (cents: number, mark: string) =>
   `${Math.trunc(cents / 100)}${mark}${String(cents % 100).padStart(2, '0')}`;
 
+/** Hundredths cut to whole pesos, towards zero, so -100,50 shows as -100. */
+const wholePesos = (cents: number) => Math.trunc(cents / 100) * 100;
+
 const euro = formatters('fr-FR', 'EUR');
 const dollar = formatters('en-US', 'USD');
 const peso = formatters('es-CO', 'COP');
@@ -73,6 +78,7 @@ const MONEY: Record<Currency, Money> = {
     symbolFirst: false,
     placeholder: '0,00',
     keyboard: 'decimal-pad',
+    unitCents: 1,
   },
   USD: {
     currency: 'USD',
@@ -84,12 +90,13 @@ const MONEY: Record<Currency, Money> = {
     symbolFirst: true,
     placeholder: '0.00',
     keyboard: 'decimal-pad',
+    unitCents: 1,
   },
   COP: {
     currency: 'COP',
-    // Pesos have no decimals; an amount with cents (recorded before a switch) keeps them.
-    format: peso.formatCompact,
-    formatCompact: peso.formatCompact,
+    // Pesos have no decimals: every figure shows whole pesos, cut towards zero (specs/032-whole-pesos).
+    format: (cents) => peso.formatCompact(wholePesos(cents)),
+    formatCompact: (cents) => peso.formatCompact(wholePesos(cents)),
     parse: parsePesos,
     toInput: (cents) => (isWhole(cents) ? String(cents / 100) : withDecimals(cents, ',')),
     decimalMark: ',',
@@ -97,6 +104,7 @@ const MONEY: Record<Currency, Money> = {
     symbolFirst: true,
     placeholder: '0',
     keyboard: 'number-pad',
+    unitCents: 100,
   },
 };
 
