@@ -455,7 +455,7 @@ describe('See and manage a pocket', () => {
     expect(screen).toHavePathname('/pocket-edit');
     expect(headerTitles().at(-1)).toBe('Edit pocket');
     expect(screen.getByLabelText('Name')).toHaveDisplayValue('Japan trip');
-    expect(screen.getByLabelText('Amount')).toHaveDisplayValue('1500,00');
+    expect(screen.getByLabelText('Amount')).toHaveDisplayValue('1 500,00');
 
     await type('Name', 'Tokyo');
     await type('Amount', '1000');

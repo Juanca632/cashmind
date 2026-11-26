@@ -17,8 +17,10 @@ export type Money = {
   formatCompact: (cents: number) => string;
   /** Reads typed text into hundredths; null when it is not a valid non-negative amount. */
   parse: (text: string) => number | null;
-  /** Hundredths as editable text, e.g. 1250 → '12,50'. */
+  /** Hundredths as editable text, thousands separated, e.g. 123450 → '1 234,50'. */
   toInput: (cents: number) => string;
+  /** Typed text rewritten with thousands separated, as the amount fields show it while typing. */
+  groupInput: (text: string) => string;
   decimalMark: ',' | '.';
   symbol: string;
   /** True when the symbol goes before the amount ('$12'), false when after ('12 €'). */
@@ -40,21 +42,62 @@ function formatters(locale: string, currency: Currency) {
   };
 }
 
-/** Accepts "2500", "2500,5", "2 500,50" or "2500.50": one "," or "." as the decimal mark, at most 2 decimals. */
-function parseDecimal(text: string): number | null {
-  const normalized = text.replace(/[\s\u00a0\u202f€$]/g, '').replace(',', '.');
-  return hundredths(/^(\d+)(?:\.(\d{0,2}))?$/.exec(normalized));
+/**
+ * How a currency's amount is typed (specs/033-amount-grouping): its decimal mark, another mark also
+ * read as the decimal mark when it ends the text with at most two digits after it, and the
+ * separator put between thousands while typing.
+ */
+type InputStyle = { mark: ',' | '.'; alternate: ',' | '.' | null; group: string };
+
+const EURO_INPUT: InputStyle = { mark: ',', alternate: '.', group: ' ' };
+// In dollars "," only separates thousands: read as a decimal mark, deleting a digit of "12,345" would
+// turn it into 12.34.
+const DOLLAR_INPUT: InputStyle = { mark: '.', alternate: null, group: ',' };
+const PESO_INPUT: InputStyle = { mark: ',', alternate: null, group: '.' };
+
+/**
+ * Splits typed text into its whole digits and its decimals (null when there is no decimal mark).
+ * Spaces, symbols and thousands separators are ignored; null when anything else is in it.
+ */
+function readInput(text: string, style: InputStyle): { whole: string; fraction: string | null } | null {
+  const compact = text.replace(/[\s\u00a0\u202f€$]/g, '');
+  if (compact === '') return null;
+  let at = compact.lastIndexOf(style.mark);
+  if (at === -1 && style.alternate !== null) {
+    const alternateAt = compact.lastIndexOf(style.alternate);
+    if (alternateAt !== -1 && /^\d{0,2}$/.test(compact.slice(alternateAt + 1))) at = alternateAt;
+  }
+  const wholeText = at === -1 ? compact : compact.slice(0, at);
+  const fraction = at === -1 ? null : compact.slice(at + 1);
+  const separators = new Set([style.group.trim(), style.alternate].filter((mark) => mark));
+  const whole = [...wholeText].filter((char) => !separators.has(char)).join('');
+  if (!/^\d*$/.test(whole) || (fraction !== null && !/^\d*$/.test(fraction))) return null;
+  if (whole === '' && fraction === null) return null;
+  return { whole, fraction };
 }
 
-/** Pesos: whole numbers with or without "." between thousands; "," only for decimals. */
-function parsePesos(text: string): number | null {
-  const normalized = text.replace(/[\s\u00a0\u202f$.]/g, '');
-  return hundredths(/^(\d+)(?:,(\d{0,2}))?$/.exec(normalized));
+/** Reads typed text into hundredths: at most two decimals; null when it is not an amount. */
+function parseWith(style: InputStyle) {
+  return (text: string): number | null => {
+    const read = readInput(text, style);
+    if (!read || (read.fraction !== null && read.fraction.length > 2)) return null;
+    return Number(read.whole === '' ? '0' : read.whole) * 100 + Number((read.fraction ?? '').padEnd(2, '0'));
+  };
 }
 
-function hundredths(match: RegExpExecArray | null): number | null {
-  if (!match) return null;
-  return Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+/**
+ * Rewrites typed text the way the currency shows amounts: thousands separated, the decimal mark
+ * the currency's own, at most two decimals, no leading zeros. Text that is not an amount stays as
+ * typed, so the field can say why.
+ */
+function groupWith(style: InputStyle) {
+  return (text: string): string => {
+    const read = readInput(text, style);
+    if (!read) return text.trim() === '' ? '' : text;
+    const digits = read.whole.replace(/^0+(?=\d)/, '') || (read.fraction === null ? '' : '0');
+    const whole = digits.replace(/\B(?=(\d{3})+(?!\d))/g, style.group);
+    return read.fraction === null ? whole : `${whole}${style.mark}${read.fraction.slice(0, 2)}`;
+  };
 }
 
 const withDecimals = (cents: number, mark: string) =>
@@ -71,8 +114,9 @@ const MONEY: Record<Currency, Money> = {
   EUR: {
     currency: 'EUR',
     ...euro,
-    parse: parseDecimal,
-    toInput: (cents) => withDecimals(cents, ','),
+    parse: parseWith(EURO_INPUT),
+    toInput: (cents) => groupWith(EURO_INPUT)(withDecimals(cents, ',')),
+    groupInput: groupWith(EURO_INPUT),
     decimalMark: ',',
     symbol: '€',
     symbolFirst: false,
@@ -83,8 +127,9 @@ const MONEY: Record<Currency, Money> = {
   USD: {
     currency: 'USD',
     ...dollar,
-    parse: parseDecimal,
-    toInput: (cents) => withDecimals(cents, '.'),
+    parse: parseWith(DOLLAR_INPUT),
+    toInput: (cents) => groupWith(DOLLAR_INPUT)(withDecimals(cents, '.')),
+    groupInput: groupWith(DOLLAR_INPUT),
     decimalMark: '.',
     symbol: '$',
     symbolFirst: true,
@@ -97,8 +142,9 @@ const MONEY: Record<Currency, Money> = {
     // Pesos have no decimals: every figure shows whole pesos, cut towards zero (specs/032-whole-pesos).
     format: (cents) => peso.formatCompact(wholePesos(cents)),
     formatCompact: (cents) => peso.formatCompact(wholePesos(cents)),
-    parse: parsePesos,
-    toInput: (cents) => (isWhole(cents) ? String(cents / 100) : withDecimals(cents, ',')),
+    parse: parseWith(PESO_INPUT),
+    toInput: (cents) => groupWith(PESO_INPUT)(isWhole(cents) ? String(cents / 100) : withDecimals(cents, ',')),
+    groupInput: groupWith(PESO_INPUT),
     decimalMark: ',',
     symbol: '$',
     symbolFirst: true,

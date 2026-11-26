@@ -77,15 +77,36 @@ describe('Type amounts in that currency: field settings (FR-004)', () => {
 });
 
 describe('Type amounts in that currency: reading what is typed', () => {
-  it.each(['EUR', 'USD'] as const)('Euro and dollar decimals: %s reads "12,50" and "12.50" as 1250', (code) => {
-    expect(moneyFor(code).parse('12,50')).toBe(1250);
-    expect(moneyFor(code).parse('12.50')).toBe(1250);
-    expect(moneyFor(code).parse('12,5')).toBe(1250);
-    expect(moneyFor(code).parse('45000')).toBe(4500000);
+  it('Euro decimals: reads "12,50" and "12.50" as 1250', () => {
+    expect(moneyFor('EUR').parse('12,50')).toBe(1250);
+    expect(moneyFor('EUR').parse('12.50')).toBe(1250);
+    expect(moneyFor('EUR').parse('12,5')).toBe(1250);
+    expect(moneyFor('EUR').parse('45000')).toBe(4500000);
+  });
+
+  it('US dollar: "." is the decimal mark and "," only separates thousands (FR-002)', () => {
+    const usd = moneyFor('USD');
+    expect(usd.parse('12.50')).toBe(1250);
+    expect(usd.parse('12.5')).toBe(1250);
+    expect(usd.parse('45000')).toBe(4500000);
+    expect(usd.parse('1,234.50')).toBe(123450);
+    expect(usd.parse('12,345')).toBe(1234500);
+    expect(usd.parse('1,500,000')).toBe(150000000);
+  });
+
+  it('Euro reads grouped and ungrouped text alike', () => {
+    const eur = moneyFor('EUR');
+    expect(eur.parse('1 234,50')).toBe(123450);
+    expect(eur.parse('1234,50')).toBe(123450);
+    expect(eur.parse('1 500 000')).toBe(150000000);
   });
 
   it.each(['EUR', 'USD'] as const)('%s rejects text that is not an amount', (code) => {
-    for (const text of ['', '   ', '-10', 'abc', '10,123', '1,2,3']) expect(moneyFor(code).parse(text)).toBeNull();
+    for (const text of ['', '   ', '-10', 'abc', '10.123.4x']) expect(moneyFor(code).parse(text)).toBeNull();
+  });
+
+  it('Euro rejects three decimals with the comma', () => {
+    expect(moneyFor('EUR').parse('10,123')).toBeNull();
   });
 
   it('Pesos: "45000" and "45.000" are both $ 45.000 (4 500 000 hundredths)', () => {
@@ -106,19 +127,22 @@ describe('Type amounts in that currency: reading what is typed', () => {
 });
 
 describe('Type amounts in that currency: editing text (US2 scenario 3)', () => {
-  it('Euro 1250 is "12,50" and 4500000 is "45000,00"', () => {
+  it('Euro 1250 is "12,50" and 4500000 is "45 000,00"', () => {
     expect(moneyFor('EUR').toInput(1250)).toBe('12,50');
-    expect(moneyFor('EUR').toInput(4500000)).toBe('45000,00');
+    expect(moneyFor('EUR').toInput(4500000)).toBe('45 000,00');
+    expect(moneyFor('EUR').toInput(123450)).toBe('1 234,50');
   });
 
-  it('US dollar 1250 is "12.50" and 4500000 is "45000.00"', () => {
+  it('US dollar 1250 is "12.50" and 4500000 is "45,000.00"', () => {
     expect(moneyFor('USD').toInput(1250)).toBe('12.50');
-    expect(moneyFor('USD').toInput(4500000)).toBe('45000.00');
+    expect(moneyFor('USD').toInput(4500000)).toBe('45,000.00');
+    expect(moneyFor('USD').toInput(123450)).toBe('1,234.50');
   });
 
-  it('Colombian peso 1250 is "12,50" and 4500000 is "45000"', () => {
+  it('Colombian peso 1250 is "12,50" and 4500000 is "45.000"', () => {
     expect(moneyFor('COP').toInput(1250)).toBe('12,50');
-    expect(moneyFor('COP').toInput(4500000)).toBe('45000');
+    expect(moneyFor('COP').toInput(4500000)).toBe('45.000');
+    expect(moneyFor('COP').toInput(123456700)).toBe('1.234.567');
   });
 
   it.each(CURRENCIES)('%s: what is shown for editing reads back to the same amount', (code) => {
@@ -155,5 +179,78 @@ describe('Splitting the decimals off a shown amount', () => {
   it('has no fraction when there is no decimal mark', () => {
     expect(splitFraction(moneyFor('COP'), '$ 45.000')).toEqual(['$ 45.000', null]);
     expect(splitFraction(moneyFor('EUR'), '3 000 €')).toEqual(['3 000 €', null]);
+  });
+});
+
+describe('Read a big amount while typing it: groupInput (033)', () => {
+  const eur = moneyFor('EUR').groupInput;
+  const usd = moneyFor('USD').groupInput;
+  const cop = moneyFor('COP').groupInput;
+  const flatten = (text: string) => text.replace(/[\u00a0\u202f]/g, ' ');
+
+  it('Pesos: 1500000 shows "1.500.000"', () => {
+    expect(cop('1500000')).toBe('1.500.000');
+  });
+
+  it('Euro: 1500000,5 shows "1 500 000,5" with a plain space', () => {
+    expect(eur('1500000,5')).toBe('1 500 000,5');
+    expect(eur('1500000,5')).toContain(' ');
+  });
+
+  it('Euro: "." as the decimal mark shows ","', () => {
+    expect(eur('12.5')).toBe('12,5');
+    expect(eur('1234.50')).toBe('1 234,50');
+  });
+
+  it('Dollar: 1500000.5 shows "1,500,000.5"', () => {
+    expect(usd('1500000.5')).toBe('1,500,000.5');
+  });
+
+  it('As you type: each digit regroups, and deleting regroups too', () => {
+    expect(eur('1234')).toBe('1 234');
+    expect(eur('1 2345')).toBe('12 345');
+    expect(eur('12 34')).toBe('1 234');
+    expect(usd('1,2345')).toBe('12,345');
+    expect(cop('1.2345')).toBe('12.345');
+  });
+
+  it('Two decimals: a third decimal is not added', () => {
+    expect(eur('12,345')).toBe('12,34');
+    expect(usd('12.345')).toBe('12.34');
+    expect(cop('12,345')).toBe('12,34');
+  });
+
+  it('Leading zeros: "007" shows "7" and ",5" shows "0,5"', () => {
+    expect(eur('007')).toBe('7');
+    expect(eur(',5')).toBe('0,5');
+    expect(usd('.5')).toBe('0.5');
+    expect(usd('007')).toBe('7');
+    expect(cop('007')).toBe('7');
+  });
+
+  it('Dollar comma: "," is never the decimal mark, deleting a digit of "12,345" gives "1,234"', () => {
+    expect(usd('12,345')).toBe('12,345');
+    expect(usd('12,34')).toBe('1,234');
+  });
+
+  it('Not an amount: text stays as typed', () => {
+    expect(eur('abc')).toBe('abc');
+    expect(usd('1x')).toBe('1x');
+  });
+
+  it('empty text stays empty', () => {
+    expect(eur('')).toBe('');
+  });
+
+  it('Saved value: grouped text reads as the typed amount in every currency', () => {
+    expect(moneyFor('EUR').parse(eur('1500000,5'))).toBe(150000050);
+    expect(moneyFor('USD').parse(usd('1500000.5'))).toBe(150000050);
+    expect(moneyFor('COP').parse(cop('1500000'))).toBe(150000000);
+    expect(flatten(moneyFor('EUR').toInput(150000050))).toBe('1 500 000,50');
+  });
+
+  it('Limit: 900 000 000,00 still groups and reads', () => {
+    expect(eur('900000000,00')).toBe('900 000 000,00');
+    expect(moneyFor('EUR').parse('900 000 000,00')).toBe(90000000000);
   });
 });
