@@ -39,7 +39,7 @@ import { ScreenScroll } from '@/shared/ui/screen-scroll';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { ThemedView } from '@/shared/ui/themed-view';
 
-/** Moves money out of a pocket, into Main or another pocket, or edits a move (specs/028-move-money). */
+/** Moves money from one pocket to another, or edits a move (specs/028-move-money, 031-pocket-moves-only). */
 export default function MoveScreen() {
   const params = useLocalSearchParams<{ id?: string; from?: string }>();
   const id = params.id ? Number(params.id) : null;
@@ -77,8 +77,11 @@ function MoveForm({ move, defaultFrom, pockets, entries, moves }: MoveFormProps)
   const today = new Date();
   const todayKey = dayKey(today);
   const [fromId, setFromId] = useState(move?.fromPocketId ?? defaultFrom);
-  // null is Main, where money is moved by default.
-  const [toId, setToId] = useState<number | null>(move ? move.toPocketId : null);
+  // Savings only move between pockets (specs/031-pocket-moves-only). A move an earlier version
+  // stored into Main (null) can stay there while edited, and nothing else can be set to Main.
+  const intoMain = move !== null && move.toPocketId === null;
+  const firstOther = (pocketId: number) => pockets.find((pocket) => pocket.id !== pocketId)?.id ?? null;
+  const [toId, setToId] = useState<number | null>(move ? move.toPocketId : firstOther(defaultFrom));
   const [amountText, setAmountText] = useState(move ? money.toInput(move.amountCents) : '');
   const [date, setDate] = useState(move?.date ?? todayKey);
   const [note, setNote] = useState(move?.note ?? '');
@@ -94,14 +97,15 @@ function MoveForm({ move, defaultFrom, pockets, entries, moves }: MoveFormProps)
   // What the From pocket holds, with this move's own amount still in it when editing.
   const others = move ? moves.filter((other) => other.id !== move.id) : moves;
   const fromPocket = pockets.find((pocket) => pocket.id === fromId);
+  const toChoices = pockets.filter((pocket) => pocket.id !== fromId);
   const [balance] = fromPocket ? pocketBalances([fromPocket], entries, others) : [];
   const tooMuch = balance !== undefined && input.amountCents > 0 && moveTooMuch(input.amountCents, balance.cents);
-  const valid = errors.length === 0 && !tooMuch;
+  const valid = errors.length === 0 && !tooMuch && (toId !== null || intoMain);
 
   function changeFrom(pocketId: number) {
     setFromId(pocketId);
-    // A pocket cannot move to itself: To goes back to Main.
-    if (pocketId === toId) setToId(null);
+    // A pocket cannot move to itself: To goes to the first other pocket.
+    if (pocketId === toId) setToId(firstOther(pocketId));
   }
 
   function onSave() {
@@ -149,7 +153,11 @@ function MoveForm({ move, defaultFrom, pockets, entries, moves }: MoveFormProps)
             <ThemedText type="smallBold" themeColor="textSecondary">
               To
             </ThemedText>
-            <PaidFromChoices pockets={pockets.filter((pocket) => pocket.id !== fromId)} value={toId} onChange={setToId} label="To" />
+            {intoMain ? (
+              <PaidFromChoices pockets={toChoices} value={toId} onChange={setToId} label="To" />
+            ) : (
+              <PocketChoices pockets={toChoices} value={toId} onChange={setToId} label="To" />
+            )}
           </View>
 
           <Card size="large" style={{ backgroundColor: theme.kindTint.savings }}>
