@@ -85,7 +85,8 @@ first_level = [
     (720, "Trends", "trends.tsx", "Last 6 months, by category", "See trends"),
     (890, "Settings", "settings.tsx", "Currency and app lock", "Gear"),
     (1060, "Pocket form", "pocket-edit.tsx", "Create, edit or delete a pocket", "Sheet, pencil"),
-    (1230, "Move", "move.tsx", "Pocket to Main or pocket", "Pocket: Move"),
+    (1230, "Move", "move.tsx", "Pocket to another pocket", "Pocket: Move"),
+    (1400, "Split", "split.tsx", "Split the month's savings", "Savings block"),
 ]
 for y, t, f, d, l in first_level:
     b += box(560, y, 340, 140, TEAL_L, TEAL, [(t, 28, 700, TEAL), (f, 19, 400, MUTED, MONO), (d, 20, 400, INK)])
@@ -100,18 +101,18 @@ b += box(1020, 720, 300, 140, PURPLE_L, PURPLE, [
 b += arrow([(900, 790), (1016, 790)], PURPLE, "p")
 b += text(958, 776, "Tap one", 18, 500, PURPLE)
 b += f'<polyline points="330,585 390,585" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
-b += f'<line x1="390" y1="110" x2="390" y2="1300" stroke="{BLUE}" stroke-width="2.5"/>'
-b += rect(50, 1430, 1270, 340, SLATE_L, SLATE_L, 12, 0)
+b += f'<line x1="390" y1="110" x2="390" y2="1470" stroke="{BLUE}" stroke-width="2.5"/>'
+b += rect(50, 1600, 1270, 340, SLATE_L, SLATE_L, 12, 0)
 for i, s_ in enumerate([
         "Home shows one space: Main (the month, named Main) or a pocket, picked with the Pill under the hero card.",
         "A pocket: balance, Save / Spend / Move actions, a This month balance chart, a Spent filter; no plan.",
         "No income yet: the card asks for it (Add income, Repeat last income).",
         "All screens return to Home. The plan starts at 20 % until you save one.",
         "Past month: My plan is hidden; its entries can still be corrected.",
-        "Entry also opens from Activity, from a pocket (Save, Spend) and from My plan; Move opens from a pocket.",
+        "Entry opens from Activity, a pocket and My plan; Move from a pocket; Split from the Savings block.",
         "App lock (Settings): after 60 s away the app asks for the phone's unlock again."]):
-    b += text(80, 1472 + i * 42, s_, 22, 500, INK, "start")
-page("1-app-map", 1360, 1800, b)
+    b += text(80, 1642 + i * 42, s_, 22, 500, INK, "start")
+page("1-app-map", 1360, 1970, b)
 
 # 2. Monthly calculation
 cards = [
@@ -130,12 +131,12 @@ for x, w, n, v, c, l in segs:
 b += text(700, 540, "Income 2000 €", 20, 700, MUTED)
 b += rect(40, 570, 1320, 310, SLATE_L, SLATE_L, 12, 0)
 b += text(70, 613, "Saved more than the goal: the saved amount counts instead (save 600 € → 2000 − 900 − 600 = 500 €).", 21, 500, INK, "start")
-b += text(70, 653, "Goal rounded down to the cent. Left to spend can be negative. No income yet: Home asks for it.", 21, 500, INK, "start")
+b += text(70, 653, "Goal rounded down to the cent (whole peso in COP). Left to spend can be negative. No income yet: Home asks for it.", 21, 500, INK, "start")
 b += text(70, 693, "Current month: Home also shows left ÷ days left, today included, rounded down (700 € ÷ 10 days = 70 € a day).", 21, 500, INK, "start")
 b += text(70, 733, "Every-month items are recorded on the 1st as normal entries, so they count like any other.", 21, 500, INK, "start")
 b += text(70, 773, "Pace chart: the pace line runs from the every-month expenses (day 1) to what the month can spend (last day).", 21, 500, INK, "start")
 b += text(70, 813, "Expenses paid from a pocket skip all these figures: they only lower that pocket's balance.", 21, 500, INK, "start")
-b += text(70, 853, "Money moved into Main from a pocket adds to left, daily budget and pace (+100 € → 800 €); not income or savings.", 21, 500, INK, "start")
+b += text(70, 853, "Old moves into Main still add to left, daily budget and pace (+100 € → 800 €); new moves are pocket to pocket.", 21, 500, INK, "start")
 page("2-month-calculation", 1400, 910, b)
 
 # 3. Architecture
@@ -143,7 +144,7 @@ b = rect(30, 30, 1050, 960, "#fafbfc", SLATE, 26, 3)
 b += text(70, 76, "Your Android phone", 26, 700, SLATE, "start")
 b += box(70, 100, 680, 170, BLUE_L, BLUE, [
     ("Screens", 30, 700, BLUE), ("src/app + features/*/screens", 20, 400, MUTED, MONO),
-    ("Home · My plan · Activity · Trends", 21, 400, INK), ("Month picker · Entry · Every month", 21, 400, INK), ("Settings · Pocket form · Move · App lock", 21, 400, INK)])
+    ("Home · My plan · Activity · Trends", 21, 400, INK), ("Month picker · Entry · Every month", 21, 400, INK), ("Settings · Pocket form · Move · Split · App lock", 21, 400, INK)])
 b += box(70, 370, 320, 150, TEAL_L, TEAL, [
     ("Hooks", 28, 700, TEAL), ("features/*/hooks", 20, 400, MUTED, MONO), ("Read and reload", 21, 400, INK)])
 b += box(430, 370, 320, 150, PURPLE_L, PURPLE, [
@@ -210,7 +211,7 @@ t5, h5 = table(30, 830, 360, "pocket", "A place to save, spend from", TEAL, TEAL
     ("emoji", "TEXT up to 8", False), ("color", "8 colours", False)])
 t6, h6 = table(1010, 830, 360, "setting", "App options on the phone", SLATE, SLATE_L, [
     ("key", "TEXT · PK", True), ("value", "TEXT", False)])
-t7, h7 = table(500, 830, 390, "move", "Pocket money to Main or a pocket", TEAL, TEAL_L, [
+t7, h7 = table(500, 830, 390, "move", "Pocket money to a pocket (older: Main)", TEAL, TEAL_L, [
     ("id", "INTEGER · PK", True), ("date", "'YYYY-MM-DD'", True), ("amount_cents", "INTEGER > 0", False),
     ("from_pocket_id", "FK", False), ("to_pocket_id", "FK or empty", False), ("note", "TEXT", False),
     ("created_at", "TEXT", False)])
@@ -235,7 +236,7 @@ for i, s_ in enumerate(["Money is integer cents: 12,50 € is stored as 1250. ki
                         "Only what you type is stored: the goal and what is left to spend are computed.",
                         "Every-month items are copied into entry on the 1st, once per month, keeping recurring_id.",
                         "Pocket balance = starting + savings in − expenses paid from it + moves in − moves out.",
-                        "A move with no to_pocket_id goes into Main; it is neither income nor savings.",
+                        "A move with no to_pocket_id goes into Main (earlier versions only); it is neither income nor savings.",
                         "An expense with a pocket_id is left out of the month's figures."]):
     b += text(60, 1345 + i * 40, s_, 22, 500, INK, "start")
 # Migration steps
