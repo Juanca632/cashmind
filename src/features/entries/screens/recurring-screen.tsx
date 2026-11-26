@@ -6,7 +6,7 @@ import { KeyboardAvoidingView, StyleSheet, View } from 'react-native';
 import type { EntryCategory } from '@/features/entries/categories';
 import { AmountField } from '@/features/entries/components/amount-field';
 import { CategoryChoices } from '@/features/entries/components/category-choices';
-import { PaidFromChoices } from '@/features/entries/components/paid-from-choices';
+import { SpaceChoices } from '@/features/entries/components/space-choices';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
 import { useRecurringItem } from '@/features/entries/hooks/use-recurring-item';
 import { RECURRING_MISSING, entryErrorMessage, validateRecurring, type RecurringItem } from '@/features/entries/rules';
@@ -91,7 +91,7 @@ function RecurringForm({ item }: { item: RecurringItem }) {
               <ThemedText type="smallBold" themeColor="textSecondary">
                 Paid from
               </ThemedText>
-              <PaidFromChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
+              <SpaceChoices pockets={pockets.data} value={pocketId} onChange={setPocketId} />
             </View>
           ) : null}
 

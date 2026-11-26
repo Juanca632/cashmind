@@ -25,7 +25,7 @@ The move form's To becomes a pocket choice (other pockets + "New pocket"), excep
 - **Service** (`src/features/entries/service.ts`): `MOVE_TO_POCKET_ONLY = 'Money can only move to another pocket.'`; `addMove` refuses `toPocketId === null`; `editMove` refuses it unless the stored move's `toPocketId` is null.
 - **Move form** (`src/features/entries/screens/move-screen.tsx`):
   - `toId: number | null`; a new move starts on the first pocket ≠ From, or null;
-  - a move stored into Main keeps `PaidFromChoices` (Main + others);
+  - a move stored into Main keeps `SpaceChoices` (Main + others; named `PaidFromChoices` until the audit cleanup);
   - every other move uses `PocketChoices` (others, `allowNew`, label "To");
   - valid needs a To unless the move stays into Main; changing From to To picks the first other pocket.
 - **Baselines**: 001 FR-013, 002 FR-004.
