@@ -323,7 +323,6 @@ describe('Type amounts in that currency', () => {
   it.each([
     ['EUR', '12,50'],
     ['EUR', '12.50'],
-    ['USD', '12,50'],
     ['USD', '12.50'],
   ])('Euro and dollar decimals: %s with "%s" saves 12.50', async (code, typed) => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary], raw: store(code) });
@@ -367,9 +366,9 @@ describe('Type amounts in that currency', () => {
   });
 
   it.each([
-    ['EUR', '12,50', '45000,00'],
-    ['USD', '12.50', '45000.00'],
-    ['COP', '12,50', '45000'],
+    ['EUR', '12,50', '45 000,00'],
+    ['USD', '12.50', '45,000.00'],
+    ['COP', '12,50', '45.000'],
   ])('Editing: in %s an existing entry opens as "%s" and 45 000 as "%s"', async (code, small, big) => {
     await startApp({ today: TODAY, plans: PLAN, entries: [salary, cinema, rent], raw: store(code) });
     await press(/Cinema/);

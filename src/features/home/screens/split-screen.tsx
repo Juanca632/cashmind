@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, StyleSheet, TextInput, View } from 'react-native'
 import { useMonthEntries } from '@/features/entries/hooks/use-month-entries';
 import { useMoves } from '@/features/entries/hooks/use-moves';
 import { usePocketEntries } from '@/features/entries/hooks/use-pocket-entries';
+import { MAX_AMOUNT_TEXT } from '@/features/entries/components/amount-field';
 import { usePockets } from '@/features/entries/hooks/use-pockets';
 import type { Entry, Pocket } from '@/features/entries/rules';
 import { addSavings } from '@/features/entries/service';
@@ -174,10 +175,10 @@ function SplitForm({ month, today, toSplitCents, pockets, pocketEntries }: Split
                           keyboardType={money.keyboard}
                           placeholder={money.placeholder}
                           placeholderTextColor={theme.textSecondary}
-                          maxLength={13}
+                          maxLength={MAX_AMOUNT_TEXT}
                           selectTextOnFocus
                           value={textOf(pocket.id)}
-                          onChangeText={(text) => setTexts((current) => ({ ...current, [pocket.id]: text }))}
+                          onChangeText={(text) => setTexts((current) => ({ ...current, [pocket.id]: money.groupInput(text) }))}
                           style={[styles.input, { color: theme.text }]}
                         />
                         {money.symbolFirst ? null : <ThemedText themeColor="textSecondary">{money.symbol}</ThemedText>}
