@@ -52,16 +52,6 @@ describe('Home stays short', () => {
     expect(seeAll(8)).toBeOnTheScreen();
   });
 
-  it('Filtered: 3 savings with Savings selected list the 3 and no link', async () => {
-    const savings = [1, 2, 3].map((d) => ({ date: `2026-11-0${d}`, kind: 'savings', amountCents: 500, note: `Save ${d}` }) as const);
-    await startApp({ today: TODAY, entries: [salary, ...spends(6), ...savings] });
-    expect(seeAll(10)).toBeOnTheScreen();
-    await press('Savings');
-
-    for (const d of [1, 2, 3]) expect(has(`Save ${d}`)).toBe(true);
-    expect(seeAllAny()).not.toBeOnTheScreen();
-  });
-
   it('New entry: adding one dated today puts it on top, drops the oldest of the 5 and raises the count', async () => {
     await startApp({ today: TODAY, entries: [salary, ...spends(5)] });
     expect(seeAll(6)).toBeOnTheScreen();

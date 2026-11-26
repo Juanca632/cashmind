@@ -84,6 +84,11 @@ export function partialText(text: string): RegExp {
   return new RegExp(escaped);
 }
 
+/** The wide Savings block of home's Overview (030): it is a button named "Split savings" while something is left to split. */
+export const savingsBlock = () => within(screen.getByLabelText(/^(Split savings|Savings)$/));
+/** Matches the block's "<saved> of <goal>" text by its saved part, e.g. savedPart('150 €'). */
+export const savedPart = (saved: string) => new RegExp(`^${partialText(saved).source}\\sof\\s`);
+
 export const press = (name: string | RegExp) => fireEvent.press(screen.getByRole('button', { name }));
 export const type = (label: string, text: string) => fireEvent.changeText(screen.getByLabelText(label), text);
 /** Types the note; the field is always visible on the entry form (022). */

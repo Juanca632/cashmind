@@ -52,7 +52,7 @@ export function SpaceSelector({ pocket }: SpaceSelectorProps) {
 }
 
 /** A space's round mark: the month's green with a house, or the pocket's colour with its emoji. */
-function SpaceDot({ pocket, size = 'large' }: { pocket: Pocket | null; size?: 'small' | 'large' }) {
+export function SpaceDot({ pocket, size = 'large' }: { pocket: Pocket | null; size?: 'small' | 'large' }) {
   const base = pocket ? POCKET_COLORS[pocket.color].base : Hero.background;
   const small = size === 'small';
   return (

@@ -5,7 +5,6 @@ import {
   deletePocket,
   editEntry,
   editPocket,
-  editRecurring,
   recordRecurringEntries,
 } from '@/features/entries/service';
 
@@ -139,37 +138,31 @@ describe('Save into a pocket (Story 2)', () => {
     expect((await entries(db))[0].pocket_id).toBe(1);
   });
 
-  it('Monthly savings: a saving marked to repeat records into the same pocket each month', async () => {
+  it('No repeating savings: a saving marked to repeat is refused and nothing is stored', async () => {
     const db = await newDb();
     await addPocket(db, { name: 'Japan trip', startingCents: 0, emoji: '', color: 'blue' });
-    await addEntry(db, saving(1), NOV_15, { repeat: true });
-    expect(await items(db)).toEqual([expect.objectContaining({ kind: 'savings', pocket_id: 1 })]);
-
-    await recordRecurringEntries(db, DEC_4);
-    expect(await entries(db)).toEqual([
-      expect.objectContaining({ date: '2026-11-15', pocket_id: 1 }),
-      expect.objectContaining({ date: '2026-12-01', kind: 'savings', amount_cents: 20000, pocket_id: 1 }),
-    ]);
+    expect((await addEntry(db, saving(1), NOV_15, { repeat: true })).ok).toBe(false);
+    expect(await entries(db)).toEqual([]);
+    expect(await items(db)).toEqual([]);
   });
 
-  it('Monthly savings: the monthly entry can change its pocket, from next month', async () => {
+  it('No repeating savings: an existing saving cannot be marked to repeat', async () => {
     const db = await newDb();
     await addPocket(db, { name: 'Japan trip', startingCents: 0, emoji: '', color: 'blue' });
-    await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
-    await addEntry(db, saving(1), NOV_15, { repeat: true });
-
-    expect(await editRecurring(db, 1, { category: 'other', amountCents: 20000, note: '', pocketId: 2 })).toEqual({ ok: true });
-    await recordRecurringEntries(db, DEC_4);
-    expect((await entries(db)).map((e: any) => e.pocket_id)).toEqual([1, 2]);
+    await addEntry(db, saving(1), NOV_15);
+    expect((await editEntry(db, 1, saving(1), NOV_15, { repeat: true })).ok).toBe(false);
+    expect(await items(db)).toEqual([]);
   });
 
-  it('Monthly savings: a monthly saving without a pocket, or in a missing one, is refused and unchanged', async () => {
+  it('No repeating savings: a repeating saving from an earlier version is not recorded in a new month', async () => {
     const db = await newDb();
     await addPocket(db, { name: 'Japan trip', startingCents: 0, emoji: '', color: 'blue' });
-    await addEntry(db, saving(1), NOV_15, { repeat: true });
-    expect(await editRecurring(db, 1, { category: 'other', amountCents: 20000, note: '', pocketId: null })).toMatchObject({ ok: false, message: 'Pick a pocket.' });
-    expect((await editRecurring(db, 1, { category: 'other', amountCents: 20000, note: '', pocketId: 77 })).ok).toBe(false);
-    expect(await items(db)).toEqual([expect.objectContaining({ pocket_id: 1 })]);
+    await db.runAsync(
+      "INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 30000, 'Plan', 1, '2026-11', 1)",
+    );
+    await recordRecurringEntries(db, DEC_4);
+    expect(await entries(db)).toEqual([]);
+    expect(await items(db)).toEqual([expect.objectContaining({ kind: 'savings', amount_cents: 30000, active: 1, last_month: '2026-11' })]);
   });
 });
 
@@ -211,13 +204,23 @@ describe('Manage a pocket (Story 3)', () => {
     expect(await pockets(db)).toHaveLength(1);
   });
 
-  it('Cannot delete with a monthly saving even if no saving remains', async () => {
+  it('Cannot delete: an old repeating saving no entry points to is deleted with the pocket', async () => {
     const db = await newDb();
     await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
-    await addEntry(db, saving(1), NOV_15, { repeat: true });
-    await db.runAsync('DELETE FROM entry');
-    expect(await deletePocket(db, 1)).toMatchObject({ ok: false, message: "A pocket with savings, spending or moves can't be deleted." });
+    await db.runAsync("INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 30000, 'Plan', 1, '2026-11', 1)");
+    expect(await deletePocket(db, 1)).toEqual({ ok: true });
+    expect(await pockets(db)).toEqual([]);
+    expect(await items(db)).toEqual([]);
+  });
+
+  it('Cannot delete: an old repeating saving that an entry points to keeps the pocket and the item', async () => {
+    const db = await newDb();
+    await addPocket(db, { name: 'Car', startingCents: 0, emoji: '', color: 'blue' });
+    await db.runAsync("INSERT INTO recurring (id, kind, category, amount_cents, note, active, last_month, pocket_id) VALUES (1, 'savings', 'other', 30000, 'Plan', 1, '2026-11', 1)");
+    await db.runAsync("INSERT INTO entry (date, kind, category, amount_cents, note, recurring_id, pocket_id) VALUES ('2026-11-02', 'savings', 'other', 30000, 'Plan', 1, 1)");
+    expect((await deletePocket(db, 1)).ok).toBe(false);
     expect(await pockets(db)).toHaveLength(1);
+    expect(await items(db)).toHaveLength(1);
   });
 
   it('a pocket becomes deletable once its saving moves elsewhere', async () => {

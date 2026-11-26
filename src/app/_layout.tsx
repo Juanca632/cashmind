@@ -60,6 +60,7 @@ export default function RootLayout() {
                 <Stack.Screen name="settings" options={{ title: 'Settings' }} />
                 <Stack.Screen name="pocket-edit" options={{ title: 'Pocket' }} />
                 <Stack.Screen name="move" options={{ title: 'Move money' }} />
+                <Stack.Screen name="split" options={{ title: 'Split savings' }} />
               </Stack>
             </AppLock>
           </CurrencyProvider>

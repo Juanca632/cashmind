@@ -5,11 +5,11 @@ import { fireEvent, screen, testRouter, within } from 'expo-router/testing-libra
 import { dayKey } from '@/shared/days';
 
 import {
+  answerDialog,
+  choose,
   DEFAULT_POCKET,
   DELETE_DIALOG,
   DISCARD_DIALOG,
-  answerDialog,
-  choose,
   exactText,
   expectDialog,
   expectLeftToSpend,
@@ -17,6 +17,8 @@ import {
   headerTitles,
   partialText,
   press,
+  savedPart,
+  savingsBlock,
   startApp,
   type,
   typeNote,
@@ -133,7 +135,7 @@ describe('Three kinds of entry', () => {
     expect(screen.getByText('Piggy bank')).toBeOnTheScreen();
     expect(screen.getByText('Rent')).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('150 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('150 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('900 €'))).toBeOnTheScreen();
   });
 });
@@ -169,7 +171,7 @@ describe('Savings entries count towards the savings goal', () => {
       pockets: [{ name: DEFAULT_POCKET }],
       entries: [{ ...salary, amountCents: 300000 }],
     });
-    expect(tile('Savings').getByText(exactText('of 900 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 900 €'))).toBeOnTheScreen();
 
     await press('Add expense');
     await choose('Savings');
@@ -177,8 +179,8 @@ describe('Savings entries count towards the savings goal', () => {
     await type('Amount', '600');
     await press('Add to savings');
 
-    expect(tile('Savings').getByText(exactText('600 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 900 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('600 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 900 €'))).toBeOnTheScreen();
   });
 });
 
@@ -299,7 +301,7 @@ describe('Edit and delete an expense', () => {
     await press('Save changes');
 
     expect(tile('Spent').getByText(exactText('0 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('12,50 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('12,50 €'))).toBeOnTheScreen();
   });
 });
 
@@ -455,7 +457,6 @@ describe('Look inside one kind', () => {
 
   it.each([
     ['Spent', 'Dinner', ['Pay', 'Piggy bank']],
-    ['Savings', 'Piggy bank', ['Pay', 'Dinner']],
     ['Income', 'Pay', ['Piggy bank', 'Dinner']],
   ])('Tapping %s lists only %s, and "Show all" brings back the full list', async (name, shown, hidden) => {
     await startApp({ today: TODAY, entries: [...everyKind] });
@@ -474,7 +475,6 @@ describe('Look inside one kind', () => {
 
   it.each([
     ['Income', 'Add income', 'Income'],
-    ['Savings', 'Add to savings', 'Savings'],
     ['Spent', 'Add expense', 'Expense'],
   ])('With %s selected the list is titled %s and Add adds that kind', async (name, addLabel, kind) => {
     await startApp({ today: TODAY, entries: [...everyKind] });
@@ -501,10 +501,7 @@ describe('Look inside one kind', () => {
     expect(screen.getByRole('radio', { name: 'Expense' })).toBeSelected();
   });
 
-  it.each([
-    ['Spent', 'No expenses this month.'],
-    ['Savings', 'No savings this month.'],
-  ])('An empty %s list says "%s"', async (name, message) => {
+  it.each([['Spent', 'No expenses this month.']])('An empty %s list says "%s"', async (name, message) => {
     await startApp({ today: TODAY, entries: [salary] });
     await press(name);
 

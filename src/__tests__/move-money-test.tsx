@@ -3,19 +3,21 @@ import { fireEvent, screen, testRouter, within } from 'expo-router/testing-libra
 
 import { seedDevice } from '../test-support/fake-sqlite';
 import {
-  DISCARD_DIALOG,
   answerDialog,
+  DISCARD_DIALOG,
   exactText,
   expectBalance,
   expectDialog,
   expectLeftToSpend,
   expectNoDialog,
-  headerTitles,
   expectPocketBalance,
+  headerTitles,
   openSpaces,
   partialText,
   pickSpace,
   press,
+  savedPart,
+  savingsBlock,
   showPocket,
   startApp,
   type,
@@ -124,7 +126,7 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
   it('Not income, not savings: the Income and Savings tiles, the goal and Trends are the same after the move', async () => {
     await startApp({ ...setup, plans: [[20, '2026-01']] });
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
 
     await showPocket('Emergency fund');
     await press('Move');
@@ -134,8 +136,8 @@ describe('Take money out of a pocket for the month (Story 1)', () => {
 
     expect(tile('Income').getByText(exactText('2 000 €'))).toBeOnTheScreen();
     expect(tile('Spent').getByText(exactText('1 800 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('0 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 400 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(savedPart('0 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 400 €'))).toBeOnTheScreen();
     await expectLeftToSpend('100,00 €'); // 2 000 + 300 - 1 800 - 400
 
     await press(/^See trends/);

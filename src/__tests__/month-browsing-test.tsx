@@ -1,7 +1,15 @@
 import { AppState } from 'react-native';
 import { act, screen, testRouter, within } from 'expo-router/testing-library';
 
-import { answerDialog, exactText, press, startApp, type } from '../test-support/app';
+import {
+  answerDialog,
+  exactText,
+  partialText,
+  press,
+  savingsBlock,
+  startApp,
+  type,
+} from '../test-support/app';
 
 jest.mock('expo-sqlite', () => jest.requireActual('../test-support/fake-sqlite').expoSqliteMock);
 
@@ -23,7 +31,7 @@ describe('Month picker', () => {
       ],
       entries: [income('2026-07', 200000), income('2026-09', 200000), income('2026-10', 200000), income('2026-11', 200000)],
     });
-    expect(tile('Savings').getByText(exactText('of 600 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 600 €'))).toBeOnTheScreen();
 
     await openPicker();
     expect(screen.getByRole('button', { name: 'Nov' })).toBeSelected();
@@ -31,7 +39,7 @@ describe('Month picker', () => {
 
     expect(screen).toHavePathname('/');
     expect(screen.getByRole('button', { name: 'Month: September 2026' })).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 500 €'))).toBeOnTheScreen();
   });
 });
 
@@ -125,7 +133,7 @@ describe('How far back', () => {
     expect(screen).toHavePathname('/');
     expect(screen.getByRole('button', { name: 'Month: March 2025' })).toBeOnTheScreen();
     expect(screen.getByText('Old lunch')).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 200 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 200 €'))).toBeOnTheScreen();
   });
 
   it('A month before any plan uses the default 20 %', async () => {
@@ -137,7 +145,7 @@ describe('How far back', () => {
     await openPicker();
     await press('Mar');
 
-    expect(tile('Savings').getByText(exactText('of 200 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 200 €'))).toBeOnTheScreen();
   });
 });
 
@@ -205,7 +213,7 @@ describe('Past months can be corrected: income', () => {
     expect(screen).toHavePathname('/');
     expect(screen.getByRole('button', { name: 'Month: November 2026' })).toBeOnTheScreen();
     expect(tile('Income').getByText(exactText('2 500 €'))).toBeOnTheScreen();
-    expect(tile('Savings').getByText(exactText('of 500 €'))).toBeOnTheScreen();
+    expect(savingsBlock().getByText(partialText('of 500 €'))).toBeOnTheScreen();
   });
 
   it('An income of a past month can be deleted after confirming, and the month asks for income again', async () => {

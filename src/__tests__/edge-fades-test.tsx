@@ -142,7 +142,7 @@ describe.each([
 
   it('Three levels: the kind tiles on home (Income, Spent, Savings) are raised', async () => {
     await startApp({ today: TODAY, entries });
-    for (const name of ['Income', 'Spent', 'Savings']) {
+    for (const name of ['Income', 'Spent', 'Split savings']) {
       expect(shadowOf(screen.getByRole('button', { name }))).toBe(theme.shadow.raised);
     }
   });

@@ -70,10 +70,10 @@ describe('Choose a category when recording', () => {
     expect(rows.at(-1)).toMatchObject({ kind: 'expense', amount_cents: 1000, category: 'other' });
   });
 
-  it('Default: opened from Savings the form is on Savings with no pocket chosen', async () => {
+  it('Default: choosing Savings on the form shows the pockets with none chosen', async () => {
     await startApp({ today: TODAY, entries: [salary], pockets: [{ name: 'Japan trip' }] });
-    await press('Savings');
-    await press('Add to savings');
+    await press('Add expense');
+    await choose('Savings');
 
     expect(screen.getByRole('radio', { name: 'Savings', selected: true })).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: 'Japan trip' })).not.toBeSelected();
@@ -233,11 +233,6 @@ describe('See a kind split by category', () => {
     expect(splitLine('Salary', '2 000,00', 87)).toBeOnTheScreen();
     expect(splitLine('Freelance', '300,00', 13)).toBeOnTheScreen();
     expect(splitLabels()).toEqual(['Salary', 'Freelance']);
-
-    await press('Savings');
-    expect(splitLabels()).toEqual([]);
-    expect(screen.queryByText('By category')).not.toBeOnTheScreen();
-    expect(screen.queryByLabelText(/^Salary:/)).not.toBeOnTheScreen();
   });
 
   it('Only used categories: categories with no entries are not listed', async () => {
